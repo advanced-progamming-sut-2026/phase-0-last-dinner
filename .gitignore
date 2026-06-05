@@ -1,0 +1,13 @@
+target/
+out/
+.idea/
+*.iml
+*.class
+*.log
+
+# Local runtime data
+data/
+
+# Separate learning example created before the real project
+plant-pattern-demo/
+plant-pattern-demo.zip
