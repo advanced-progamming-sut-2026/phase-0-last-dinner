@@ -1,0 +1,13 @@
+package model.Menu;
+
+public enum MenuType {
+    SIGNUP_MENU,
+    LOGIN_MENU,
+    MAIN_MENU,
+    GAME_MENU,
+    SETTINGS_MENU,
+    NETWORK_MENU,
+    NEWS_MENU,
+    PROFILE_MENU,
+    COLLECTION_MENU
+}
