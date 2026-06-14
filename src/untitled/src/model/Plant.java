@@ -1,6 +1,6 @@
 package model;
 
-import model.mechanism.Board;
+import lombok.Getter;import model.mechanism.Board;
 import model.mechanism.Position;
 import model.mechanism.Tickable;
 import model.plant.PlantCategory;
@@ -10,7 +10,7 @@ import model.plant.behavior.PlantBehavior;
 import model.plant.behavior.PlantFoodBehavior;
 
 import java.util.Set;
-
+@Getter
 public class Plant implements Tickable {
     private String name;
     private int health;
