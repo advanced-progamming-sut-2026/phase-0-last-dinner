@@ -38,6 +38,11 @@ public class IZombieMiniGame extends MiniGame {
     }
 
     @Override
+    public void onTick() {
+
+    }
+
+    @Override
     public boolean isWinConditionMet() {
         return false;
     }

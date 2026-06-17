@@ -1,5 +1,7 @@
 package model.minigame;
 
+import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
+
 public class MiniGameFactory {
     public MiniGame create(MiniGameType type) {
         switch (type) {

@@ -1,10 +1,14 @@
 package model.minigame;
 
+import lombok.Getter;
+import lombok.Setter;
 import model.mechanism.Board;
 
 import java.util.Arrays;
 import java.util.List;
 
+@Getter
+@Setter
 public abstract class MiniGame {
     private MiniGameType type;
     private List<MiniGameStage> stages;
@@ -20,9 +24,22 @@ public abstract class MiniGame {
                 new MiniGameStage(2, 1.5, false),
                 new MiniGameStage(3, 2.0, false)
         );
+        this.currentStage = this.stages.get(0);
+        this.started = false;
+        this.completed = false;
+    }
+
+    protected void markStarted() {
+        this.started = true;
+    }
+
+    protected void markCompleted() {
+        this.completed = true;
     }
 
     public abstract void start();
+
+    public abstract void onTick();
 
     public abstract boolean isWinConditionMet();
 

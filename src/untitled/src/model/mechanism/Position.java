@@ -8,10 +8,10 @@ public class Position {
     }
 
     public int getX() {
-        return 0;
+        return x;
     }
 
     public int getY() {
-        return 0;
+        return y;
     }
 }
