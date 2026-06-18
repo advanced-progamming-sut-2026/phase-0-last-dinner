@@ -2,6 +2,6 @@ package model.zombie;
 
 public class ZombieArmorFactory {
     public ZombieArmor create(ZombieArmorDefinition definition) {
-        return null;
+        return new ZombieArmor(definition);
     }
 }

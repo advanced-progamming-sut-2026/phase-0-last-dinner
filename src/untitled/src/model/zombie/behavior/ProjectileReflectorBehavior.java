@@ -8,6 +8,10 @@ import model.zombie.Zombie;
 public class ProjectileReflectorBehavior implements ZombieBehavior {
     private boolean reflecting;
 
+    public ProjectileReflectorBehavior(boolean reflecting) {
+        this.reflecting = reflecting;
+    }
+
     @Override
     public void onTick(Zombie zombie, Board board) {
     }
@@ -18,9 +22,14 @@ public class ProjectileReflectorBehavior implements ZombieBehavior {
 
     @Override
     public void activate(Zombie zombie, Board board) {
+        this.reflecting = true;
     }
 
     public Projectile reflect(Projectile projectile) {
-        return null;
+        if (!this.reflecting || projectile == null) {
+            return projectile;
+        }
+
+        return projectile.copyAt(projectile.getPosition());
     }
 }

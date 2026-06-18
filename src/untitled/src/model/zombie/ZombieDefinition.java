@@ -1,7 +1,12 @@
 package model.zombie;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.util.List;
 
+@Getter
+@AllArgsConstructor
 public class ZombieDefinition {
     private String alias;
     private String displayName;
