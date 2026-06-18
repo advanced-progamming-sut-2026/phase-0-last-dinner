@@ -11,7 +11,6 @@ import java.util.List;
 
 @Getter
 @Setter
-
 public class VasebreakerMiniGame extends MiniGame {
     private static final long SEED_PACKET_LIFETIME_TICKS = 300;
 
@@ -46,84 +45,92 @@ public class VasebreakerMiniGame extends MiniGame {
 
         VaseBreakerStageGenerator generator = new VaseBreakerStageGenerator();
         vases.addAll(generator.generateStageOne());
-
-        System.out.println("Stage one : Go Go Go.");
     }
 
-    public void breakVase(Position position) {
+    public VasebreakerActionResult breakVase(Position position) {
         Vase vase = findUnbrokenVase(position);
 
         if (vase == null) {
-            System.out.println("There is no unbroken vase at " + position + ".");
-            return;
+            return VasebreakerActionResult.noVase(position);
         }
 
         vase.breakVase();
-        System.out.println("Vase at " + position + " shekast.");
 
-        if (vase.getContentType() == VaseContentType.EMPTY) {
-            System.out.println("The vase was empty.");
-            return;
-        }
+        DroppedSeedPacket droppedSeedPacket = null;
+        boolean zombieReleased = false;
 
         if (vase.getContentType() == VaseContentType.SEED_PACKET) {
-            dropSeedPacket(vase);
-            return;
+            droppedSeedPacket = dropSeedPacket(vase);
+        } else if (vase.getContentType() == VaseContentType.ZOMBIE) {
+            releaseZombie(vase);
+            zombieReleased = true;
         }
 
-        if (vase.getContentType() == VaseContentType.ZOMBIE) {
-            releaseZombie(vase);
-        }
+        updateCompletedIfWon();
+
+        return VasebreakerActionResult.vaseBroken(
+                position,
+                vase.getContentType(),
+                droppedSeedPacket,
+                zombieReleased,
+                isCompleted(),
+                isLoseConditionMet()
+        );
     }
 
-    public void collectSeedPacket(Position position) {
+    public VasebreakerActionResult collectSeedPacket(Position position) {
         DroppedSeedPacket seedPacket = findAvailableSeedPacket(position);
 
         if (seedPacket == null) {
-            System.out.println("There is no available seed packet at " + position + ".");
-            return;
+            return VasebreakerActionResult.noSeedPacket(position);
         }
 
         seedPacket.collect();
-        System.out.println("Seed packet collected at " + position + ".");
+        updateCompletedIfWon();
+
+        return VasebreakerActionResult.seedPacketCollected(
+                position,
+                isCompleted(),
+                isLoseConditionMet()
+        );
     }
 
-    public void plantFromPacket(
+    public VasebreakerActionResult plantFromPacket(
             DroppedSeedPacket seedPacket,
             Position position
     ) {
         if (seedPacket == null) {
-            System.out.println("No seed packet selected.");
-            return;
+            return VasebreakerActionResult.invalidAction(position);
         }
 
         if (!seedPacket.isAvailable(currentTick)) {
-            System.out.println("This seed packet is not available.");
-            return;
+            return VasebreakerActionResult.seedPacketNotAvailable(position);
         }
 
         seedPacket.collect();
 
-        System.out.println("Plant from seed packet was planted at " + position + ".");
-
         // TODO: Later, create the plant with PlantFactory and add it to the board.
+
+        updateCompletedIfWon();
+
+        return VasebreakerActionResult.plantFromPacket(
+                position,
+                isCompleted(),
+                isLoseConditionMet()
+        );
     }
 
     @Override
     public void onTick() {
         currentTick++;
         removeExpiredSeedPackets();
+        updateCompletedIfWon();
     }
 
     @Override
     public boolean isWinConditionMet() {
-        if (!areAllVasesBroken()) {
-            return false;
-        }
-
+        return areAllVasesBroken();
         // TODO: Later, also check no alive zombies on the board.
-        markCompleted();
-        return true;
     }
 
     @Override
@@ -149,7 +156,7 @@ public class VasebreakerMiniGame extends MiniGame {
         return null;
     }
 
-    private void dropSeedPacket(Vase vase) {
+    private DroppedSeedPacket dropSeedPacket(Vase vase) {
         DroppedSeedPacket seedPacket = new DroppedSeedPacket(
                 vase.getPlantDefinition(),
                 vase.getPosition(),
@@ -157,13 +164,10 @@ public class VasebreakerMiniGame extends MiniGame {
         );
 
         droppedSeedPackets.add(seedPacket);
-
-        System.out.println("A seed packet dropped at " + vase.getPosition() + ".");
+        return seedPacket;
     }
 
     private void releaseZombie(Vase vase) {
-        System.out.println("A zombie was released at " + vase.getPosition() + ".");
-
         // TODO: Later, create the zombie with ZombieFactory and add it to the board.
     }
 
@@ -180,7 +184,23 @@ public class VasebreakerMiniGame extends MiniGame {
         droppedSeedPackets.removeIf(seedPacket -> seedPacket.isExpired(currentTick));
     }
 
+    private void updateCompletedIfWon() {
+        if (isWinConditionMet()) {
+            markCompleted();
+        }
+    }
+
     public void markLost() {
         lost = true;
+    }
+
+    public VasebreakerStateResult getState() {
+        return new VasebreakerStateResult(
+                currentTick,
+                vases,
+                droppedSeedPackets,
+                isCompleted(),
+                isLoseConditionMet()
+        );
     }
 }

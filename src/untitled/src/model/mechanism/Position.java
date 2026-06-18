@@ -16,4 +16,18 @@ public class Position {
     public int getY() {
         return this.y;
     }
+
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+
+        if (!(object instanceof Position)) {
+            return false;
+        }
+
+        Position position = (Position) object;
+        return this.x == position.x && this.y == position.y;
+    }
 }

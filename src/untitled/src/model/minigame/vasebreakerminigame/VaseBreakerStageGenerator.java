@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 public class VaseBreakerStageGenerator {
+    //TODO : VaseBreakerMiniGame controlles the logic and this creates the 3 stages , it can be randomised too
     public List<Vase> generateStageOne() {
         List<Vase> vases = new ArrayList<>();
 
