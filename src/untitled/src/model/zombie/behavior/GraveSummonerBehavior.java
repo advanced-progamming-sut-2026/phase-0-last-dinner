@@ -7,9 +7,21 @@ import model.zombie.Zombie;
 public class GraveSummonerBehavior implements ZombieBehavior {
     private int graveCount;
     private long summonIntervalTicks;
+    private long ticksSinceLastSummon;
+
+    public GraveSummonerBehavior(int graveCount, long summonIntervalTicks) {
+        this.graveCount = graveCount;
+        this.summonIntervalTicks = summonIntervalTicks;
+    }
 
     @Override
     public void onTick(Zombie zombie, Board board) {
+        this.ticksSinceLastSummon++;
+
+        if (this.ticksSinceLastSummon >= this.summonIntervalTicks) {
+            this.activate(zombie, board);
+            this.ticksSinceLastSummon = 0;
+        }
     }
 
     @Override

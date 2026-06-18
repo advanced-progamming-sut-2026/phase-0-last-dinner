@@ -1,7 +1,9 @@
 package model.plant;
 
-import java.util.List;
+import lombok.AllArgsConstructor;
 
+import java.util.List;
+@AllArgsConstructor
 public class PlantUpgradeData {
     private int currentLevel;
     private int maximumLevel;
@@ -11,13 +13,29 @@ public class PlantUpgradeData {
     private List<String> levelUpEffects;
 
     public boolean canUpgrade() {
-        return false;
+        return this.currentLevel < this.maximumLevel
+                && this.seedPackets >= this.requiredSeedPackets;
     }
-
     public void upgrade() {
+        if (!this.canUpgrade()) {
+            return;
+        }
+
+        this.seedPackets -= this.requiredSeedPackets;
+        this.currentLevel++;
     }
 
     public String getCurrentLevelEffect() {
-        return null;
+        if (this.levelUpEffects == null || this.levelUpEffects.isEmpty()) {
+            return null;
+        }
+
+        int effectIndex = this.currentLevel - 1;
+//index effect yeki kamtar az levele
+        if (effectIndex < 0 || effectIndex >= this.levelUpEffects.size()) {
+            return null;
+        }
+
+        return this.levelUpEffects.get(effectIndex);
     }
 }

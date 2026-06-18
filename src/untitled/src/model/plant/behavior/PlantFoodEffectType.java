@@ -1,0 +1,24 @@
+package model.plant.behavior;
+
+public enum PlantFoodEffectType {
+    NONE,
+    REPEAT_ABILITY,
+    SUN_BURST,
+    PROJECTILE_BURST,
+    TARGETED_DAMAGE,
+    LANE_DAMAGE,
+    BOARD_DAMAGE,
+    AREA_DAMAGE,
+    FREEZE_LANE,
+    FREEZE_BOARD,
+    POISON_TARGETS,
+    HYPNOTIZE_TARGETS,
+    REMOVE_ARMOR,
+    ARM_AND_CLONE,
+    ARMOR_BOOST,
+    HEAL_TO_FULL,
+    LANE_SHIFT,
+    RESET_SAME_PLANTS,
+    CLONE_NEARBY,
+    PROJECTILE_BUFF
+}

@@ -8,12 +8,20 @@ public class BlockPusherBehavior implements ZombieBehavior {
     private int blockHealth;
     private boolean blockAvailable;
 
+    public BlockPusherBehavior(int blockHealth) {
+        this.blockHealth = blockHealth;
+        this.blockAvailable = blockHealth > 0;
+    }
+
     @Override
     public void onTick(Zombie zombie, Board board) {
     }
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
+        if (plant != null && board != null && board.getCombatSystem() != null) {
+            board.getCombatSystem().destroyPlant(plant);
+        }
     }
 
     @Override

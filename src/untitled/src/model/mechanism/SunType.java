@@ -1,11 +1,17 @@
 package model.mechanism;
 
 public enum SunType {
-    NORMAL,
-    SPECIAL,
-    RADIOACTIVE,
-    PLANT_PRODUCED;
+    NORMAL(25),
+    SPECIAL(100),
+    RADIOACTIVE(25),
+    PLANT_PRODUCED(25);
 
-    private int value;
+    private final int value;
+    SunType(int value) {
+        this.value = value;
+    }
 
+    public int getValue() {
+        return value;
+    }
 }
