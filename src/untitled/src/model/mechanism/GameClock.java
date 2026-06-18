@@ -5,17 +5,18 @@ public class GameClock {
     private final int ticksPerSecond = 10;
 
     public long getCurrentTick() {
-        return 0;
+        return currentTick;
     }
 
     public int getTicksPerSecond() {
-        return 0;
+        return ticksPerSecond;
     }
 
     public void advance(int tickCount) {
+        currentTick += tickCount;
     }
 
     public double getElapsedSeconds() {
-        return 0;
+        return (double) currentTick / ticksPerSecond;
     }
 }
