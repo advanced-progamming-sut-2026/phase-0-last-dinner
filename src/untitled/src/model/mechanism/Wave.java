@@ -1,11 +1,13 @@
 package model.mechanism;
 
 import lombok.Getter;
+import lombok.Setter;
 import model.zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.List;
 @Getter
+@Setter
 public class Wave {
     private int number;
     private double difficulty;
@@ -36,10 +38,11 @@ public class Wave {
             totalMax += zombie.getDefinition().getHitpoints();
             totalCurrent += zombie.getHealth();
         }
+        if (totalMax == 0) return 0;
         return (double) totalCurrent / totalMax;
     }
 
     public boolean canStartNextWave() {
-        return false;
+        return getRemainingHealthPercentage() <= 0.25;
     }
 }
