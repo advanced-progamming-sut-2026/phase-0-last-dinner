@@ -23,7 +23,10 @@ public class Board {
     @Getter
     @Setter
     private CombatSystem combatSystem;
-
+    public Board(List<Tile> tiles) {
+        this.tiles = tiles;
+        this.lawnMowers = new ArrayList<>();
+    }
     public void addProjectile(Projectile projectile) {
         if (projectile == null) {
             return;
