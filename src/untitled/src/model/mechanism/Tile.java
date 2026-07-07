@@ -1,12 +1,13 @@
 package model.mechanism;
 
 import lombok.Getter;
-import model.Plant;
+import lombok.Setter;import model.Plant;
 import model.zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.List;
 @Getter
+@Setter
 public class Tile {
     private Position position;
     private TerrainType terrainType;
