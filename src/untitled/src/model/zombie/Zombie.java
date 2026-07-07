@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
+@Setter
 public class Zombie implements Tickable {
     private ZombieDefinition definition;
     @Setter
