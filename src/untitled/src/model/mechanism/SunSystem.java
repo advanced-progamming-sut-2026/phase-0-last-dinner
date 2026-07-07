@@ -84,6 +84,11 @@ public class SunSystem implements Tickable {
             if (!sun.isCollected()
                     && sun.getPosition().getX() == position.getX()
                     && sun.getPosition().getY() == position.getY()) {
+                if (sun.getType() == SunType.RADIOACTIVE && sun.isFalling()) {
+                    board.getCombatSystem().applyRadioactiveSunExplosion(position);
+                    sun.collect();
+                    return 0; // خورشیدی نمیده
+                }
                 sun.collect();
                 int value = sun.getType().getValue();
                 sunAmount += value;
