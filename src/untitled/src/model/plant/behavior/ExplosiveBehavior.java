@@ -2,8 +2,14 @@ package model.plant.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.mechanism.Position;
+import model.mechanism.TerrainType;
+import model.mechanism.Tile;
 import model.plant.DamageExpressionParser;
+import model.plant.PlantUpgradeEffect;
+import model.plant.PlantUpgradeSpecialEffect;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
 
 import java.util.List;
 
@@ -15,6 +21,10 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     private long armDelayTicks;
     private long armedTicks;
     private boolean activateOnPlanting;
+    private int targetCount;
+    private ZombieCondition conditionOnHit;
+    private long conditionDurationTicks;
+    private boolean explodeOnFinish;
 
     public ExplosiveBehavior(
             String damageExpression,
@@ -30,6 +40,7 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         this.explosivePattern = explosivePattern;
         this.armDelayTicks = armDelayTicks;
         this.activateOnPlanting = activateOnPlanting;
+        this.targetCount = 1;
     }
 
 
@@ -57,22 +68,41 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
         List<Zombie> zombies;
 
+        if (this.explosivePattern == ExplosivePattern.TERRAIN_ONLY) {
+            this.clearTerrain(plant, board, TerrainType.FROZEN);
+            this.explodeAfterFinishIfNeeded(plant, board);
+            return;
+        }
+
+        if (this.explosivePattern == ExplosivePattern.GRAVE_ONLY) {
+            this.clearTerrain(plant, board, TerrainType.GRAVE);
+            this.explodeAfterFinishIfNeeded(plant, board);
+            return;
+        }
+
         if (this.explosivePattern == ExplosivePattern.FULL_LANE) {
             zombies = board.getZombiesInLane(plant.getPosition());
         } else if (this.explosivePattern == ExplosivePattern.FULL_BOARD) {
             zombies = board.getAllZombies();
         } else if (this.explosivePattern == ExplosivePattern.CONTACT_SINGLE) {
-            zombies = board.getZombiesAt(plant.getPosition());
+            zombies = this.targetCount > 1
+                    ? board.getNearestZombies(plant.getPosition(), this.targetCount)
+                    : board.getZombiesAt(plant.getPosition());
         } else {
             zombies = board.getZombiesInRadius(plant.getPosition(), this.effectRadius);
         }
 
         for (Zombie zombie : zombies) {
+            this.applyCondition(zombie);
+
             if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
                 board.getCombatSystem().killZombie(zombie);
             } else {
                 int damage = DamageExpressionParser.parseTotalDamage(this.damageExpression);
-                board.getCombatSystem().applyDamageToZombie(zombie, damage);
+
+                if (damage > 0) {
+                    board.getCombatSystem().applyDamageToZombie(zombie, damage);
+                }
             }
         }
     }
@@ -84,5 +114,79 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
     public void armNow() {
         this.armedTicks = this.armDelayTicks;
+    }
+
+    public void setConditionOnHit(ZombieCondition conditionOnHit, long conditionDurationTicks) {
+        this.conditionOnHit = conditionOnHit;
+        this.conditionDurationTicks = Math.max(0, conditionDurationTicks);
+    }
+
+    @Override
+    public void applyUpgrade(PlantUpgradeEffect effect) {
+        if (effect == null) {
+            return;
+        }
+
+        this.damageExpression = DamageExpressionParser.addFlatDamage(this.damageExpression, effect.getDamageBonus());
+        this.effectRadius += effect.getRangeBonus();
+        this.armDelayTicks = Math.max(0, this.armDelayTicks - effect.getArmDelayReductionTicks());
+        this.conditionDurationTicks += effect.getDurationBonusTicks();
+        this.targetCount += effect.getTargetCountBonus();
+
+        if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.CAN_CRUSH_EXTRA_TARGET)) {
+            this.targetCount = Math.max(this.targetCount, 2);
+        }
+
+        if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.EXPLODE_ON_FINISH)) {
+            this.explodeOnFinish = true;
+        }
+
+        if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.MELT_AREA)) {
+            this.effectRadius = Math.max(this.effectRadius, 1);
+        }
+    }
+
+    private void applyCondition(Zombie zombie) {
+        if (zombie == null || this.conditionOnHit == null) {
+            return;
+        }
+
+        if (this.conditionDurationTicks > 0) {
+            zombie.addCondition(this.conditionOnHit, this.conditionDurationTicks);
+        } else {
+            zombie.addCondition(this.conditionOnHit);
+        }
+    }
+
+    private void clearTerrain(Plant plant, Board board, TerrainType terrainType) {
+        if (plant == null || board == null || plant.getPosition() == null || terrainType == null) {
+            return;
+        }
+
+        for (int deltaY = -this.effectRadius; deltaY <= this.effectRadius; deltaY++) {
+            for (int deltaX = -this.effectRadius; deltaX <= this.effectRadius; deltaX++) {
+                Position position = new Position(
+                        plant.getPosition().getX() + deltaX,
+                        plant.getPosition().getY() + deltaY
+                );
+                Tile tile = board.getTile(position);
+
+                if (tile != null && tile.getTerrainType() == terrainType) {
+                    board.setTerrain(position, TerrainType.CLASSIC);
+                }
+            }
+        }
+    }
+
+    private void explodeAfterFinishIfNeeded(Plant plant, Board board) {
+        if (!this.explodeOnFinish || plant == null || board == null || board.getCombatSystem() == null) {
+            return;
+        }
+
+        int damage = Math.max(300, DamageExpressionParser.parseTotalDamage(this.damageExpression));
+
+        for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), Math.max(1, this.effectRadius))) {
+            board.getCombatSystem().applyDamageToZombie(zombie, damage);
+        }
     }
 }

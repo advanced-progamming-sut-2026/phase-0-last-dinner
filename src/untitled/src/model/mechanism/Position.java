@@ -1,5 +1,8 @@
 package model.mechanism;
 
+import lombok.Getter;
+
+@Getter
 public class Position {
     private int x;
     private int y;
@@ -9,11 +12,4 @@ public class Position {
         this.y = y;
     }
 
-    public int getX() {
-        return this.x;
-    }
-
-    public int getY() {
-        return this.y;
-    }
 }

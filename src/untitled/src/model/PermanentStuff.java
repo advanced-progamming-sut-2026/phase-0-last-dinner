@@ -1,5 +1,8 @@
 package model;
 
+import lombok.Getter;
+
+@Getter
 public enum PermanentStuff {
     POT(
             1,
@@ -49,19 +52,4 @@ public enum PermanentStuff {
         this.description = description;
     }
 
-    public int getPurchaseAmount() {
-        return purchaseAmount;
-    }
-
-    public int getPrice() {
-        return price;
-    }
-
-    public CurrencyType getCurrency() {
-        return currency;
-    }
-
-    public String getDescription() {
-        return description;
-    }
 }

@@ -15,9 +15,17 @@ public class ZombieFactory {
         this(new ZombieBehaviorFactory(), new ZombieArmorFactory());
     }
 
+    public ZombieFactory(ZombieDefinitionRepository definitionRepository) {
+        this(new ZombieBehaviorFactory(definitionRepository), new ZombieArmorFactory());
+    }
+
     public ZombieFactory(ZombieBehaviorFactory behaviorFactory, ZombieArmorFactory armorFactory) {
         this.behaviorFactory = behaviorFactory;
         this.armorFactory = armorFactory;
+
+        if (this.behaviorFactory != null) {
+            this.behaviorFactory.setZombieFactory(this);
+        }
     }
 
     public Zombie create(ZombieDefinition definition, Position spawnPosition) {

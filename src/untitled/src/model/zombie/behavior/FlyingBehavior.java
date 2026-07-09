@@ -3,6 +3,7 @@ package model.zombie.behavior;
 import model.Plant;
 import model.mechanism.Board;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
 
 public class FlyingBehavior implements ZombieBehavior {
     private boolean ignoresGroundObstacles;
@@ -14,15 +15,13 @@ public class FlyingBehavior implements ZombieBehavior {
     @Override
     public void onTick(Zombie zombie, Board board) {
         if (zombie != null) {
-            zombie.move();
+            zombie.addCondition(ZombieCondition.FLYING);
         }
     }
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        if (plant != null && board != null && board.getCombatSystem() != null) {
-            board.getCombatSystem().applyDamageToPlant(plant, 1);
-        }
+        // Gaz gereftan ro BasicZombieBehavior handle mikone; in class faghat flying state ro mide.
     }
 
     @Override

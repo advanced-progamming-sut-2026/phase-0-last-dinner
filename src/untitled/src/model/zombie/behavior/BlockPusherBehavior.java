@@ -15,6 +15,16 @@ public class BlockPusherBehavior implements ZombieBehavior {
 
     @Override
     public void onTick(Zombie zombie, Board board) {
+        if (!this.blockAvailable || zombie == null || board == null || board.getCombatSystem() == null) {
+            return;
+        }
+
+        Plant target = board.getNearestPlantInZombieAttackRange(zombie.getPosition(), 1);
+
+        if (target != null) {
+            board.getCombatSystem().destroyPlant(target);
+            this.blockAvailable = false;
+        }
     }
 
     @Override

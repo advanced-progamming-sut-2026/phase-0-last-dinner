@@ -2,6 +2,8 @@ package model.plant.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.plant.PlantUpgradeEffect;
+import model.plant.PlantUpgradeSpecialEffect;
 import model.plant.Projectile;
 
 public class LobberBehavior implements PlantBehavior {
@@ -14,6 +16,10 @@ public class LobberBehavior implements PlantBehavior {
         this.projectileTemplate = projectileTemplate;
         this.lobIntervalTicks = lobIntervalTicks;
         this.areaDamage = areaDamage;
+
+        if (this.projectileTemplate != null && areaDamage) {
+            this.projectileTemplate.setSplashRadius(1);
+        }
     }
 
     @Override
@@ -33,5 +39,31 @@ public class LobberBehavior implements PlantBehavior {
         }
 
         board.addProjectile(this.projectileTemplate.copyAt(plant.getPosition()));
+    }
+
+    @Override
+    public void applyUpgrade(PlantUpgradeEffect effect) {
+        if (effect == null) {
+            return;
+        }
+
+        if (this.projectileTemplate != null) {
+            this.projectileTemplate.addDamageBonus(effect.getDamageBonus());
+            this.projectileTemplate.addPierceBonus(effect.getPierceBonus());
+            this.projectileTemplate.addBounceBonus(effect.getBounceBonus());
+            this.projectileTemplate.addConditionDuration(effect.getDurationBonusTicks());
+            this.projectileTemplate.addPlantFoodChanceBonus(effect.getPlantFoodChanceBonusPercent());
+            this.projectileTemplate.addPoisonDamagePerTick(effect.getPoisonDamageBonusPerTick());
+
+            if (effect.getRangeBonus() > 0) {
+                this.projectileTemplate.addSplashRadius(effect.getRangeBonus());
+            }
+
+            if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.BUTTER_CHANCE_UP)) {
+                this.projectileTemplate.addStunChanceBonus(5);
+            }
+        }
+
+        this.lobIntervalTicks = effect.upgradeInterval(this.lobIntervalTicks);
     }
 }

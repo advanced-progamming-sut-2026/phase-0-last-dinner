@@ -19,10 +19,22 @@ public class Board {
     @Setter
     private SunSystem sunSystem;
     @Getter
+    @Setter
+    private PlantFoodSystem plantFoodSystem;
+    @Getter
     private List<Projectile> projectiles = new ArrayList<>();
     @Getter
     @Setter
     private CombatSystem combatSystem;
+
+    public Board() {
+        this(createDefaultTiles());
+    }
+
+    public Board(List<Tile> tiles) {
+        this.tiles = tiles == null ? createDefaultTiles() : tiles;
+        this.lawnMowers = new ArrayList<>();
+    }
 
     public void addProjectile(Projectile projectile) {
         if (projectile == null) {
@@ -68,6 +80,60 @@ public class Board {
         zombie.setPosition(destination);
         zombie.setBoard(this);
         destinationTile.addZombie(zombie);
+        return true;
+    }
+
+    public boolean removeZombie(Zombie zombie) {
+        if (zombie == null || zombie.getPosition() == null) {
+            return false;
+        }
+
+        Tile tile = this.getTile(zombie.getPosition());
+
+        if (tile == null || !tile.removeZombie(zombie)) {
+            return false;
+        }
+
+        zombie.setBoard(null);
+        return true;
+    }
+
+    public boolean movePlant(Plant plant, Position destination) {
+        if (plant == null || destination == null) {
+            return false;
+        }
+
+        Tile destinationTile = this.getTile(destination);
+
+        if (destinationTile == null || !destinationTile.canPlacePlant(plant)) {
+            return false;
+        }
+
+        Tile sourceTile = this.getTile(plant.getPosition());
+
+        if (sourceTile != null) {
+            sourceTile.removePlant(plant);
+        }
+
+        plant.setPosition(destination);
+        plant.setBoard(this);
+        destinationTile.addPlant(plant);
+        return true;
+    }
+
+    public boolean removePlant(Plant plant) {
+        if (plant == null || plant.getPosition() == null) {
+            return false;
+        }
+
+        Tile tile = this.getTile(plant.getPosition());
+
+        if (tile == null || !tile.removePlant(plant)) {
+            return false;
+        }
+
+        plant.setPosition(null);
+        plant.setBoard(null);
         return true;
     }
 
@@ -231,6 +297,38 @@ public class Board {
         return plantsInLane;
     }
 
+    public List<Plant> getPlantsInZombieAttackRange(Position position, int range) {
+        List<Plant> plantsInRange = new ArrayList<>();
+
+        if (position == null || this.tiles == null || range < 0) {
+            return plantsInRange;
+        }
+
+        for (Plant plant : this.getPlantsInLane(position)) {
+            if (plant == null || plant.getPosition() == null || plant.isDead()) {
+                continue;
+            }
+
+            int deltaX = position.getX() - plant.getPosition().getX();
+
+            if (deltaX >= 0 && deltaX <= range) {
+                plantsInRange.add(plant);
+            }
+        }
+
+        plantsInRange.sort((first, second) -> Integer.compare(
+                Math.abs(first.getPosition().getX() - position.getX()),
+                Math.abs(second.getPosition().getX() - position.getX())
+        ));
+
+        return plantsInRange;
+    }
+
+    public Plant getNearestPlantInZombieAttackRange(Position position, int range) {
+        List<Plant> plants = this.getPlantsInZombieAttackRange(position, range);
+        return plants.isEmpty() ? null : plants.get(0);
+    }
+
     public Plant getNearestPlant(Position position) {
         Plant nearestPlant = null;
         int nearestDistance = Integer.MAX_VALUE;
@@ -383,6 +481,70 @@ public class Board {
         return null;
     }
 
+    public boolean setTerrain(Position position, TerrainType terrainType) {
+        if (position == null || terrainType == null || this.tiles == null) {
+            return false;
+        }
+
+        for (int i = 0; i < this.tiles.size(); i++) {
+            Tile tile = this.tiles.get(i);
+
+            if (tile == null || tile.getPosition() == null) {
+                continue;
+            }
+
+            if (tile.getPosition().getX() == position.getX()
+                    && tile.getPosition().getY() == position.getY()) {
+                Tile replacement = new Tile(tile.getPosition(), terrainType);
+
+                for (Plant plant : tile.getPlants()) {
+                    replacement.addPlant(plant);
+                }
+
+                for (Zombie zombie : tile.getZombies()) {
+                    replacement.addZombie(zombie);
+                }
+
+                this.tiles.set(i, replacement);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public int placeTerrainNear(Position center, TerrainType terrainType, int count) {
+        if (center == null || terrainType == null || count <= 0) {
+            return 0;
+        }
+
+        int placed = 0;
+
+        for (int radius = 0; radius <= Math.max(this.rowCount, this.columnCount) && placed < count; radius++) {
+            for (int deltaY = -radius; deltaY <= radius && placed < count; deltaY++) {
+                for (int deltaX = -radius; deltaX <= radius && placed < count; deltaX++) {
+                    if (Math.abs(deltaX) != radius && Math.abs(deltaY) != radius) {
+                        continue;
+                    }
+
+                    Position candidate = new Position(center.getX() + deltaX, center.getY() + deltaY);
+                    Tile tile = this.getTile(candidate);
+
+                    if (tile == null || tile.getTerrainType() == terrainType
+                            || !tile.getPlants().isEmpty() || !tile.getZombies().isEmpty()) {
+                        continue;
+                    }
+
+                    if (this.setTerrain(candidate, terrainType)) {
+                        placed++;
+                    }
+                }
+            }
+        }
+
+        return placed;
+    }
+
     private int getSquaredDistance(Position first, Position second) {
         int deltaX = first.getX() - second.getX();
         int deltaY = first.getY() - second.getY();
@@ -396,6 +558,18 @@ public class Board {
         }
 
         return this.getSquaredDistance(first, second);
+    }
+
+    private static List<Tile> createDefaultTiles() {
+        List<Tile> defaultTiles = new ArrayList<>();
+
+        for (int y = 0; y < 5; y++) {
+            for (int x = 0; x < 9; x++) {
+                defaultTiles.add(new Tile(new Position(x, y), TerrainType.CLASSIC));
+            }
+        }
+
+        return defaultTiles;
     }
 
 }

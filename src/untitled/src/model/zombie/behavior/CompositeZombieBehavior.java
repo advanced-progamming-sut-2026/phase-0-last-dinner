@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
 
 import java.util.ArrayList;
@@ -18,6 +19,28 @@ public class CompositeZombieBehavior implements ZombieBehavior {
 
     public boolean isEmpty() {
         return this.behaviors.isEmpty();
+    }
+
+    public <T extends ZombieBehavior> T findBehavior(Class<T> behaviorType) {
+        if (behaviorType == null) {
+            return null;
+        }
+
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (behaviorType.isInstance(behavior)) {
+                return behaviorType.cast(behavior);
+            }
+
+            if (behavior instanceof CompositeZombieBehavior) {
+                T nestedBehavior = ((CompositeZombieBehavior) behavior).findBehavior(behaviorType);
+
+                if (nestedBehavior != null) {
+                    return nestedBehavior;
+                }
+            }
+        }
+
+        return null;
     }
 
     @Override
@@ -38,6 +61,13 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     public void activate(Zombie zombie, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
             behavior.activate(zombie, board);
+        }
+    }
+
+    @Override
+    public void applyPlantUpgrade(PlantUpgradeEffect effect) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            behavior.applyPlantUpgrade(effect);
         }
     }
 }

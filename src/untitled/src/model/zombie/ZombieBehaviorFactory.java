@@ -21,6 +21,20 @@ import model.zombie.behavior.ZombieBehavior;
 import java.util.Locale;
 
 public class ZombieBehaviorFactory {
+    private ZombieDefinitionRepository definitionRepository;
+    private ZombieFactory zombieFactory;
+
+    public ZombieBehaviorFactory() {
+    }
+
+    public ZombieBehaviorFactory(ZombieDefinitionRepository definitionRepository) {
+        this.definitionRepository = definitionRepository;
+    }
+
+    public void setZombieFactory(ZombieFactory zombieFactory) {
+        this.zombieFactory = zombieFactory;
+    }
+
     public ZombieBehavior create(ZombieDefinition definition) {
         if (definition == null) {
             return new BasicZombieBehavior();
@@ -37,7 +51,11 @@ public class ZombieBehaviorFactory {
         }
 
         if (definition.getType() == ZombieType.GARGANTUAR || key.contains("gargantuar")) {
-            composite.addBehavior(new GargantuarBehavior(null, null, 0.5));
+            composite.addBehavior(new GargantuarBehavior(
+                    this.findOrCreateImpDefinition(definition),
+                    this.getZombieFactory(),
+                    0.5
+            ));
         }
 
         if (definition.getType() == ZombieType.ANIMAL || key.contains("flying")
@@ -71,7 +89,7 @@ public class ZombieBehaviorFactory {
             composite.addBehavior(new RangedZombieBehavior(RangedAbilityType.SNOWBALL, 5, 30));
         }
 
-        if (alias.contains("ra") || (key.contains("sun") && (key.contains("steal") || key.contains("thief") || key.contains("producer")))) {
+        if (this.isRaZombie(alias) || (key.contains("sun") && (key.contains("steal") || key.contains("thief") || key.contains("producer")))) {
             composite.addBehavior(new SunStealerBehavior(25, null));
         }
 
@@ -105,7 +123,21 @@ public class ZombieBehaviorFactory {
         }
 
         if (alias.contains("weaselhoarder")) {
-            composite.addBehavior(new UnitReleaserBehavior(null, null, 4, 0.5));
+            composite.addBehavior(new UnitReleaserBehavior(
+                    this.findOrCreateRelatedDefinition(
+                            "ZombieWeaselDefault",
+                            "Weasel",
+                            ZombieType.ANIMAL,
+                            definition.getChapter(),
+                            75,
+                            50,
+                            0.45,
+                            50
+                    ),
+                    this.getZombieFactory(),
+                    4,
+                    0.5
+            ));
         }
 
         return composite.isEmpty() ? new BasicZombieBehavior(definition.getEatDamagePerSecond()) : composite;
@@ -113,5 +145,70 @@ public class ZombieBehaviorFactory {
 
     private String normalize(String text) {
         return text == null ? "" : text.toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isRaZombie(String alias) {
+        return alias != null && alias.contains("zombiera");
+    }
+
+    private ZombieFactory getZombieFactory() {
+        if (this.zombieFactory == null) {
+            this.zombieFactory = new ZombieFactory(new ZombieBehaviorFactory(this.definitionRepository), new ZombieArmorFactory());
+        }
+
+        return this.zombieFactory;
+    }
+
+    private ZombieDefinition findOrCreateImpDefinition(ZombieDefinition parentDefinition) {
+        String parentAlias = parentDefinition == null ? "" : this.normalize(parentDefinition.getAlias());
+        String impAlias = "ZombieTutorialImpDefault";
+
+        if (parentAlias.contains("egypt")) {
+            impAlias = "ZombieEgyptImpDefault";
+        } else if (parentAlias.contains("iceage")) {
+            impAlias = "ZombieIceageImpDefault";
+        } else if (parentAlias.contains("beach")) {
+            impAlias = "ZombieBeachImpDefault";
+        } else if (parentAlias.contains("dark")) {
+            impAlias = "ZombieDarkImpDefault";
+        }
+
+        ZombieChapter chapter = parentDefinition == null ? ZombieChapter.ALL_CHAPTERS : parentDefinition.getChapter();
+        return this.findOrCreateRelatedDefinition(impAlias, "Imp", ZombieType.IMP, chapter, 75, 50, 0.35, 50);
+    }
+
+    private ZombieDefinition findOrCreateRelatedDefinition(
+            String alias,
+            String displayName,
+            ZombieType type,
+            ZombieChapter chapter,
+            int hitpoints,
+            int eatDamagePerSecond,
+            double speed,
+            int wavePointCost
+    ) {
+        if (this.definitionRepository != null) {
+            ZombieDefinition definition = this.definitionRepository.findByAlias(alias);
+
+            if (definition != null) {
+                return definition;
+            }
+        }
+
+        return new ZombieDefinition(
+                alias,
+                displayName,
+                displayName,
+                type,
+                chapter == null ? ZombieChapter.ALL_CHAPTERS : chapter,
+                hitpoints,
+                eatDamagePerSecond,
+                speed,
+                wavePointCost,
+                1000,
+                false,
+                new java.util.ArrayList<ZombieArmorDefinition>(),
+                new java.util.ArrayList<ConditionResistance>()
+        );
     }
 }

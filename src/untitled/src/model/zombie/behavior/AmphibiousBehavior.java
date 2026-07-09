@@ -3,6 +3,7 @@ package model.zombie.behavior;
 import model.Plant;
 import model.mechanism.Board;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
 
 public class AmphibiousBehavior implements ZombieBehavior {
     private double waterSpeed;
@@ -23,13 +24,15 @@ public class AmphibiousBehavior implements ZombieBehavior {
         }
 
         zombie.setCurrentSpeed(this.submerged ? this.waterSpeed : this.landSpeed);
+
+        if (this.submerged) {
+            zombie.addCondition(ZombieCondition.SUBMERGED);
+        }
     }
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        if (plant != null && board != null && board.getCombatSystem() != null) {
-            board.getCombatSystem().applyDamageToPlant(plant, 1);
-        }
+        this.submerged = false;
     }
 
     @Override

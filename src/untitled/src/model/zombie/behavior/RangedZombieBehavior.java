@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.mechanism.Position;
 import model.zombie.Zombie;
 
 public class RangedZombieBehavior implements ZombieBehavior {
@@ -28,9 +29,7 @@ public class RangedZombieBehavior implements ZombieBehavior {
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        if (plant != null && board != null && board.getCombatSystem() != null) {
-            board.getCombatSystem().applyDamageToPlant(plant, 1);
-        }
+        // Attack-e melee ba BasicZombieBehavior anjam mishe; in class ability-e ranged ro handle mikone.
     }
 
     @Override
@@ -46,7 +45,25 @@ public class RangedZombieBehavior implements ZombieBehavior {
         }
 
         if (this.abilityType == RangedAbilityType.MAGIC_TRANSFORM) {
-            board.getCombatSystem().destroyPlant(target);
+            target.transform();
+        } else if (this.abilityType == RangedAbilityType.FISHING_HOOK) {
+            this.pullPlantTowardZombie(zombie, target, board);
+        } else if (this.abilityType == RangedAbilityType.OCTOPUS) {
+            target.disable();
+        } else if (this.abilityType == RangedAbilityType.SNOWBALL) {
+            target.disable();
+            board.getCombatSystem().applyDamageToPlant(target, 25);
         }
+    }
+
+    private void pullPlantTowardZombie(Zombie zombie, Plant plant, Board board) {
+        if (zombie == null || plant == null || plant.getPosition() == null || zombie.getPosition() == null) {
+            return;
+        }
+
+        int delta = zombie.getPosition().getX() > plant.getPosition().getX() ? 1 : -1;
+        Position destination = new Position(plant.getPosition().getX() + delta, plant.getPosition().getY());
+
+        board.movePlant(plant, destination);
     }
 }

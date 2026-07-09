@@ -21,12 +21,14 @@ import model.plant.behavior.ShooterBehavior;
 import model.plant.behavior.ShooterPattern;
 import model.plant.behavior.SunProducerBehavior;
 import model.plant.behavior.SunProductionMode;
+import model.zombie.ZombieCondition;
 
 import java.util.Locale;
 import java.util.Set;
 
 public class PlantFactory {
     private static final int TICKS_PER_SECOND = 10;
+    private final PlantUpgradeEffectParser upgradeEffectParser = new PlantUpgradeEffectParser();
 
     public Plant create(PlantDefinition definition) {
         return this.create(
@@ -42,6 +44,9 @@ public class PlantFactory {
             PlantFoodBehavior plantFoodBehavior
     ) {
         long cooldownTicks = this.secondsToTicks(definition.getRechargeSeconds());
+        PlantUpgradeData upgradeData = this.createUpgradeData(definition);
+        long lifespanTicks = this.createLifespanTicks(definition);
+
         return new Plant(
                 definition.getName(),
                 definition.getBaseHealth(),
@@ -53,8 +58,28 @@ public class PlantFactory {
                 definition.getTags(),
                 behavior,
                 plantFoodBehavior,
-                null
+                upgradeData,
+                lifespanTicks
         );
+    }
+
+    private PlantUpgradeData createUpgradeData(PlantDefinition definition) {
+        if (definition == null || definition.getLevelUpEffects() == null
+                || definition.getLevelUpEffects().isEmpty()) {
+            return null;
+        }
+
+        return new PlantUpgradeData(this.upgradeEffectParser.parseAll(definition.getLevelUpEffects()));
+    }
+
+    private long createLifespanTicks(PlantDefinition definition) {
+        String name = this.normalize(definition.getName());
+
+        if (name.contains("sea-shroom") || name.contains("puff-shroom")) {
+            return this.secondsToTicks(60);
+        }
+
+        return 0;
     }
 
     private PlantBehavior createBehavior(PlantDefinition definition) {
@@ -224,6 +249,11 @@ public class PlantFactory {
             activateOnPlanting = false;
             armDelayTicks = name.contains("primal") ? this.secondsToTicks(5) : this.secondsToTicks(15);
             radius = name.contains("primal") ? 1 : 0;
+        } else if (name.contains("iceberg lettuce")) {
+            pattern = ExplosivePattern.CONTACT_SINGLE;
+            triggeredByContact = true;
+            activateOnPlanting = false;
+            radius = 0;
         } else if (name.contains("squash") || name.contains("tangle kelp")) {
             pattern = ExplosivePattern.CONTACT_SINGLE;
             triggeredByContact = true;
@@ -239,7 +269,7 @@ public class PlantFactory {
             pattern = ExplosivePattern.GRAVE_ONLY;
         }
 
-        return new ExplosiveBehavior(
+        ExplosiveBehavior behavior = new ExplosiveBehavior(
                 definition.getDamageExpression(),
                 radius,
                 triggeredByContact,
@@ -247,6 +277,12 @@ public class PlantFactory {
                 armDelayTicks,
                 activateOnPlanting
         );
+
+        if (name.contains("iceberg lettuce") || name.contains("ice-shroom")) {
+            behavior.setConditionOnHit(ZombieCondition.FROZEN, this.secondsToTicks(3));
+        }
+
+        return behavior;
     }
 
     private PlantBehavior createMeleeBehavior(PlantDefinition definition, String name) {
@@ -620,13 +656,31 @@ public class PlantFactory {
     }
 
     private Projectile createProjectile(PlantDefinition definition, ProjectileType projectileType) {
-        return new Projectile(
+        Projectile projectile = new Projectile(
                 definition.getDamageExpression(),
                 null,
                 1.0,
                 projectileType,
                 null
         );
+
+        if (projectileType == ProjectileType.PIERCING) {
+            projectile.setPierceCount(2);
+        }
+
+        if (this.hasTag(definition.getTags(), PlantTag.AOE)) {
+            projectile.setSplashRadius(1);
+        }
+
+        if (this.normalize(definition.getName()).contains("fume-shroom")) {
+            projectile.setMaxRange(4);
+        }
+
+        if (projectileType == ProjectileType.ICE || projectileType == ProjectileType.POISON) {
+            projectile.setConditionDurationTicks(this.secondsToTicks(3));
+        }
+
+        return projectile;
     }
 
     private ProjectileType projectileTypeFor(PlantDefinition definition) {

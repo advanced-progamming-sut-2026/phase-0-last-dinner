@@ -5,6 +5,7 @@ import model.mechanism.Board;
 import model.mechanism.Position;
 import model.mechanism.Tile;
 import model.plant.DamageExpressionParser;
+import model.plant.PlantUpgradeEffect;
 import model.plant.Projectile;
 import model.zombie.Zombie;
 import model.zombie.ZombieCondition;
@@ -21,6 +22,8 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
     private int radius;
     private int sunAmount;
     private int bonusHealth;
+    private long conditionDurationTicks;
+    private int poisonDamagePerTick;
     private Projectile projectileTemplate;
 
     public ConfiguredPlantFoodBehavior(String effectDescription, int activationCount) {
@@ -46,6 +49,8 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
         this.radius = radius;
         this.sunAmount = sunAmount;
         this.bonusHealth = bonusHealth;
+        this.conditionDurationTicks = 0;
+        this.poisonDamagePerTick = 0;
         this.projectileTemplate = projectileTemplate;
     }
 
@@ -186,7 +191,15 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
             }
 
             if (condition != null) {
-                zombie.addCondition(condition);
+                if (this.conditionDurationTicks > 0) {
+                    zombie.addCondition(condition, this.conditionDurationTicks);
+                } else {
+                    zombie.addCondition(condition);
+                }
+
+                if (condition == ZombieCondition.POISONED && this.poisonDamagePerTick > 0) {
+                    zombie.addPoisonDamagePerTick(this.poisonDamagePerTick);
+                }
             }
 
             if (removeArmor) {
@@ -280,6 +293,31 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                     placed++;
                 }
             }
+        }
+    }
+
+    @Override
+    public void applyUpgrade(PlantUpgradeEffect effect) {
+        if (effect == null) {
+            return;
+        }
+
+        this.damageExpression = DamageExpressionParser.addFlatDamage(this.damageExpression, effect.getDamageBonus());
+        this.targetCount += effect.getTargetCountBonus();
+        this.radius += effect.getRangeBonus();
+        this.sunAmount += effect.getSunProductionBonus();
+        this.bonusHealth += effect.getHealthBonus();
+        this.conditionDurationTicks += effect.getDurationBonusTicks();
+        this.poisonDamagePerTick += effect.getPoisonDamageBonusPerTick();
+
+        if (this.projectileTemplate != null) {
+            this.projectileTemplate.addDamageBonus(effect.getDamageBonus());
+            this.projectileTemplate.addPierceBonus(effect.getPierceBonus());
+            this.projectileTemplate.addBounceBonus(effect.getBounceBonus());
+            this.projectileTemplate.addRangeBonus(effect.getRangeBonus());
+            this.projectileTemplate.addConditionDuration(effect.getDurationBonusTicks());
+            this.projectileTemplate.addPoisonDamagePerTick(effect.getPoisonDamageBonusPerTick());
+            this.projectileTemplate.addPlantFoodChanceBonus(effect.getPlantFoodChanceBonusPercent());
         }
     }
 }

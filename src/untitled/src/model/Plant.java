@@ -8,6 +8,8 @@ import model.mechanism.Tickable;
 import model.plant.PlantCategory;
 import model.plant.PlantTag;
 import model.plant.PlantUpgradeData;
+import model.plant.PlantUpgradeEffect;
+import model.plant.PlantUpgradeSpecialEffect;
 import model.plant.behavior.PlantBehavior;
 import model.plant.behavior.PlantFoodBehavior;
 
@@ -29,6 +31,10 @@ public class Plant implements Tickable {
     private PlantBehavior behavior;
     private PlantFoodBehavior plantFoodBehavior;
     private PlantUpgradeData upgradeData;
+    private boolean disabled;
+    private boolean transformed;
+    private long lifespanTicks;
+    private boolean upgradeDeathEffectUsed;
     @Setter
     private Board board;
 
@@ -45,6 +51,36 @@ public class Plant implements Tickable {
             PlantFoodBehavior plantFoodBehavior,
             PlantUpgradeData upgradeData
     ) {
+        this(
+                name,
+                maximumHealth,
+                level,
+                sunCost,
+                cooldownTicks,
+                actionIntervalSeconds,
+                categories,
+                tags,
+                behavior,
+                plantFoodBehavior,
+                upgradeData,
+                0
+        );
+    }
+
+    public Plant(
+            String name,
+            int maximumHealth,
+            int level,
+            int sunCost,
+            long cooldownTicks,
+            double actionIntervalSeconds,
+            Set<PlantCategory> categories,
+            Set<PlantTag> tags,
+            PlantBehavior behavior,
+            PlantFoodBehavior plantFoodBehavior,
+            PlantUpgradeData upgradeData,
+            long lifespanTicks
+    ) {
         this.name = name;
         this.maximumHealth = maximumHealth;
         this.health = maximumHealth;
@@ -57,32 +93,56 @@ public class Plant implements Tickable {
         this.behavior = behavior;
         this.plantFoodBehavior = plantFoodBehavior;
         this.upgradeData = upgradeData;
+        this.lifespanTicks = Math.max(0, lifespanTicks);
     }
 
     @Override
     public void onTick() {
+        if (this.isDisabled()) {
+            return;
+        }
+
         if (this.behavior != null) {
             this.behavior.onTick(this, this.board);
         }
+
+        this.tickLifespan();
     }
 
     public void useAbility() {
+        if (this.isDisabled()) {
+            return;
+        }
+
         if (this.behavior != null) {
             this.behavior.activate(this, this.board);
         }
     }
 
     public void receivePlantFood() {
+        if (this.isDisabled()) {
+            return;
+        }
+
         if (this.plantFoodBehavior != null) {
             this.plantFoodBehavior.activate(this, this.board);
         }
     }
 
-    public void upgrade() {
-        if (this.upgradeData != null && this.upgradeData.canUpgrade()) {
-            this.upgradeData.upgrade();
-            this.level++;
+    public boolean upgrade() {
+        if (this.upgradeData == null || !this.upgradeData.canUpgrade()) {
+            return false;
         }
+
+        PlantUpgradeEffect effect = this.upgradeData.upgrade();
+
+        if (effect == null) {
+            return false;
+        }
+
+        this.applyUpgradeEffect(effect);
+        this.level = this.upgradeData.getCurrentLevel();
+        return true;
     }
 
     public void takeDamage(int amount) {
@@ -138,7 +198,8 @@ public class Plant implements Tickable {
                 this.tags,
                 this.behavior,
                 this.plantFoodBehavior,
-                this.upgradeData
+                this.upgradeData == null ? null : this.upgradeData.copy(),
+                this.lifespanTicks
         );
 
         copy.health = this.health;
@@ -147,8 +208,75 @@ public class Plant implements Tickable {
         return copy;
     }
 
+    public void disable() {
+        this.disabled = true;
+    }
+
+    public void transform() {
+        this.transformed = true;
+        this.disabled = true;
+    }
+
+    public void enable() {
+        this.disabled = false;
+        this.transformed = false;
+    }
+
+    public boolean isDisabled() {
+        return this.disabled || this.transformed;
+    }
+
     public boolean isDead() {
         return this.health <= 0;
+    }
+
+    public boolean hasUpgradeSpecialEffect(PlantUpgradeSpecialEffect specialEffect) {
+        return this.upgradeData != null && this.upgradeData.hasSpecialEffect(specialEffect);
+    }
+
+    public void activateUpgradeDeathEffects(Board board) {
+        if (this.upgradeDeathEffectUsed || board == null || board.getCombatSystem() == null) {
+            return;
+        }
+
+        if (this.hasUpgradeSpecialEffect(PlantUpgradeSpecialEffect.AOE_ON_DEATH)) {
+            this.upgradeDeathEffectUsed = true;
+
+            for (model.zombie.Zombie zombie : board.getZombiesInRadius(this.position, 1)) {
+                board.getCombatSystem().applyDamageToZombie(zombie, 300);
+            }
+        }
+    }
+
+    private void applyUpgradeEffect(PlantUpgradeEffect effect) {
+        this.addBonusHealth(effect.getHealthBonus());
+        this.sunCost = Math.max(0, this.sunCost - effect.getSunCostReduction());
+        this.cooldownTicks = Math.max(1, this.cooldownTicks - effect.getCooldownReductionTicks());
+        this.lifespanTicks += effect.getLifespanBonusTicks();
+        this.actionIntervalSeconds = Math.max(
+                0.1,
+                effect.upgradeInterval(Math.round(this.actionIntervalSeconds * 10)) / 10.0
+        );
+
+        if (this.behavior != null) {
+            this.behavior.applyUpgrade(effect);
+        }
+
+        if (this.plantFoodBehavior != null) {
+            this.plantFoodBehavior.applyUpgrade(effect);
+        }
+    }
+
+    private void tickLifespan() {
+        if (this.lifespanTicks <= 0) {
+            return;
+        }
+
+        this.lifespanTicks--;
+
+        if (this.lifespanTicks == 0 && this.board != null) {
+            this.board.removePlant(this);
+        }
     }
 
 }

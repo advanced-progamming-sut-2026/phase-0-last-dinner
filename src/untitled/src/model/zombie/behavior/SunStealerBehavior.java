@@ -8,6 +8,8 @@ import model.zombie.Zombie;
 public class SunStealerBehavior implements ZombieBehavior {
     private int stealAmount;
     private SunSystem sunSystem;
+    private long ticksSinceLastSteal;
+    private long stealIntervalTicks = 30;
 
     public SunStealerBehavior(int stealAmount, SunSystem sunSystem) {
         this.stealAmount = stealAmount;
@@ -16,6 +18,12 @@ public class SunStealerBehavior implements ZombieBehavior {
 
     @Override
     public void onTick(Zombie zombie, Board board) {
+        this.ticksSinceLastSteal++;
+
+        if (this.ticksSinceLastSteal >= this.stealIntervalTicks) {
+            this.activate(zombie, board);
+            this.ticksSinceLastSteal = 0;
+        }
     }
 
     @Override

@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
 
 public interface ZombieBehavior {
@@ -10,4 +11,7 @@ public interface ZombieBehavior {
     void attack(Zombie zombie, Plant plant, Board board);
 
     void activate(Zombie zombie, Board board);
+
+    default void applyPlantUpgrade(PlantUpgradeEffect effect) {
+    }
 }

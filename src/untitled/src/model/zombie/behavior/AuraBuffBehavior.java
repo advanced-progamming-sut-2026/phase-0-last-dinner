@@ -39,7 +39,10 @@ public class AuraBuffBehavior implements ZombieBehavior {
 
         for (Zombie affectedZombie : this.affectedZombies) {
             if (affectedZombie != null) {
-                affectedZombie.setCurrentSpeed(affectedZombie.getCurrentSpeed() * this.speedMultiplier);
+                double baseSpeed = affectedZombie.getDefinition() == null
+                        ? affectedZombie.getCurrentSpeed()
+                        : affectedZombie.getDefinition().getSpeed();
+                affectedZombie.setCurrentSpeed(baseSpeed * this.speedMultiplier);
             }
         }
     }

@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.mechanism.TerrainType;
 import model.zombie.Zombie;
 
 public class GraveSummonerBehavior implements ZombieBehavior {
@@ -30,5 +31,10 @@ public class GraveSummonerBehavior implements ZombieBehavior {
 
     @Override
     public void activate(Zombie zombie, Board board) {
+        if (zombie == null || board == null) {
+            return;
+        }
+
+        board.placeTerrainNear(zombie.getPosition(), TerrainType.GRAVE, this.graveCount);
     }
 }

@@ -3,6 +3,7 @@ package model.plant.behavior;
 import model.Plant;
 import model.mechanism.Board;
 import model.plant.DamageExpressionParser;
+import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
 
 import java.util.List;
@@ -75,5 +76,17 @@ public class MeleeBehavior implements PlantBehavior {
                 board.getCombatSystem().applyDamageToZombie(zombie, damage);
             }
         }
+    }
+
+    @Override
+    public void applyUpgrade(PlantUpgradeEffect effect) {
+        if (effect == null) {
+            return;
+        }
+
+        this.damageExpression = DamageExpressionParser.addFlatDamage(this.damageExpression, effect.getDamageBonus());
+        this.range += effect.getRangeBonus();
+        this.attackIntervalTicks = effect.upgradeInterval(this.attackIntervalTicks);
+        this.digestTicks = Math.max(0, this.digestTicks - effect.getDigestReductionTicks());
     }
 }

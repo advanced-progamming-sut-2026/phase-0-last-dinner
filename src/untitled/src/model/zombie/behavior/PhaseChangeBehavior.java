@@ -30,20 +30,11 @@ public class PhaseChangeBehavior implements ZombieBehavior {
             this.activate(zombie, board);
         }
 
-        if (this.transitioned && this.secondPhase != null) {
-            this.secondPhase.onTick(zombie, board);
-        } else if (this.firstPhase != null) {
-            this.firstPhase.onTick(zombie, board);
-        }
     }
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        if (this.transitioned && this.secondPhase != null) {
-            this.secondPhase.attack(zombie, plant, board);
-        } else if (this.firstPhase != null) {
-            this.firstPhase.attack(zombie, plant, board);
-        }
+        // Damage-e khordan plant ro BasicZombieBehavior mide; phase faghat speed/state ro avaz mikone.
     }
 
     @Override

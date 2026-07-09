@@ -4,6 +4,7 @@ import model.Plant;
 import model.mechanism.Board;
 import model.plant.Projectile;
 import model.plant.ShootingDirection;
+import model.plant.PlantUpgradeEffect;
 
 public class ShooterBehavior implements PlantBehavior {
     private Projectile projectileTemplate;
@@ -31,6 +32,10 @@ public class ShooterBehavior implements PlantBehavior {
         this.laneCount = laneCount;
         this.shootIntervalTicks = shootIntervalTicks;
         this.shooterPattern = shooterPattern;
+
+        if (this.projectileTemplate != null && this.shooterPattern == ShooterPattern.SHORT_RANGE) {
+            this.projectileTemplate.setMaxRange(3);
+        }
     }
 
     @Override
@@ -97,5 +102,24 @@ public class ShooterBehavior implements PlantBehavior {
         for (int i = 0; i < shotCount; i++) {
             board.addProjectile(this.projectileTemplate.copyAt(plant.getPosition()));
         }
+    }
+
+    @Override
+    public void applyUpgrade(PlantUpgradeEffect effect) {
+        if (effect == null) {
+            return;
+        }
+
+        if (this.projectileTemplate != null) {
+            this.projectileTemplate.addDamageBonus(effect.getDamageBonus());
+            this.projectileTemplate.addPierceBonus(effect.getPierceBonus());
+            this.projectileTemplate.addBounceBonus(effect.getBounceBonus());
+            this.projectileTemplate.addRangeBonus(effect.getRangeBonus());
+            this.projectileTemplate.addConditionDuration(effect.getDurationBonusTicks());
+            this.projectileTemplate.addPoisonDamagePerTick(effect.getPoisonDamageBonusPerTick());
+            this.projectileTemplate.addPlantFoodChanceBonus(effect.getPlantFoodChanceBonusPercent());
+        }
+
+        this.shootIntervalTicks = effect.upgradeInterval(this.shootIntervalTicks);
     }
 }

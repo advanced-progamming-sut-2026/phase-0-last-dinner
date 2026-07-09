@@ -1,5 +1,8 @@
 package model.GameMenuRelated;
 
+import lombok.Getter;
+
+@Getter
 public enum Quest {
     DAILY_SUN_COLLECTOR(
             "Daily Sun Collector",
@@ -185,27 +188,4 @@ public enum Quest {
         this.variables = variables;
     }
 
-    public String getDisplayName() {
-        return displayName;
-    }
-
-    public QuestCategory getCategory() {
-        return category;
-    }
-
-    public QuestPriority getPriority() {
-        return priority;
-    }
-
-    public String getCompletionCondition() {
-        return completionCondition;
-    }
-
-    public String getReward() {
-        return reward;
-    }
-
-    public String getVariables() {
-        return variables;
-    }
 }
