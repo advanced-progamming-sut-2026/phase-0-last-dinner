@@ -1,7 +1,6 @@
 package model.minigame.vasebreakerminigame;
 
 import lombok.Getter;
-import lombok.Setter;
 import model.mechanism.Position;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
@@ -10,48 +9,135 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@Setter
 public class VasebreakerMiniGame extends MiniGame {
     private static final long SEED_PACKET_LIFETIME_TICKS = 300;
 
-    private List<Vase> vases;
-    private List<DroppedSeedPacket> droppedSeedPackets;
-    private boolean plantSelectionEnabled;
-    private boolean skySunEnabled;
+    private static final int MIN_STAGE_NUMBER = 1;
+
+    private static final int MAX_STAGE_NUMBER = 3;
+
+    private static final int BOARD_COLUMN_COUNT = 9;
+
+    private static final int BOARD_ROW_COUNT = 5;
+
+    private final List<Vase> vases;
+
+    private final List<DroppedSeedPacket> droppedSeedPackets;
+
+    private final List<DroppedSeedPacket> collectedSeedPackets;
+
+    private final VasebreakerIntegration integration;
+
+    private final VaseBreakerStageGenerator stageGenerator;
+
+    private final boolean plantSelectionEnabled;
+
+    private final boolean skySunEnabled;
+
     private boolean lost;
+
     private long currentTick;
 
+    private int currentStageNumber;
+
+    private int highestUnlockedStage;
+
     public VasebreakerMiniGame() {
+        this(new PendingVasebreakerIntegration());
+    }
+
+    public VasebreakerMiniGame(
+            VasebreakerIntegration integration
+    ) {
         super(MiniGameType.VASEBREAKER);
+
+        if (integration == null) {
+            this.integration =
+                    new PendingVasebreakerIntegration();
+        } else {
+            this.integration = integration;
+        }
+
+        this.stageGenerator =
+                new VaseBreakerStageGenerator(
+                        this.integration
+                );
+
         this.vases = new ArrayList<>();
         this.droppedSeedPackets = new ArrayList<>();
+        this.collectedSeedPackets = new ArrayList<>();
+
         this.plantSelectionEnabled = false;
         this.skySunEnabled = false;
+
         this.lost = false;
         this.currentTick = 0;
+
+        this.currentStageNumber = 1;
+        this.highestUnlockedStage = 1;
     }
 
     @Override
     public void start() {
+        startStage(currentStageNumber);
+    }
+
+    public VasebreakerActionResult startStage(
+            int stageNumber
+    ) {
+        if (!isValidStageNumber(stageNumber)) {
+            return VasebreakerActionResult.invalidStage(
+                    stageNumber
+            );
+        }
+
+        if (!isStageUnlocked(stageNumber)) {
+            return VasebreakerActionResult.stageLocked(
+                    stageNumber
+            );
+        }
+
+        currentStageNumber = stageNumber;
+
         markStarted();
+        setCompleted(false);
 
-        vases.clear();
-        droppedSeedPackets.clear();
-
-        plantSelectionEnabled = false;
-        skySunEnabled = false;
         lost = false;
         currentTick = 0;
 
-        VaseBreakerStageGenerator generator = new VaseBreakerStageGenerator();
-        vases.addAll(generator.generateStageOne());
+        vases.clear();
+        droppedSeedPackets.clear();
+        collectedSeedPackets.clear();
+
+        integration.prepareStage(stageNumber);
+
+        vases.addAll(
+                stageGenerator.generateStage(stageNumber)
+        );
+
+        return VasebreakerActionResult.started(
+                stageNumber,
+                false,
+                false
+        );
     }
 
-    public VasebreakerActionResult breakVase(Position position) {
+    public VasebreakerActionResult breakVase(
+            Position position
+    ) {
+        VasebreakerActionResult validationResult =
+                validateAction(position);
+
+        if (validationResult != null) {
+            return validationResult;
+        }
+
         Vase vase = findUnbrokenVase(position);
 
         if (vase == null) {
-            return VasebreakerActionResult.noVase(position);
+            return VasebreakerActionResult.noVase(
+                    position
+            );
         }
 
         vase.breakVase();
@@ -59,11 +145,15 @@ public class VasebreakerMiniGame extends MiniGame {
         DroppedSeedPacket droppedSeedPacket = null;
         boolean zombieReleased = false;
 
-        if (vase.getContentType() == VaseContentType.SEED_PACKET) {
+        if (vase.getContentType()
+                == VaseContentType.SEED_PACKET) {
+
             droppedSeedPacket = dropSeedPacket(vase);
-        } else if (vase.getContentType() == VaseContentType.ZOMBIE) {
-            releaseZombie(vase);
-            zombieReleased = true;
+
+        } else if (vase.getContentType()
+                == VaseContentType.ZOMBIE) {
+
+            zombieReleased = releaseZombie(vase);
         }
 
         updateCompletedIfWon();
@@ -78,43 +168,157 @@ public class VasebreakerMiniGame extends MiniGame {
         );
     }
 
-    public VasebreakerActionResult collectSeedPacket(Position position) {
-        DroppedSeedPacket seedPacket = findAvailableSeedPacket(position);
+    public VasebreakerActionResult collectSeedPacket(
+            Position position
+    ) {
+        VasebreakerActionResult validationResult =
+                validateAction(position);
 
-        if (seedPacket == null) {
-            return VasebreakerActionResult.noSeedPacket(position);
+        if (validationResult != null) {
+            return validationResult;
         }
 
-        seedPacket.collect();
+        DroppedSeedPacket seedPacket =
+                findAvailableSeedPacket(position);
+
+        if (seedPacket == null) {
+            return VasebreakerActionResult.noSeedPacket(
+                    position
+            );
+        }
+
+        boolean collected = seedPacket.collect(
+                currentTick
+        );
+
+        if (!collected) {
+            return VasebreakerActionResult
+                    .seedPacketNotAvailable(position);
+        }
+
+        droppedSeedPackets.remove(seedPacket);
+        collectedSeedPackets.add(seedPacket);
+
         updateCompletedIfWon();
 
         return VasebreakerActionResult.seedPacketCollected(
                 position,
+                seedPacket.getPlantName(),
                 isCompleted(),
                 isLoseConditionMet()
         );
     }
 
+    public VasebreakerActionResult plantFromCollectedPacket(
+            String plantName,
+            Position targetPosition
+    ) {
+        VasebreakerActionResult validationResult =
+                validateAction(targetPosition);
+
+        if (validationResult != null) {
+            return validationResult;
+        }
+
+        DroppedSeedPacket seedPacket =
+                findCollectedSeedPacket(plantName);
+
+        if (seedPacket == null) {
+            return VasebreakerActionResult
+                    .noCollectedSeedPacket(plantName);
+        }
+
+        return plantPacket(
+                seedPacket,
+                targetPosition
+        );
+    }
+
     public VasebreakerActionResult plantFromPacket(
             DroppedSeedPacket seedPacket,
-            Position position
+            Position targetPosition
     ) {
-        if (seedPacket == null) {
-            return VasebreakerActionResult.invalidAction(position);
+        VasebreakerActionResult validationResult =
+                validateAction(targetPosition);
+
+        if (validationResult != null) {
+            return validationResult;
         }
 
-        if (!seedPacket.isAvailable(currentTick)) {
-            return VasebreakerActionResult.seedPacketNotAvailable(position);
+        if (seedPacket == null
+                || !collectedSeedPackets.contains(seedPacket)) {
+
+            return VasebreakerActionResult.invalidAction(
+                    targetPosition
+            );
         }
 
-        seedPacket.collect();
+        if (!seedPacket.isPlantable()) {
+            return VasebreakerActionResult
+                    .seedPacketNotAvailable(targetPosition);
+        }
 
-        // TODO: Later, create the plant with PlantFactory and add it to the board.
+        return plantPacket(
+                seedPacket,
+                targetPosition
+        );
+    }
+
+    private VasebreakerActionResult plantPacket(
+            DroppedSeedPacket seedPacket,
+            Position targetPosition
+    ) {
+        if (!integration.isReady()) {
+            return VasebreakerActionResult.invalidAction(
+                    targetPosition
+            );
+        }
+
+        if (seedPacket.getPlantDefinition() == null) {
+            return VasebreakerActionResult.invalidAction(
+                    targetPosition
+            );
+        }
+
+        if (findUnbrokenVase(targetPosition) != null) {
+            return VasebreakerActionResult
+                    .tileHasUnbrokenVase(targetPosition);
+        }
+
+        if (integration.isPlantingPositionOccupied(
+                targetPosition
+        )) {
+            return VasebreakerActionResult.tileOccupied(
+                    targetPosition
+            );
+        }
+
+        boolean planted =
+                integration.plantFromSeedPacket(
+                        seedPacket.getPlantDefinition(),
+                        targetPosition
+                );
+
+        if (!planted) {
+            return VasebreakerActionResult.invalidAction(
+                    targetPosition
+            );
+        }
+
+        boolean used = seedPacket.use();
+
+        if (!used) {
+            return VasebreakerActionResult
+                    .seedPacketNotAvailable(targetPosition);
+        }
+
+        collectedSeedPackets.remove(seedPacket);
 
         updateCompletedIfWon();
 
         return VasebreakerActionResult.plantFromPacket(
-                position,
+                targetPosition,
+                seedPacket.getPlantName(),
                 isCompleted(),
                 isLoseConditionMet()
         );
@@ -122,15 +326,40 @@ public class VasebreakerMiniGame extends MiniGame {
 
     @Override
     public void onTick() {
+        if (!isStarted()
+                || isCompleted()
+                || isLoseConditionMet()) {
+            return;
+        }
+
         currentTick++;
+
         removeExpiredSeedPackets();
+
+        if (integration.isReady()) {
+            integration.advanceOneTick();
+
+            if (integration.isBrainEaten()) {
+                markLost();
+            }
+        }
+
         updateCompletedIfWon();
     }
 
     @Override
     public boolean isWinConditionMet() {
-        return areAllVasesBroken();
-        // TODO: Later, also check no alive zombies on the board.
+        if (!isStarted()) {
+            return false;
+        }
+
+        if (!integration.isReady()) {
+            return false;
+        }
+
+        return areAllVasesBroken()
+                && !integration
+                .hasAliveVasebreakerZombies();
     }
 
     @Override
@@ -138,69 +367,236 @@ public class VasebreakerMiniGame extends MiniGame {
         return lost;
     }
 
-    private Vase findUnbrokenVase(Position position) {
+    public VasebreakerStateResult getState() {
+        return new VasebreakerStateResult(
+                currentStageNumber,
+                currentTick,
+                vases,
+                droppedSeedPackets,
+                collectedSeedPackets,
+                isStarted(),
+                isCompleted(),
+                isLoseConditionMet()
+        );
+    }
+
+    public boolean isStageUnlocked(
+            int stageNumber
+    ) {
+        return isValidStageNumber(stageNumber)
+                && stageNumber <= highestUnlockedStage;
+    }
+
+    public void unlockStage(int stageNumber) {
+        if (!isValidStageNumber(stageNumber)) {
+            return;
+        }
+
+        highestUnlockedStage = Math.max(
+                highestUnlockedStage,
+                stageNumber
+        );
+    }
+
+    public void markLost() {
+        if (!isStarted()
+                || isCompleted()
+                || lost) {
+            return;
+        }
+
+        lost = true;
+    }
+
+    public boolean isIntegrationReady() {
+        return integration.isReady();
+    }
+
+    private VasebreakerActionResult validateAction(
+            Position position
+    ) {
+        if (!isStarted()) {
+            return VasebreakerActionResult.gameNotStarted();
+        }
+
+        if (isCompleted()
+                || isLoseConditionMet()) {
+
+            return VasebreakerActionResult
+                    .gameAlreadyFinished(
+                            isCompleted(),
+                            isLoseConditionMet()
+                    );
+        }
+
+        if (!isValidPosition(position)) {
+            return VasebreakerActionResult
+                    .invalidPosition(position);
+        }
+
+        return null;
+    }
+
+    private boolean isValidStageNumber(
+            int stageNumber
+    ) {
+        return stageNumber >= MIN_STAGE_NUMBER
+                && stageNumber <= MAX_STAGE_NUMBER;
+    }
+
+    private boolean isValidPosition(
+            Position position
+    ) {
+        if (position == null) {
+            return false;
+        }
+
+        return position.getX() >= 1
+                && position.getX() <= BOARD_COLUMN_COUNT
+                && position.getY() >= 1
+                && position.getY() <= BOARD_ROW_COUNT;
+    }
+
+    private Vase findUnbrokenVase(
+            Position position
+    ) {
         for (Vase vase : vases) {
-            if (!vase.isBroken() && vase.isAt(position)) {
+            if (vase != null
+                    && !vase.isBroken()
+                    && vase.isAt(position)) {
+
                 return vase;
             }
         }
+
         return null;
     }
 
-    private DroppedSeedPacket findAvailableSeedPacket(Position position) {
-        for (DroppedSeedPacket seedPacket : droppedSeedPackets) {
-            if (seedPacket.isAt(position) && seedPacket.isAvailable(currentTick)) {
+    private DroppedSeedPacket findAvailableSeedPacket(
+            Position position
+    ) {
+        for (DroppedSeedPacket seedPacket
+                : droppedSeedPackets) {
+
+            if (seedPacket != null
+                    && seedPacket.isAt(position)
+                    && seedPacket.isAvailable(
+                    currentTick
+            )) {
                 return seedPacket;
             }
         }
+
         return null;
     }
 
-    private DroppedSeedPacket dropSeedPacket(Vase vase) {
-        DroppedSeedPacket seedPacket = new DroppedSeedPacket(
-                vase.getPlantDefinition(),
-                vase.getPosition(),
-                currentTick + SEED_PACKET_LIFETIME_TICKS
-        );
+    private DroppedSeedPacket findCollectedSeedPacket(
+            String plantName
+    ) {
+        for (DroppedSeedPacket seedPacket
+                : collectedSeedPackets) {
+
+            if (seedPacket == null
+                    || !seedPacket.isPlantable()) {
+                continue;
+            }
+
+            if (plantName == null
+                    || plantName.isBlank()) {
+
+                return seedPacket;
+            }
+
+            String packetPlantName =
+                    seedPacket.getPlantName();
+
+            if (packetPlantName != null
+                    && packetPlantName
+                    .equalsIgnoreCase(
+                            plantName.trim()
+                    )) {
+
+                return seedPacket;
+            }
+        }
+
+        return null;
+    }
+
+    private DroppedSeedPacket dropSeedPacket(
+            Vase vase
+    ) {
+        DroppedSeedPacket seedPacket =
+                new DroppedSeedPacket(
+                        vase.getPlantDefinition(),
+                        vase.getPosition(),
+                        currentTick
+                                + SEED_PACKET_LIFETIME_TICKS
+                );
 
         droppedSeedPackets.add(seedPacket);
+
         return seedPacket;
     }
 
-    private void releaseZombie(Vase vase) {
-        // TODO: Later, create the zombie with ZombieFactory and add it to the board.
+    private boolean releaseZombie(
+            Vase vase
+    ) {
+        if (!integration.isReady()) {
+            return false;
+        }
+
+        if (vase == null
+                || vase.getZombieDefinition() == null) {
+            return false;
+        }
+
+        return integration.releaseZombie(
+                vase.getZombieDefinition(),
+                vase.getPosition()
+        );
     }
 
     private boolean areAllVasesBroken() {
         for (Vase vase : vases) {
-            if (!vase.isBroken()) {
+            if (vase != null && !vase.isBroken()) {
                 return false;
             }
         }
+
         return true;
     }
 
     private void removeExpiredSeedPackets() {
-        droppedSeedPackets.removeIf(seedPacket -> seedPacket.isExpired(currentTick));
+        droppedSeedPackets.removeIf(
+                seedPacket -> seedPacket == null
+                        || seedPacket.isExpired(
+                        currentTick
+                )
+        );
     }
 
     private void updateCompletedIfWon() {
-        if (isWinConditionMet()) {
-            markCompleted();
+        if (isCompleted()
+                || isLoseConditionMet()) {
+            return;
         }
+
+        if (!isWinConditionMet()) {
+            return;
+        }
+
+        markCompleted();
+        unlockNextStage();
     }
 
-    public void markLost() {
-        lost = true;
-    }
+    private void unlockNextStage() {
+        if (currentStageNumber >= MAX_STAGE_NUMBER) {
+            return;
+        }
 
-    public VasebreakerStateResult getState() {
-        return new VasebreakerStateResult(
-                currentTick,
-                vases,
-                droppedSeedPackets,
-                isCompleted(),
-                isLoseConditionMet()
+        unlockStage(
+                currentStageNumber + 1
         );
     }
 }
