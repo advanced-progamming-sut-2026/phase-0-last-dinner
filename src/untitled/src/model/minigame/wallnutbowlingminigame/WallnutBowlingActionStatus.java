@@ -1,0 +1,31 @@
+package model.minigame.wallnutbowlingminigame;
+
+public enum WallnutBowlingActionStatus {
+    STARTED,
+
+    WALLNUT_GENERATED,
+
+    WALLNUT_PLACED,
+
+    TIME_ADVANCED,
+
+    NO_WALLNUT_AVAILABLE,
+
+    INVALID_CONVEYOR_INDEX,
+
+    INVALID_STAGE,
+
+    STAGE_LOCKED,
+
+    GAME_NOT_STARTED,
+
+    GAME_ALREADY_FINISHED,
+
+    INVALID_POSITION,
+
+    OUTSIDE_PLANTING_AREA,
+
+    INTEGRATION_NOT_READY,
+
+    INVALID_ACTION
+}
