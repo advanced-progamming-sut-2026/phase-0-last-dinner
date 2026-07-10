@@ -1,6 +1,8 @@
-package model.minigame;
+package model.minigame.wallnutbowlingminigame;
 
 import model.mechanism.Position;
+import model.minigame.MiniGame;
+import model.minigame.MiniGameType;
 
 import java.util.List;
 

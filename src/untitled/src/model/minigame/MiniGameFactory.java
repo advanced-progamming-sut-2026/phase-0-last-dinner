@@ -1,6 +1,7 @@
 package model.minigame;
 
 import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
+import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
 
 public class MiniGameFactory {
     public MiniGame create(MiniGameType type) {

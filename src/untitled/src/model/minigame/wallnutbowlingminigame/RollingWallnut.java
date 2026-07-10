@@ -1,4 +1,4 @@
-package model.minigame;
+package model.minigame.wallnutbowlingminigame;
 
 import model.mechanism.Position;
 import model.mechanism.Tickable;
