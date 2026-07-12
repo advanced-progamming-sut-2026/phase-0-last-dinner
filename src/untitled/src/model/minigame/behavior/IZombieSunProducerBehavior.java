@@ -2,7 +2,7 @@ package model.minigame.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
-import model.minigame.IZombieMiniGame;
+import model.minigame.izombieminigame.IZombieMiniGame;
 import model.zombie.Zombie;
 import model.zombie.behavior.ZombieBehavior;
 

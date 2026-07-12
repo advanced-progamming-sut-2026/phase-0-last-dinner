@@ -1,16 +1,16 @@
 package model.GameMenuRelated;
 
 import model.minigame.BeghouledMiniGame;
-import model.minigame.IZombieMiniGame;
+import model.minigame.izombieminigame.IZombieMiniGame;
+import model.minigame.ZombotanyMiniGame;
 import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
 import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
-import model.minigame.ZombotanyMiniGame;
 
 public class TravelLog {
     private Page[] pages;
 
     public TravelLog() {
-        pages = new Page[] {
+        pages = new Page[]{
                 new Page(PageName.ADVENTURE),
                 new Page(PageName.SPECIAL),
                 new Page(PageName.MINIGAMES),
@@ -20,11 +20,26 @@ public class TravelLog {
         };
 
         Page miniGamesPage = pages[2];
-        miniGamesPage.getMiniGames().add(new VasebreakerMiniGame());
-        miniGamesPage.getMiniGames().add(new WallnutBowlingMiniGame());
-        miniGamesPage.getMiniGames().add(new IZombieMiniGame());
-        miniGamesPage.getMiniGames().add(new BeghouledMiniGame());
-        miniGamesPage.getMiniGames().add(new ZombotanyMiniGame());
+
+        miniGamesPage
+                .getMiniGames()
+                .add(new VasebreakerMiniGame());
+
+        miniGamesPage
+                .getMiniGames()
+                .add(new WallnutBowlingMiniGame());
+
+        miniGamesPage
+                .getMiniGames()
+                .add(new IZombieMiniGame());
+
+        miniGamesPage
+                .getMiniGames()
+                .add(new BeghouledMiniGame());
+
+        miniGamesPage
+                .getMiniGames()
+                .add(new ZombotanyMiniGame());
     }
 
     public Page[] getPages() {
@@ -32,7 +47,11 @@ public class TravelLog {
     }
 
     public Page getPage(PageName pageName) {
+        /*
+         * TODO: This method belongs to the general
+         * TravelLog implementation.
+         */
+
         return null;
     }
 }
-

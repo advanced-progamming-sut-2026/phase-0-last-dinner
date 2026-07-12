@@ -1,6 +1,8 @@
-package model.minigame;
+package model.minigame.izombieminigame;
 
 import model.mechanism.Position;
+import model.minigame.MiniGame;
+import model.minigame.MiniGameType;
 import model.zombie.Zombie;
 import model.zombie.ZombieDefinition;
 

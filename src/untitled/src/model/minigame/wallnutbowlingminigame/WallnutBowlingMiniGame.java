@@ -17,26 +17,19 @@ public class WallnutBowlingMiniGame extends MiniGame {
     private static final int BOARD_COLUMN_COUNT = 9;
     private static final int BOARD_ROW_COUNT = 5;
 
-    private static final int CONVEYOR_CAPACITY = 5;
-    private static final int INITIAL_WALLNUT_COUNT = 3;
-
     private final List<BowlingWallnutType> conveyorBelt;
 
     private final List<RollingWallnut> rollingWallnuts;
 
     private final WallnutBowlingIntegration integration;
 
-    private final Random random;
+    private final WallnutBowlingStageGenerator stageGenerator;
 
     private final boolean plantSelectionEnabled;
 
     private final boolean skySunEnabled;
 
-    private int plantingBoundaryColumn;
-
-    private long generationIntervalTicks;
-
-    private int movementIntervalTicks;
+    private WallnutBowlingStageConfig currentStageConfig;
 
     private long currentTick;
 
@@ -53,7 +46,7 @@ public class WallnutBowlingMiniGame extends MiniGame {
     public WallnutBowlingMiniGame() {
         this(
                 new PendingWallnutBowlingIntegration(),
-                new Random()
+                new WallnutBowlingStageGenerator()
         );
     }
 
@@ -62,13 +55,23 @@ public class WallnutBowlingMiniGame extends MiniGame {
     ) {
         this(
                 integration,
-                new Random()
+                new WallnutBowlingStageGenerator()
         );
     }
 
     public WallnutBowlingMiniGame(
             WallnutBowlingIntegration integration,
             Random random
+    ) {
+        this(
+                integration,
+                new WallnutBowlingStageGenerator(random)
+        );
+    }
+
+    public WallnutBowlingMiniGame(
+            WallnutBowlingIntegration integration,
+            WallnutBowlingStageGenerator stageGenerator
     ) {
         super(MiniGameType.WALLNUT_BOWLING);
 
@@ -79,21 +82,21 @@ public class WallnutBowlingMiniGame extends MiniGame {
             this.integration = integration;
         }
 
-        if (random == null) {
-            this.random = new Random();
+        if (stageGenerator == null) {
+            this.stageGenerator =
+                    new WallnutBowlingStageGenerator();
         } else {
-            this.random = random;
+            this.stageGenerator = stageGenerator;
         }
+
+        this.currentStageConfig =
+                this.stageGenerator.generateStage(1);
 
         this.conveyorBelt = new ArrayList<>();
         this.rollingWallnuts = new ArrayList<>();
 
         this.plantSelectionEnabled = false;
         this.skySunEnabled = false;
-
-        this.plantingBoundaryColumn = 3;
-        this.generationIntervalTicks = 40;
-        this.movementIntervalTicks = 2;
 
         this.currentTick = 0;
         this.ticksSinceLastGeneration = 0;
@@ -137,17 +140,24 @@ public class WallnutBowlingMiniGame extends MiniGame {
         conveyorBelt.clear();
         rollingWallnuts.clear();
 
-        configureStage(stageNumber);
+        currentStageConfig =
+                stageGenerator.generateStage(
+                        stageNumber
+                );
 
         integration.prepareStage(stageNumber);
 
         if (integration.isReady()) {
-            integration.startZombieWaves(stageNumber);
+            integration.startZombieWaves(
+                    stageNumber
+            );
+
             wavesStarted = true;
         }
 
         for (int i = 0;
-             i < INITIAL_WALLNUT_COUNT;
+             i < currentStageConfig
+                     .getInitialWallnutCount();
              i++) {
 
             generateWallnut();
@@ -158,32 +168,6 @@ public class WallnutBowlingMiniGame extends MiniGame {
         );
     }
 
-    private void configureStage(int stageNumber) {
-        plantingBoundaryColumn = 3;
-
-        switch (stageNumber) {
-            case 1:
-                generationIntervalTicks = 40;
-                movementIntervalTicks = 2;
-                break;
-
-            case 2:
-                generationIntervalTicks = 35;
-                movementIntervalTicks = 2;
-                break;
-
-            case 3:
-                generationIntervalTicks = 30;
-                movementIntervalTicks = 1;
-                break;
-
-            default:
-                throw new IllegalArgumentException(
-                        "Invalid Wallnut Bowling stage."
-                );
-        }
-    }
-
     public BowlingWallnutType generateWallnut() {
         if (!isStarted()
                 || isCompleted()
@@ -192,61 +176,23 @@ public class WallnutBowlingMiniGame extends MiniGame {
         }
 
         if (conveyorBelt.size()
-                >= CONVEYOR_CAPACITY) {
+                >= currentStageConfig
+                .getConveyorCapacity()) {
+
             return null;
         }
 
         BowlingWallnutType type =
-                chooseRandomWallnutType();
+                stageGenerator
+                        .chooseRandomWallnutType(
+                                currentStageConfig
+                        );
 
         conveyorBelt.add(type);
 
         ticksSinceLastGeneration = 0;
 
         return type;
-    }
-
-    private BowlingWallnutType
-    chooseRandomWallnutType() {
-        int roll = random.nextInt(100);
-
-        if (currentStageNumber == 1) {
-            if (roll < 80) {
-                return BowlingWallnutType
-                        .BOWLING_WALLNUT;
-            }
-
-            return BowlingWallnutType
-                    .EXPLODE_O_NUT;
-        }
-
-        if (currentStageNumber == 2) {
-            if (roll < 65) {
-                return BowlingWallnutType
-                        .BOWLING_WALLNUT;
-            }
-
-            if (roll < 95) {
-                return BowlingWallnutType
-                        .EXPLODE_O_NUT;
-            }
-
-            return BowlingWallnutType
-                    .GIANT_WALLNUT;
-        }
-
-        if (roll < 50) {
-            return BowlingWallnutType
-                    .BOWLING_WALLNUT;
-        }
-
-        if (roll < 80) {
-            return BowlingWallnutType
-                    .EXPLODE_O_NUT;
-        }
-
-        return BowlingWallnutType
-                .GIANT_WALLNUT;
     }
 
     public WallnutBowlingActionResult
@@ -277,7 +223,9 @@ public class WallnutBowlingMiniGame extends MiniGame {
                 || listIndex >= conveyorBelt.size()) {
 
             return WallnutBowlingActionResult
-                    .invalidConveyorIndex(userIndex);
+                    .invalidConveyorIndex(
+                            userIndex
+                    );
         }
 
         if (!canPlaceAt(position)) {
@@ -321,7 +269,8 @@ public class WallnutBowlingMiniGame extends MiniGame {
             return null;
         }
 
-        int listIndex = conveyorBelt.indexOf(type);
+        int listIndex =
+                conveyorBelt.indexOf(type);
 
         if (listIndex < 0) {
             return null;
@@ -358,18 +307,22 @@ public class WallnutBowlingMiniGame extends MiniGame {
                 position,
                 normalZombieHealth,
                 cherryBombDamage,
-                movementIntervalTicks,
+                currentStageConfig
+                        .getMovementIntervalTicks(),
                 integration
         );
     }
 
-    public boolean canPlaceAt(Position position) {
+    public boolean canPlaceAt(
+            Position position
+    ) {
         if (!isValidPosition(position)) {
             return false;
         }
 
         return position.getX()
-                <= plantingBoundaryColumn;
+                <= currentStageConfig
+                .getPlantingBoundaryColumn();
     }
 
     @Override
@@ -415,7 +368,9 @@ public class WallnutBowlingMiniGame extends MiniGame {
 
     private void tickRollingWallnuts() {
         List<RollingWallnut> wallnutsCopy =
-                new ArrayList<>(rollingWallnuts);
+                new ArrayList<>(
+                        rollingWallnuts
+                );
 
         for (RollingWallnut wallnut
                 : wallnutsCopy) {
@@ -428,20 +383,24 @@ public class WallnutBowlingMiniGame extends MiniGame {
         }
 
         rollingWallnuts.removeIf(
-                wallnut -> wallnut == null
-                        || !wallnut.isMoving()
-                        || wallnut.isOutsideBoard()
+                wallnut ->
+                        wallnut == null
+                                || !wallnut.isMoving()
+                                || wallnut
+                                .isOutsideBoard()
         );
     }
 
     private void generateWallnutIfNeeded() {
         if (conveyorBelt.size()
-                >= CONVEYOR_CAPACITY) {
+                >= currentStageConfig
+                .getConveyorCapacity()) {
             return;
         }
 
         if (ticksSinceLastGeneration
-                < generationIntervalTicks) {
+                < currentStageConfig
+                .getGenerationIntervalTicks()) {
             return;
         }
 
@@ -469,7 +428,8 @@ public class WallnutBowlingMiniGame extends MiniGame {
         long ticksUntilNextGeneration =
                 Math.max(
                         0,
-                        generationIntervalTicks
+                        currentStageConfig
+                                .getGenerationIntervalTicks()
                                 - ticksSinceLastGeneration
                 );
 
@@ -478,7 +438,8 @@ public class WallnutBowlingMiniGame extends MiniGame {
                 currentTick,
                 conveyorBelt,
                 rollingWallnuts,
-                plantingBoundaryColumn,
+                currentStageConfig
+                        .getPlantingBoundaryColumn(),
                 ticksUntilNextGeneration,
                 isStarted(),
                 integration.isReady(),
@@ -560,7 +521,8 @@ public class WallnutBowlingMiniGame extends MiniGame {
             int stageNumber
     ) {
         return stageNumber >= MIN_STAGE_NUMBER
-                && stageNumber <= MAX_STAGE_NUMBER;
+                && stageNumber
+                <= MAX_STAGE_NUMBER;
     }
 
     private void updateCompletedIfWon() {
