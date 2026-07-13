@@ -8,6 +8,7 @@ import model.mechanism.Tile;
 import model.plant.DamageExpressionParser;
 import model.plant.PlantUpgradeEffect;
 import model.plant.PlantUpgradeSpecialEffect;
+import model.plant.Projectile;
 import model.zombie.Zombie;
 import model.zombie.ZombieCondition;
 
@@ -25,6 +26,11 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     private ZombieCondition conditionOnHit;
     private long conditionDurationTicks;
     private boolean explodeOnFinish;
+    private boolean consumed;
+    private boolean createsCrater;
+    private boolean meltsLane;
+    private Projectile secondaryProjectileTemplate;
+    private int secondaryProjectileCount;
 
     public ExplosiveBehavior(
             String damageExpression,
@@ -62,23 +68,33 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
     @Override
     public void activate(Plant plant, Board board) {
-        if (plant == null || board == null || board.getCombatSystem() == null) {
+        if (plant == null || board == null || this.consumed) {
             return;
         }
 
         List<Zombie> zombies;
 
         if (this.explosivePattern == ExplosivePattern.TERRAIN_ONLY) {
+            this.consumed = true;
             this.clearTerrain(plant, board, TerrainType.FROZEN);
             this.explodeAfterFinishIfNeeded(plant, board);
+            board.removePlant(plant);
             return;
         }
 
         if (this.explosivePattern == ExplosivePattern.GRAVE_ONLY) {
+            this.consumed = true;
             this.clearTerrain(plant, board, TerrainType.GRAVE);
             this.explodeAfterFinishIfNeeded(plant, board);
+            board.removePlant(plant);
             return;
         }
+
+        if (board.getCombatSystem() == null) {
+            return;
+        }
+
+        this.consumed = true;
 
         if (this.explosivePattern == ExplosivePattern.FULL_LANE) {
             zombies = board.getZombiesInLane(plant.getPosition());
@@ -105,6 +121,10 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
                 }
             }
         }
+
+        this.applyTerrainEffect(plant, board);
+        this.launchSecondaryProjectiles(plant, board);
+        board.removePlant(plant);
     }
 
     @Override
@@ -119,6 +139,43 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     public void setConditionOnHit(ZombieCondition conditionOnHit, long conditionDurationTicks) {
         this.conditionOnHit = conditionOnHit;
         this.conditionDurationTicks = Math.max(0, conditionDurationTicks);
+    }
+
+    public void setCreatesCrater(boolean createsCrater) {
+        this.createsCrater = createsCrater;
+    }
+
+    public void setMeltsLane(boolean meltsLane) {
+        this.meltsLane = meltsLane;
+    }
+
+    public void setSecondaryProjectileBurst(Projectile projectileTemplate, int projectileCount) {
+        this.secondaryProjectileTemplate = projectileTemplate;
+        this.secondaryProjectileCount = Math.max(0, projectileCount);
+    }
+
+    @Override
+    public PlantBehavior copy() {
+        ExplosiveBehavior copy = new ExplosiveBehavior(
+                this.damageExpression,
+                this.effectRadius,
+                this.triggeredByContact,
+                this.explosivePattern,
+                this.armDelayTicks,
+                this.activateOnPlanting
+        );
+        copy.armedTicks = this.armedTicks;
+        copy.targetCount = this.targetCount;
+        copy.conditionOnHit = this.conditionOnHit;
+        copy.conditionDurationTicks = this.conditionDurationTicks;
+        copy.explodeOnFinish = this.explodeOnFinish;
+        copy.createsCrater = this.createsCrater;
+        copy.meltsLane = this.meltsLane;
+        copy.secondaryProjectileTemplate = this.secondaryProjectileTemplate == null
+                ? null
+                : this.secondaryProjectileTemplate.copyAt(null);
+        copy.secondaryProjectileCount = this.secondaryProjectileCount;
+        return copy;
     }
 
     @Override
@@ -187,6 +244,47 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
         for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), Math.max(1, this.effectRadius))) {
             board.getCombatSystem().applyDamageToZombie(zombie, damage);
+        }
+    }
+
+    private void applyTerrainEffect(Plant plant, Board board) {
+        if (plant.getPosition() == null) {
+            return;
+        }
+
+        if (this.meltsLane) {
+            for (Tile tile : board.getTiles()) {
+                if (tile != null && tile.getPosition() != null
+                        && tile.getPosition().getY() == plant.getPosition().getY()
+                        && tile.getTerrainType() == TerrainType.FROZEN) {
+                    board.setTerrain(tile.getPosition(), TerrainType.CLASSIC);
+                }
+            }
+        }
+
+        if (this.createsCrater) {
+            board.setTerrain(plant.getPosition(), TerrainType.CRATER);
+        }
+    }
+
+    private void launchSecondaryProjectiles(Plant plant, Board board) {
+        if (this.secondaryProjectileTemplate == null || this.secondaryProjectileCount <= 0
+                || plant.getPosition() == null) {
+            return;
+        }
+
+        int[][] directions = {
+                {1, 0}, {-1, 0}, {1, 1}, {1, -1},
+                {-1, 1}, {-1, -1}, {1, 0}, {-1, 0}
+        };
+
+        for (int i = 0; i < this.secondaryProjectileCount; i++) {
+            int[] direction = directions[i % directions.length];
+            board.addProjectile(this.secondaryProjectileTemplate.copyAt(
+                    plant.getPosition(),
+                    direction[0],
+                    direction[1]
+            ));
         }
     }
 }

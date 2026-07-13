@@ -7,14 +7,13 @@ import model.plant.DamageExpressionParser;
 import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class DefenderBehavior implements PlantBehavior {
     private DefenderMode defenderMode;
     private String damageExpression;
     private boolean deathEffectUsed;
-    private int contactSunAmount = 25;
+    private int contactSunAmount = 5;
 
     public DefenderBehavior() {
         this(DefenderMode.BASIC, "0");
@@ -36,14 +35,8 @@ public class DefenderBehavior implements PlantBehavior {
             return;
         }
 
-        if (this.defenderMode == DefenderMode.REFLECT_DAMAGE) {
-            this.damageNearbyZombies(plant, board);
-        } else if (this.defenderMode == DefenderMode.MOVE_ZOMBIES) {
-            this.moveContactZombiesToAnotherLane(plant, board);
-        } else if (this.defenderMode == DefenderMode.ATTRACT_ZOMBIES) {
+        if (this.defenderMode == DefenderMode.ATTRACT_ZOMBIES) {
             this.pullNearbyZombiesIntoLane(plant, board);
-        } else if (this.defenderMode == DefenderMode.SUN_ON_HIT) {
-            this.rewardSunWhenContacted(plant, board);
         }
     }
 
@@ -51,6 +44,16 @@ public class DefenderBehavior implements PlantBehavior {
     public void activate(Plant plant, Board board) {
         if (this.defenderMode == DefenderMode.EXPLODE_ON_DEATH) {
             this.activateDeathEffect(plant, board);
+        } else if (this.defenderMode == DefenderMode.ATTRACT_ZOMBIES
+                && plant != null && plant.getPosition() != null && board != null) {
+            for (Zombie zombie : board.getAllZombies()) {
+                if (zombie != null && !zombie.isDead() && zombie.getPosition() != null) {
+                    board.moveZombie(
+                            zombie,
+                            new Position(zombie.getPosition().getX(), plant.getPosition().getY())
+                    );
+                }
+            }
         }
     }
 
@@ -61,13 +64,13 @@ public class DefenderBehavior implements PlantBehavior {
 
         int damage = Math.max(10, DamageExpressionParser.parseTotalDamage(this.damageExpression));
 
-        for (Zombie zombie : board.getZombiesAt(plant.getPosition())) {
+        for (Zombie zombie : this.getContactZombies(plant, board)) {
             board.getCombatSystem().applyDamageToZombie(zombie, damage);
         }
     }
 
     private void moveContactZombiesToAnotherLane(Plant plant, Board board) {
-        List<Zombie> zombies = new ArrayList<>(board.getZombiesAt(plant.getPosition()));
+        List<Zombie> zombies = this.getContactZombies(plant, board);
 
         for (Zombie zombie : zombies) {
             if (zombie == null || zombie.getPosition() == null) {
@@ -103,12 +106,31 @@ public class DefenderBehavior implements PlantBehavior {
         }
     }
 
-    private void rewardSunWhenContacted(Plant plant, Board board) {
-        if (board.getSunSystem() == null || board.getZombiesAt(plant.getPosition()).isEmpty()) {
+    @Override
+    public void onDamaged(Plant plant, Board board, int damage) {
+        if (damage <= 0 || board == null) {
             return;
         }
 
-        board.getSunSystem().addSun(this.contactSunAmount);
+        if (this.defenderMode == DefenderMode.SUN_ON_HIT && board.getSunSystem() != null) {
+            board.getSunSystem().addSun(this.contactSunAmount);
+        } else if (this.defenderMode == DefenderMode.REFLECT_DAMAGE) {
+            this.damageNearbyZombies(plant, board);
+        } else if (this.defenderMode == DefenderMode.MOVE_ZOMBIES) {
+            this.moveContactZombiesToAnotherLane(plant, board);
+        }
+    }
+
+    @Override
+    public void onDeath(Plant plant, Board board) {
+        this.activateDeathEffect(plant, board);
+    }
+
+    @Override
+    public PlantBehavior copy() {
+        DefenderBehavior copy = new DefenderBehavior(this.defenderMode, this.damageExpression);
+        copy.contactSunAmount = this.contactSunAmount;
+        return copy;
     }
 
     private void activateDeathEffect(Plant plant, Board board) {
@@ -127,6 +149,23 @@ public class DefenderBehavior implements PlantBehavior {
                 board.getCombatSystem().applyDamageToZombie(zombie, damage);
             }
         }
+    }
+
+    private List<Zombie> getContactZombies(Plant plant, Board board) {
+        List<Zombie> contactZombies = new java.util.ArrayList<>();
+
+        if (plant == null || plant.getPosition() == null || board == null) {
+            return contactZombies;
+        }
+
+        for (Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
+            if (zombie != null && !zombie.isDead() && zombie.getPosition() != null
+                    && Math.abs(zombie.getPosition().getX() - plant.getPosition().getX()) <= 1) {
+                contactZombies.add(zombie);
+            }
+        }
+
+        return contactZombies;
     }
 
     @Override

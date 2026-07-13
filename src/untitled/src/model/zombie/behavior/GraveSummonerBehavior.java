@@ -3,12 +3,17 @@ package model.zombie.behavior;
 import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.TerrainType;
+import model.mechanism.Position;
+import model.mechanism.Tile;
 import model.zombie.Zombie;
+
+import java.util.Random;
 
 public class GraveSummonerBehavior implements ZombieBehavior {
     private int graveCount;
     private long summonIntervalTicks;
     private long ticksSinceLastSummon;
+    private Random random = new Random();
 
     public GraveSummonerBehavior(int graveCount, long summonIntervalTicks) {
         this.graveCount = graveCount;
@@ -35,6 +40,22 @@ public class GraveSummonerBehavior implements ZombieBehavior {
             return;
         }
 
-        board.placeTerrainNear(zombie.getPosition(), TerrainType.GRAVE, this.graveCount);
+        int placed = 0;
+        int attempts = 0;
+
+        while (placed < this.graveCount && attempts < 90) {
+            attempts++;
+            Position candidate = new Position(this.random.nextInt(9), this.random.nextInt(5));
+            Tile tile = board.getTile(candidate);
+
+            if (tile == null || tile.getTerrainType() == TerrainType.GRAVE
+                    || !tile.getPlants().isEmpty() || !tile.getZombies().isEmpty()) {
+                continue;
+            }
+
+            if (board.setTerrain(candidate, TerrainType.GRAVE)) {
+                placed++;
+            }
+        }
     }
 }

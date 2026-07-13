@@ -6,7 +6,13 @@ import model.plant.DamageExpressionParser;
 import model.plant.PlantUpgradeEffect;
 import model.plant.PlantUpgradeSpecialEffect;
 import model.plant.Projectile;
+import model.zombie.ArmorFlag;
 import model.zombie.Zombie;
+import model.zombie.ZombieArmor;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 
 public class HomingBehavior implements PlantBehavior {
     private Projectile projectileTemplate;
@@ -15,6 +21,7 @@ public class HomingBehavior implements PlantBehavior {
     private HomingTargetMode targetMode;
     private String damageExpression;
     private boolean priorityUp;
+    private final Random random = new Random();
 
     public HomingBehavior(
             Projectile projectileTemplate,
@@ -45,12 +52,23 @@ public class HomingBehavior implements PlantBehavior {
         }
 
         if (this.targetMode == HomingTargetMode.ARMOR) {
+            Zombie armoredTarget = this.selectArmoredTarget(plant, board);
+
+            if (armoredTarget != null) {
+                ZombieArmor armor = this.findMetallicArmor(armoredTarget);
+
+                if (armor != null) {
+                    armor.drop();
+                }
+            }
             return;
         }
 
-        if (this.targetMode == HomingTargetMode.HYPNOSIS && board.getCombatSystem() != null) {
-            if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
-                board.getCombatSystem().killZombie(board.getNearestZombie(plant.getPosition()));
+        if (this.targetMode == HomingTargetMode.HYPNOSIS) {
+            Zombie target = this.selectTarget(plant, board);
+
+            if (target != null) {
+                target.addCondition(model.zombie.ZombieCondition.HYPNOTIZED);
             }
             return;
         }
@@ -59,7 +77,26 @@ public class HomingBehavior implements PlantBehavior {
             return;
         }
 
-        board.addProjectile(this.projectileTemplate.copyAtTarget(plant.getPosition(), this.selectTarget(plant, board)));
+        Zombie target = this.selectTarget(plant, board);
+
+        if (target != null) {
+            board.addProjectile(this.projectileTemplate.copyAtTarget(plant.getPosition(), target));
+        }
+    }
+
+    @Override
+    public PlantBehavior copy() {
+        Projectile projectileCopy = this.projectileTemplate == null
+                ? null
+                : this.projectileTemplate.copyAt(null);
+        HomingBehavior copy = new HomingBehavior(
+                projectileCopy,
+                this.homingIntervalTicks,
+                this.targetMode,
+                this.damageExpression
+        );
+        copy.priorityUp = this.priorityUp;
+        return copy;
     }
 
     @Override
@@ -88,8 +125,20 @@ public class HomingBehavior implements PlantBehavior {
             return null;
         }
 
-        if (this.targetMode != HomingTargetMode.PRIORITY || !this.priorityUp) {
+        if (this.targetMode != HomingTargetMode.PRIORITY) {
             return board.getNearestZombie(plant.getPosition());
+        }
+
+        if (!this.priorityUp) {
+            List<Zombie> candidates = new ArrayList<>();
+
+            for (Zombie zombie : board.getAllZombies()) {
+                if (zombie != null && !zombie.isDead()) {
+                    candidates.add(zombie);
+                }
+            }
+
+            return candidates.isEmpty() ? null : candidates.get(this.random.nextInt(candidates.size()));
         }
 
         Zombie bestTarget = null;
@@ -110,5 +159,47 @@ public class HomingBehavior implements PlantBehavior {
         }
 
         return bestTarget == null ? board.getNearestZombie(plant.getPosition()) : bestTarget;
+    }
+
+    private Zombie selectArmoredTarget(Plant plant, Board board) {
+        Zombie nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+
+        for (Zombie zombie : board.getAllZombies()) {
+            if (zombie == null || zombie.isDead() || this.findMetallicArmor(zombie) == null
+                    || zombie.getPosition() == null) {
+                continue;
+            }
+
+            double distance = plant.getPosition() == null
+                    ? 0
+                    : Math.abs(zombie.getPosition().getX() - plant.getPosition().getX());
+
+            if (distance < nearestDistance) {
+                nearest = zombie;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearest;
+    }
+
+    private ZombieArmor findMetallicArmor(Zombie zombie) {
+        if (zombie == null || zombie.getArmors() == null) {
+            return null;
+        }
+
+        for (ZombieArmor armor : zombie.getArmors()) {
+            if (armor == null || armor.isDestroyed() || armor.isDropped() || armor.getDefinition() == null
+                    || armor.getDefinition().getFlags() == null) {
+                continue;
+            }
+
+            if (armor.getDefinition().getFlags().contains(ArmorFlag.METALLIC)) {
+                return armor;
+            }
+        }
+
+        return null;
     }
 }

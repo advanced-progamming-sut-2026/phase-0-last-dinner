@@ -6,10 +6,12 @@ import model.zombie.behavior.ZombieBehavior;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Random;
 
 public class ZombieFactory {
     private ZombieBehaviorFactory behaviorFactory;
     private ZombieArmorFactory armorFactory;
+    private final Random random = new Random();
 
     public ZombieFactory() {
         this(new ZombieBehaviorFactory(), new ZombieArmorFactory());
@@ -53,7 +55,7 @@ public class ZombieFactory {
             }
         }
 
-        return new Zombie(
+        Zombie zombie = new Zombie(
                 definition,
                 spawnPosition,
                 definition.getHitpoints(),
@@ -62,6 +64,9 @@ public class ZombieFactory {
                 new ArrayList<ZombieCondition>(),
                 behavior
         );
+
+        zombie.setGlowing(this.random.nextInt(100) < 5);
+        return zombie;
     }
 
     private List<ZombieArmorDefinition> inferArmorDefinitions(ZombieDefinition definition) {

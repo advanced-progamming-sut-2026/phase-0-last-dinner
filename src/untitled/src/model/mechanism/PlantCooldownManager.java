@@ -27,7 +27,6 @@ public class PlantCooldownManager implements Tickable {
 
         Long availableAt = this.availableAtTick.get(plant.getName());
 
-        // Agar plant hanooz cooldown nadashte kashtesh mojaze.
         if (availableAt == null) {
             return true;
         }
@@ -65,5 +64,11 @@ public class PlantCooldownManager implements Tickable {
 
     public void resetAllCooldowns() {
         this.availableAtTick.clear();
+    }
+
+    public void resetCooldown(Plant plant) {
+        if (plant != null && plant.getName() != null) {
+            this.availableAtTick.remove(plant.getName());
+        }
     }
 }

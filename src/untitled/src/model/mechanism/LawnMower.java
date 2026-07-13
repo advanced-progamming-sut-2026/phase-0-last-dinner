@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import model.zombie.Zombie;
+import model.zombie.ZombieType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +37,11 @@ public class LawnMower {
             }
 
             if (zombie.getPosition().getY() == this.row) {
+                if (zombie.getDefinition() != null
+                        && zombie.getDefinition().getType() == ZombieType.BOSS) {
+                    continue;
+                }
+
                 zombie.die();
                 killedZombies.add(zombie);
             }

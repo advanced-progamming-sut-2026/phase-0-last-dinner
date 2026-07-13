@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import model.Plant;
+import model.plant.PlantTag;
 import model.zombie.Zombie;
 
 import java.util.ArrayList;
@@ -25,7 +26,47 @@ public class Tile {
     }
 
     public boolean canPlacePlant(Plant plant) {
-        return plant != null;
+        if (plant == null) {
+            return false;
+        }
+
+        String name = plant.getName() == null ? "" : plant.getName().toLowerCase(java.util.Locale.ROOT);
+
+        if (name.contains("grave buster")) {
+            return this.terrainType == TerrainType.GRAVE;
+        }
+
+        if (name.contains("hot potato")) {
+            return this.terrainType == TerrainType.FROZEN;
+        }
+
+        if (this.terrainType == TerrainType.CRATER) {
+            return false;
+        }
+
+        if (this.terrainType == TerrainType.GRAVE) {
+            return false;
+        }
+
+        if (this.terrainType == TerrainType.FROZEN) {
+            return false;
+        }
+
+        if (this.terrainType == TerrainType.WATER) {
+            if (name.contains("lily pad") || name.contains("tangle kelp") || name.contains("sea-shroom")) {
+                return true;
+            }
+
+            for (Plant existingPlant : this.plants) {
+                if (existingPlant != null && "lily pad".equalsIgnoreCase(existingPlant.getName())) {
+                    return true;
+                }
+            }
+
+            return plant.getTags() != null && plant.getTags().contains(PlantTag.WATER);
+        }
+
+        return !name.contains("lily pad") && !name.contains("tangle kelp") && !name.contains("sea-shroom");
     }
 
     public void addPlant(Plant plant) {

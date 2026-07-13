@@ -5,13 +5,16 @@ import model.mechanism.Board;
 import model.plant.PlantUpgradeEffect;
 import model.plant.PlantUpgradeSpecialEffect;
 
+import java.util.Random;
+
 public class SunProducerBehavior implements PlantBehavior, OnPlantingBehavior {
     private int sunAmount;
     private long productionIntervalTicks;
     private long ticksSinceLastProduction;
     private SunProductionMode productionMode;
     private boolean doubleSunChance;
-    private boolean doubleSunTurn;
+    private long ageTicks;
+    private final Random random = new Random();
 
     public SunProducerBehavior(int sunAmount, long productionIntervalTicks) {
         this.sunAmount = sunAmount;
@@ -31,9 +34,16 @@ public class SunProducerBehavior implements PlantBehavior, OnPlantingBehavior {
             return;
         }
 
+        this.ageTicks++;
+
+        if (plant == null || board == null || board.getSunSystem() == null
+                || board.getSunSystem().hasUncollectedSunFrom(plant)) {
+            return;
+        }
+
         this.ticksSinceLastProduction++;
 
-        if (this.ticksSinceLastProduction >= this.productionIntervalTicks) {
+        if (this.ticksSinceLastProduction >= Math.max(1, this.productionIntervalTicks)) {
             this.activate(plant, board);
             this.ticksSinceLastProduction = 0;
         }
@@ -45,27 +55,42 @@ public class SunProducerBehavior implements PlantBehavior, OnPlantingBehavior {
             return;
         }
 
-        int producedSun = this.sunAmount;
+        int producedSun = this.currentSunAmount();
 
-        if (this.doubleSunChance) {
-            this.doubleSunTurn = !this.doubleSunTurn;
-
-            if (this.doubleSunTurn) {
-                producedSun *= 2;
-            }
+        if (this.doubleSunChance && this.random.nextBoolean()) {
+            producedSun *= 2;
         }
 
         if (this.productionMode == SunProductionMode.INSTANT_ON_PLANTING) {
             board.getSunSystem().addSun(producedSun);
+            board.removePlant(plant);
             return;
         }
 
-        board.getSunSystem().addSun(producedSun);
+        board.getSunSystem().addPlantSun(plant, producedSun);
     }
 
     @Override
     public boolean shouldActivateOnPlanting() {
         return this.productionMode == SunProductionMode.INSTANT_ON_PLANTING;
+    }
+
+    public void growToMaximum() {
+        if (this.productionMode == SunProductionMode.RAMPING) {
+            this.ageTicks = Math.max(this.ageTicks, 720);
+        }
+    }
+
+    @Override
+    public PlantBehavior copy() {
+        SunProducerBehavior copy = new SunProducerBehavior(
+                this.sunAmount,
+                this.productionIntervalTicks,
+                this.productionMode
+        );
+        copy.doubleSunChance = this.doubleSunChance;
+        copy.ageTicks = this.ageTicks;
+        return copy;
     }
 
     @Override
@@ -80,5 +105,21 @@ public class SunProducerBehavior implements PlantBehavior, OnPlantingBehavior {
         if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.DOUBLE_SUN_CHANCE)) {
             this.doubleSunChance = true;
         }
+    }
+
+    private int currentSunAmount() {
+        if (this.productionMode != SunProductionMode.RAMPING) {
+            return this.sunAmount;
+        }
+
+        if (this.ageTicks >= 720) {
+            return this.sunAmount * 3;
+        }
+
+        if (this.ageTicks >= 240) {
+            return this.sunAmount * 2;
+        }
+
+        return this.sunAmount;
     }
 }

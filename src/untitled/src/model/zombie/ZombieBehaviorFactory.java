@@ -1,23 +1,31 @@
 package model.zombie;
 
+import model.plant.ProjectileType;
 import model.zombie.behavior.AmphibiousBehavior;
-import model.zombie.behavior.AuraBuffBehavior;
 import model.zombie.behavior.BasicZombieBehavior;
 import model.zombie.behavior.BlockPusherBehavior;
-import model.zombie.behavior.BossBehavior;
+import model.zombie.behavior.ChargingZombieBehavior;
+import model.zombie.behavior.ColdResistantBehavior;
 import model.zombie.behavior.CompositeZombieBehavior;
+import model.zombie.behavior.CrystalSkullBehavior;
+import model.zombie.behavior.FishermanBehavior;
 import model.zombie.behavior.FlyingBehavior;
 import model.zombie.behavior.GargantuarBehavior;
 import model.zombie.behavior.GraveSummonerBehavior;
-import model.zombie.behavior.InstantPlantDestroyerBehavior;
+import model.zombie.behavior.KingBehavior;
+import model.zombie.behavior.OctopusThrowerBehavior;
 import model.zombie.behavior.PhaseChangeBehavior;
+import model.zombie.behavior.PianoBehavior;
 import model.zombie.behavior.ProjectileReflectorBehavior;
-import model.zombie.behavior.RangedAbilityType;
-import model.zombie.behavior.RangedZombieBehavior;
+import model.zombie.behavior.ProjectileShieldBehavior;
+import model.zombie.behavior.ProspectorBehavior;
+import model.zombie.behavior.SnowballBehavior;
 import model.zombie.behavior.SunStealerBehavior;
-import model.zombie.behavior.UnitReleaserBehavior;
+import model.zombie.behavior.TorchBearerBehavior;
+import model.zombie.behavior.WizardBehavior;
 import model.zombie.behavior.ZombieBehavior;
 
+import java.util.ArrayList;
 import java.util.Locale;
 
 public class ZombieBehaviorFactory {
@@ -40,175 +48,131 @@ public class ZombieBehaviorFactory {
             return new BasicZombieBehavior();
         }
 
-        CompositeZombieBehavior composite = new CompositeZombieBehavior();
-        String alias = this.normalize(definition.getAlias());
-        String key = this.normalize(definition.getAlias() + " " + definition.getDisplayName() + " " + definition.getDescription());
+        CompositeZombieBehavior behavior = new CompositeZombieBehavior();
+        String alias = normalize(definition.getAlias());
 
-        composite.addBehavior(new BasicZombieBehavior(definition.getEatDamagePerSecond()));
-
-        if (definition.getType() == ZombieType.BOSS || key.contains("boss") || key.contains("zombot")) {
-            composite.addBehavior(new BossBehavior(new java.util.ArrayList<>()));
+        switch (alias) {
+            case "zombiegargantuar":
+                behavior.addBehavior(new GargantuarBehavior(
+                        this.findImpDefinition(definition),
+                        this.getZombieFactory(),
+                        0.5
+                ));
+                break;
+            case "zombiera":
+                behavior.addBehavior(new SunStealerBehavior(25, 10, 250, 1.0, null));
+                break;
+            case "zombieexplorer":
+                behavior.addBehavior(new TorchBearerBehavior());
+                break;
+            case "zombietombraiser":
+                behavior.addBehavior(new GraveSummonerBehavior(2, 60));
+                break;
+            case "zombieiceagedodo":
+                behavior.addBehavior(new ColdResistantBehavior());
+                behavior.addBehavior(new FlyingBehavior(true));
+                break;
+            case "zombieiceagehunter":
+                behavior.addBehavior(new ColdResistantBehavior());
+                behavior.addBehavior(new SnowballBehavior(4, 10));
+                break;
+            case "zombieiceagetroglobite":
+                behavior.addBehavior(new ColdResistantBehavior());
+                behavior.addBehavior(new BlockPusherBehavior(1200, 3));
+                break;
+            case "zombiebeachfisherman":
+                behavior.addBehavior(new FishermanBehavior(25));
+                break;
+            case "zombiebeachoctopus":
+                behavior.addBehavior(new OctopusThrowerBehavior(30));
+                break;
+            case "zombiebeachsnorkel":
+                behavior.addBehavior(new AmphibiousBehavior(
+                        definition.getSpeed(),
+                        definition.getSpeed(),
+                        false
+                ));
+                break;
+            case "zombiedarkjuggler":
+                behavior.addBehavior(new ProjectileReflectorBehavior(false));
+                break;
+            case "zombiewizard":
+                behavior.addBehavior(new WizardBehavior(30));
+                break;
+            case "zombiedarkking":
+                behavior.addBehavior(new KingBehavior(25));
+                break;
+            case "zombiedarkimpdragon":
+                behavior.addBehavior(new ProjectileShieldBehavior(ProjectileType.FIRE));
+                break;
+            case "zombiemodernallstar":
+                behavior.addBehavior(new ChargingZombieBehavior(2.0, 0.5));
+                break;
+            case "zombielostcityjane":
+                behavior.addBehavior(new ProjectileShieldBehavior(ProjectileType.LOBBED));
+                break;
+            case "zombiecrystalskull":
+                behavior.addBehavior(new CrystalSkullBehavior(4, 50, 50));
+                break;
+            case "zombieprospector":
+                behavior.addBehavior(new ProspectorBehavior(100));
+                break;
+            case "zombiepiano":
+                behavior.addBehavior(new PianoBehavior(30));
+                break;
+            case "zombienewspaper":
+                behavior.addBehavior(new PhaseChangeBehavior(ArmorType.NEWSPAPER, 4.0, 4.0));
+                break;
+            case "zombiearcade":
+                behavior.addBehavior(new BlockPusherBehavior(1100, 1));
+                break;
+            default:
+                break;
         }
 
-        if (definition.getType() == ZombieType.GARGANTUAR || key.contains("gargantuar")) {
-            composite.addBehavior(new GargantuarBehavior(
-                    this.findOrCreateImpDefinition(definition),
-                    this.getZombieFactory(),
-                    0.5
-            ));
-        }
-
-        if (definition.getType() == ZombieType.ANIMAL || key.contains("flying")
-                || key.contains("balloon") || key.contains("seagull") || key.contains("parrot")
-                || alias.contains("dodo")) {
-            composite.addBehavior(new FlyingBehavior(true));
-        }
-
-        if (key.contains("water") || key.contains("aqua") || key.contains("surfer")
-                || key.contains("snorkel") || key.contains("octo") || alias.contains("fastswimmer")) {
-            composite.addBehavior(new AmphibiousBehavior(definition.getSpeed() * 1.2, definition.getSpeed(), false));
-        }
-
-        if (key.contains("jester") || key.contains("reflect") || alias.contains("juggler")) {
-            composite.addBehavior(new ProjectileReflectorBehavior(true));
-        }
-
-        if (key.contains("wizard") || key.contains("mage") || key.contains("magic")) {
-            composite.addBehavior(new RangedZombieBehavior(RangedAbilityType.MAGIC_TRANSFORM, 5, 30));
-        }
-
-        if (key.contains("fisher") || key.contains("hook")) {
-            composite.addBehavior(new RangedZombieBehavior(RangedAbilityType.FISHING_HOOK, 5, 30));
-        }
-
-        if (key.contains("octo")) {
-            composite.addBehavior(new RangedZombieBehavior(RangedAbilityType.OCTOPUS, 5, 30));
-        }
-
-        if (key.contains("snow") || key.contains("yeti") || alias.contains("hunter")) {
-            composite.addBehavior(new RangedZombieBehavior(RangedAbilityType.SNOWBALL, 5, 30));
-        }
-
-        if (this.isRaZombie(alias) || (key.contains("sun") && (key.contains("steal") || key.contains("thief") || key.contains("producer")))) {
-            composite.addBehavior(new SunStealerBehavior(25, null));
-        }
-
-        if (key.contains("grave") || key.contains("tomb") || key.contains("summon") || key.contains("necrom")) {
-            composite.addBehavior(new GraveSummonerBehavior(1, 50));
-        }
-
-        if (key.contains("king") || key.contains("queen") || key.contains("aura")) {
-            composite.addBehavior(new AuraBuffBehavior(1.2, 1.0, 2));
-        }
-
-        if (key.contains("newspaper") || key.contains("phase") || alias.contains("pharaoh") || alias.contains("surfer")) {
-            composite.addBehavior(new PhaseChangeBehavior(
-                    new BasicZombieBehavior(definition.getEatDamagePerSecond()),
-                    new BasicZombieBehavior(definition.getEatDamagePerSecond()),
-                    0.5,
-                    1.5
-            ));
-        }
-
-        if (key.contains("block") || key.contains("push") || alias.contains("troglobite") || alias.contains("surfer")) {
-            composite.addBehavior(new BlockPusherBehavior(1000));
-        }
-
-        if (key.contains("destroy") || key.contains("instant") || alias.contains("explorer")) {
-            composite.addBehavior(new InstantPlantDestroyerBehavior(new java.util.HashSet<String>()));
-        }
-
-        if (alias.contains("camel")) {
-            composite.addBehavior(new model.zombie.behavior.SegmentedGroupBehavior(new java.util.ArrayList<Zombie>()));
-        }
-
-        if (alias.contains("weaselhoarder")) {
-            composite.addBehavior(new UnitReleaserBehavior(
-                    this.findOrCreateRelatedDefinition(
-                            "ZombieWeaselDefault",
-                            "Weasel",
-                            ZombieType.ANIMAL,
-                            definition.getChapter(),
-                            75,
-                            50,
-                            0.45,
-                            50
-                    ),
-                    this.getZombieFactory(),
-                    4,
-                    0.5
-            ));
-        }
-
-        return composite.isEmpty() ? new BasicZombieBehavior(definition.getEatDamagePerSecond()) : composite;
+        behavior.addBehavior(new BasicZombieBehavior(definition.getEatDamagePerSecond()));
+        return behavior;
     }
 
-    private String normalize(String text) {
-        return text == null ? "" : text.toLowerCase(Locale.ROOT);
-    }
-
-    private boolean isRaZombie(String alias) {
-        return alias != null && alias.contains("zombiera");
-    }
-
-    private ZombieFactory getZombieFactory() {
-        if (this.zombieFactory == null) {
-            this.zombieFactory = new ZombieFactory(new ZombieBehaviorFactory(this.definitionRepository), new ZombieArmorFactory());
-        }
-
-        return this.zombieFactory;
-    }
-
-    private ZombieDefinition findOrCreateImpDefinition(ZombieDefinition parentDefinition) {
-        String parentAlias = parentDefinition == null ? "" : this.normalize(parentDefinition.getAlias());
-        String impAlias = "ZombieTutorialImpDefault";
-
-        if (parentAlias.contains("egypt")) {
-            impAlias = "ZombieEgyptImpDefault";
-        } else if (parentAlias.contains("iceage")) {
-            impAlias = "ZombieIceageImpDefault";
-        } else if (parentAlias.contains("beach")) {
-            impAlias = "ZombieBeachImpDefault";
-        } else if (parentAlias.contains("dark")) {
-            impAlias = "ZombieDarkImpDefault";
-        }
-
-        ZombieChapter chapter = parentDefinition == null ? ZombieChapter.ALL_CHAPTERS : parentDefinition.getChapter();
-        return this.findOrCreateRelatedDefinition(impAlias, "Imp", ZombieType.IMP, chapter, 75, 50, 0.35, 50);
-    }
-
-    private ZombieDefinition findOrCreateRelatedDefinition(
-            String alias,
-            String displayName,
-            ZombieType type,
-            ZombieChapter chapter,
-            int hitpoints,
-            int eatDamagePerSecond,
-            double speed,
-            int wavePointCost
-    ) {
+    private ZombieDefinition findImpDefinition(ZombieDefinition gargantuarDefinition) {
         if (this.definitionRepository != null) {
-            ZombieDefinition definition = this.definitionRepository.findByAlias(alias);
-
+            ZombieDefinition definition = this.definitionRepository.findByAlias("ZombieImp");
             if (definition != null) {
                 return definition;
             }
         }
 
+        ZombieChapter chapter = gargantuarDefinition == null
+                ? ZombieChapter.ALL_CHAPTERS
+                : gargantuarDefinition.getChapter();
         return new ZombieDefinition(
-                alias,
-                displayName,
-                displayName,
-                type,
+                "ZombieImp",
+                "Imp",
+                "Small and fast zombie thrown by Gargantuar",
+                ZombieType.IMP,
                 chapter == null ? ZombieChapter.ALL_CHAPTERS : chapter,
-                hitpoints,
-                eatDamagePerSecond,
-                speed,
-                wavePointCost,
+                190,
+                100,
+                0.22,
+                100,
                 1000,
                 false,
-                new java.util.ArrayList<ZombieArmorDefinition>(),
-                new java.util.ArrayList<ConditionResistance>()
+                new ArrayList<ZombieArmorDefinition>(),
+                new ArrayList<ConditionResistance>()
         );
+    }
+
+    private ZombieFactory getZombieFactory() {
+        if (this.zombieFactory == null) {
+            this.zombieFactory = new ZombieFactory(
+                    new ZombieBehaviorFactory(this.definitionRepository),
+                    new ZombieArmorFactory()
+            );
+        }
+        return this.zombieFactory;
+    }
+
+    private static String normalize(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 }

@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.mechanism.Position;
 import model.zombie.Zombie;
 import model.zombie.ZombieDefinition;
 import model.zombie.ZombieFactory;
@@ -44,8 +45,14 @@ public class GargantuarBehavior implements ZombieBehavior {
             return null;
         }
 
-        Zombie imp = this.zombieFactory.create(this.impDefinition, zombie.getPosition());
-        board.addZombie(imp, zombie.getPosition());
+        Position gargantuarPosition = zombie.getPosition();
+        if (gargantuarPosition == null) {
+            return null;
+        }
+
+        Position landingPosition = new Position(2, gargantuarPosition.getY());
+        Zombie imp = this.zombieFactory.create(this.impDefinition, landingPosition);
+        board.addZombie(imp, landingPosition);
         this.impThrown = true;
         return imp;
     }

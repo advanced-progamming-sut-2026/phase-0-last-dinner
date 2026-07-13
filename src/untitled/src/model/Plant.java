@@ -34,6 +34,7 @@ public class Plant implements Tickable {
     private boolean disabled;
     private boolean transformed;
     private long lifespanTicks;
+    private long fullLifespanTicks;
     private boolean upgradeDeathEffectUsed;
     @Setter
     private Board board;
@@ -94,6 +95,7 @@ public class Plant implements Tickable {
         this.plantFoodBehavior = plantFoodBehavior;
         this.upgradeData = upgradeData;
         this.lifespanTicks = Math.max(0, lifespanTicks);
+        this.fullLifespanTicks = this.lifespanTicks;
     }
 
     @Override
@@ -120,13 +122,17 @@ public class Plant implements Tickable {
     }
 
     public void receivePlantFood() {
-        if (this.isDisabled()) {
+        if (!this.canReceivePlantFood()) {
             return;
         }
 
-        if (this.plantFoodBehavior != null) {
-            this.plantFoodBehavior.activate(this, this.board);
-        }
+        this.plantFoodBehavior.activate(this, this.board);
+    }
+
+    public boolean canReceivePlantFood() {
+        return !this.isDisabled()
+                && this.plantFoodBehavior != null
+                && this.plantFoodBehavior.canActivate();
     }
 
     public boolean upgrade() {
@@ -150,10 +156,19 @@ public class Plant implements Tickable {
             return;
         }
 
+        boolean wasAlive = !this.isDead();
         this.health -= amount;
+
+        if (this.behavior != null) {
+            this.behavior.onDamaged(this, this.board, amount);
+        }
 
         if (this.health < 0) {
             this.health = 0;
+        }
+
+        if (wasAlive && this.isDead() && this.behavior != null) {
+            this.behavior.onDeath(this, this.board);
         }
     }
 
@@ -196,13 +211,14 @@ public class Plant implements Tickable {
                 this.actionIntervalSeconds,
                 this.categories,
                 this.tags,
-                this.behavior,
-                this.plantFoodBehavior,
+                this.behavior == null ? null : this.behavior.copy(),
+                this.plantFoodBehavior == null ? null : this.plantFoodBehavior.copy(),
                 this.upgradeData == null ? null : this.upgradeData.copy(),
                 this.lifespanTicks
         );
 
         copy.health = this.health;
+        copy.fullLifespanTicks = this.fullLifespanTicks;
         copy.setPosition(position);
         copy.setBoard(this.board);
         return copy;
@@ -220,6 +236,10 @@ public class Plant implements Tickable {
     public void enable() {
         this.disabled = false;
         this.transformed = false;
+    }
+
+    public void resetLifespan() {
+        this.lifespanTicks = this.fullLifespanTicks;
     }
 
     public boolean isDisabled() {
@@ -253,6 +273,7 @@ public class Plant implements Tickable {
         this.sunCost = Math.max(0, this.sunCost - effect.getSunCostReduction());
         this.cooldownTicks = Math.max(1, this.cooldownTicks - effect.getCooldownReductionTicks());
         this.lifespanTicks += effect.getLifespanBonusTicks();
+        this.fullLifespanTicks += effect.getLifespanBonusTicks();
         this.actionIntervalSeconds = Math.max(
                 0.1,
                 effect.upgradeInterval(Math.round(this.actionIntervalSeconds * 10)) / 10.0

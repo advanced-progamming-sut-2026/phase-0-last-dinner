@@ -2,8 +2,8 @@ package model.mechanism;
 
 import model.Plant;
 import model.plant.PlantUpgradeSpecialEffect;
-import model.plant.PlantTag;
 import model.plant.behavior.OnPlantingBehavior;
+import model.plant.behavior.ModifierBehavior;
 
 public class PlantingSystem {
     private Board board;
@@ -100,16 +100,48 @@ public class PlantingSystem {
             return true;
         }
 
-        Plant topPlant = tile.getPlants().get(tile.getPlants().size() - 1);
+        String newName = this.normalizedName(plant);
 
-        // Stack faghat vaghti mojaze ke yeki az do plant stack-support bashe.
-        return this.hasStackTag(topPlant) || this.hasStackTag(plant);
+        if ("pea pod".equals(newName)) {
+            if (tile.getPlants().size() >= 5) {
+                return false;
+            }
+
+            for (Plant existingPlant : tile.getPlants()) {
+                if (!"pea pod".equals(this.normalizedName(existingPlant))) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        for (Plant existingPlant : tile.getPlants()) {
+            if ("pea pod".equals(this.normalizedName(existingPlant))) {
+                return false;
+            }
+        }
+
+        Plant topPlant = tile.getPlants().get(tile.getPlants().size() - 1);
+        String topName = this.normalizedName(topPlant);
+
+        if ("lily pad".equals(topName)) {
+            return !"lily pad".equals(newName);
+        }
+
+        if ("pumpkin".equals(newName)) {
+            return tile.getPlants().stream().noneMatch(
+                    existingPlant -> "pumpkin".equals(this.normalizedName(existingPlant))
+            );
+        }
+
+        return false;
     }
 
-    private boolean hasStackTag(Plant plant) {
-        return plant != null
-                && plant.getTags() != null
-                && plant.getTags().contains(PlantTag.STACK);
+    private String normalizedName(Plant plant) {
+        return plant == null || plant.getName() == null
+                ? ""
+                : plant.getName().trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private void spendSun(Plant plant) {
@@ -135,7 +167,15 @@ public class PlantingSystem {
 
         if (plant.hasUpgradeSpecialEffect(PlantUpgradeSpecialEffect.RESET_FAMILY_COOLDOWNS)
                 && this.cooldownManager != null) {
-            this.cooldownManager.resetAllCooldowns();
+            if (plant.getBehavior() instanceof ModifierBehavior && this.board != null) {
+                ModifierBehavior mintBehavior = (ModifierBehavior) plant.getBehavior();
+
+                for (Plant familyPlant : this.board.getAllPlants()) {
+                    if (familyPlant != plant && mintBehavior.isSameFamily(familyPlant)) {
+                        this.cooldownManager.resetCooldown(familyPlant);
+                    }
+                }
+            }
         }
     }
 }

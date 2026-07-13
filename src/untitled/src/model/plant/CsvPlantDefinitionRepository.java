@@ -2,7 +2,11 @@ package model.plant;
 
 import lombok.Getter;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -17,32 +21,81 @@ import java.util.Set;
 public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
     @Getter
     private final Path sourceFile;
+    @Getter
+    private final String sourceDescription;
 
     public CsvPlantDefinitionRepository(Path sourceFile) throws IOException {
         super(loadDefinitions(sourceFile));
         this.sourceFile = sourceFile;
+        this.sourceDescription = sourceFile.toString();
+    }
+
+    public CsvPlantDefinitionRepository(Reader sourceReader) throws IOException {
+        this(sourceReader, "CSV reader");
+    }
+
+    private CsvPlantDefinitionRepository(Reader sourceReader, String sourceDescription) throws IOException {
+        super(loadDefinitions(sourceReader));
+        this.sourceFile = null;
+        this.sourceDescription = sourceDescription;
+    }
+
+    public static CsvPlantDefinitionRepository fromClasspath(String resourceName) throws IOException {
+        String resourcePath = normalizeResourcePath(resourceName);
+        InputStream input = CsvPlantDefinitionRepository.class.getClassLoader().getResourceAsStream(resourcePath);
+
+        if (input == null) {
+            throw new IOException("Plant definitions resource not found on classpath: " + resourcePath);
+        }
+
+        try (Reader reader = new InputStreamReader(input, StandardCharsets.UTF_8)) {
+            return new CsvPlantDefinitionRepository(reader, "classpath:" + resourcePath);
+        }
     }
 
     public static List<PlantDefinition> loadDefinitions(Path sourceFile) throws IOException {
-        List<String> lines = Files.readAllLines(sourceFile, StandardCharsets.UTF_8);
-        List<PlantDefinition> definitions = new ArrayList<>();
-
-        if (lines.isEmpty()) {
-            return definitions;
+        if (sourceFile == null) {
+            throw new IllegalArgumentException("Plant definitions path must not be null");
         }
 
-        List<String> headers = parseCsvLine(stripBom(lines.get(0)));
+        try (Reader reader = Files.newBufferedReader(sourceFile, StandardCharsets.UTF_8)) {
+            return loadDefinitions(reader);
+        }
+    }
+
+    public static List<PlantDefinition> loadDefinitions(Reader sourceReader) throws IOException {
+        if (sourceReader == null) {
+            throw new IllegalArgumentException("Plant definitions reader must not be null");
+        }
+
+        BufferedReader reader = sourceReader instanceof BufferedReader
+                ? (BufferedReader) sourceReader
+                : new BufferedReader(sourceReader);
+        List<PlantDefinition> definitions = new ArrayList<>();
+        String headerLine = reader.readLine();
+
+        if (headerLine == null) {
+            throw new IllegalArgumentException("Plant definitions CSV is empty");
+        }
+
+        List<String> headers = parseCsvLine(stripBom(headerLine));
         Map<String, Integer> headerIndexes = indexHeaders(headers);
+        String line;
+        int lineNumber = 1;
 
-        for (int i = 1; i < lines.size(); i++) {
-            String line = lines.get(i);
+        while ((line = reader.readLine()) != null) {
+            lineNumber++;
 
-            if (line == null || line.trim().isEmpty()) {
+            if (line.trim().isEmpty()) {
                 continue;
             }
 
             List<String> values = parseCsvLine(line);
-            definitions.add(createDefinition(values, headerIndexes, i + 1));
+            definitions.add(createDefinition(values, headerIndexes, lineNumber));
+        }
+
+        if (definitions.isEmpty()) {
+            throw new IllegalArgumentException("Plant definitions CSV contains no plant rows");
         }
 
         return definitions;
@@ -303,5 +356,19 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
                 .replace("-", "")
                 .replace("_", "")
                 .replace(" ", "");
+    }
+
+    private static String normalizeResourcePath(String resourceName) {
+        if (resourceName == null || resourceName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Plant definitions resource name must not be blank");
+        }
+
+        String path = resourceName.trim().replace('\\', '/');
+
+        while (path.startsWith("/")) {
+            path = path.substring(1);
+        }
+
+        return path;
     }
 }

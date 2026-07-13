@@ -6,6 +6,7 @@ import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.Position;
 import model.mechanism.Tickable;
+import model.plant.Projectile;
 import model.zombie.behavior.ZombieBehavior;
 
 import java.util.ArrayList;
@@ -14,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 
 @Getter
-@Setter
 public class Zombie implements Tickable {
     private ZombieDefinition definition;
     @Setter
@@ -31,8 +31,10 @@ public class Zombie implements Tickable {
     private ZombieBehavior behavior;
     @Setter
     private Board board;
-    private double movementProgress;
+    private double exactX;
     private int poisonDamagePerTick;
+    private boolean deathProcessed;
+    private boolean deathBehaviorCalled;
 
     public Zombie(
             ZombieDefinition definition,
@@ -44,16 +46,20 @@ public class Zombie implements Tickable {
             ZombieBehavior behavior
     ) {
         this.definition = definition;
-        this.position = position;
+        this.setPosition(position);
         this.health = health;
         this.currentSpeed = currentSpeed;
-        this.armors = armors;
-        this.conditions = conditions;
+        this.armors = armors == null ? new ArrayList<ZombieArmor>() : armors;
+        this.conditions = conditions == null ? new ArrayList<ZombieCondition>() : conditions;
         this.behavior = behavior;
     }
 
     @Override
     public void onTick() {
+        if (this.isDead()) {
+            return;
+        }
+
         this.tickConditions();
 
         if (this.behavior != null) {
@@ -62,12 +68,16 @@ public class Zombie implements Tickable {
     }
 
     public void move() {
-        if (this.dead || this.position == null) {
+        if (this.dead || this.position == null || this.attacking) {
             return;
         }
 
         if (this.hasCondition(ZombieCondition.FROZEN) || this.hasCondition(ZombieCondition.STUNNED)
                 || this.hasCondition(ZombieCondition.TRANSFORMED)) {
+            return;
+        }
+
+        if (this.behavior != null && !this.behavior.canMove(this, this.board)) {
             return;
         }
 
@@ -77,33 +87,38 @@ public class Zombie implements Tickable {
             speed = speed / 2;
         }
 
-        this.movementProgress += speed;
+        int direction = this.behavior == null
+                ? (this.hasCondition(ZombieCondition.HYPNOTIZED) ? 1 : -1)
+                : this.behavior.getMovementDirection(this);
+        this.exactX += direction * speed;
 
-        if (this.movementProgress < 1) {
+        if (this.exactX < 0) {
+            if (this.board != null) {
+                this.board.handleZombieAtHouse(this);
+            }
             return;
         }
 
-        int steps = (int) this.movementProgress;
-        this.movementProgress -= steps;
-
-        for (int i = 0; i < steps && !this.dead; i++) {
-            int direction = this.hasCondition(ZombieCondition.HYPNOTIZED) ? 1 : -1;
-            Position destination = new Position(this.position.getX() + direction, this.position.getY());
-
-            if (this.board != null && this.board.moveZombie(this, destination)) {
-                continue;
-            }
-
-            if (this.board == null) {
-                this.position = destination;
-            } else if (destination.getX() < 0) {
+        if (this.exactX > 8) {
+            if (this.hasCondition(ZombieCondition.HYPNOTIZED)) {
                 this.die();
+            }
+            return;
+        }
+
+        Position destination = new Position((int) Math.round(this.exactX), this.position.getY());
+
+        if (destination.getX() != this.position.getX()) {
+            if (this.board != null) {
+                this.board.moveZombie(this, destination);
+            } else {
+                this.position = destination;
             }
         }
     }
 
     public void attack(Plant plant) {
-        if (this.behavior != null) {
+        if (this.behavior != null && this.behavior.canAttackPlant(this, plant, this.board)) {
             this.behavior.attack(this, plant, this.board);
         }
     }
@@ -122,15 +137,21 @@ public class Zombie implements Tickable {
         ZombieArmor activeArmor = this.getActiveArmor();
 
         if (activeArmor != null && !activeArmor.isDestroyed()) {
-            activeArmor.takeDamage(amount);
-            return;
+            int remainingDamage = activeArmor.absorbDamage(amount);
+
+            if (remainingDamage <= 0) {
+                return;
+            }
+
+            amount = remainingDamage;
         }
 
-        this.health -= amount;
+        this.applyDamageToHealth(amount);
+    }
 
-        if (this.health <= 0) {
-            this.health = 0;
-            this.die();
+    public void takeDirectDamage(int amount) {
+        if (amount > 0 && !this.dead) {
+            this.applyDamageToHealth(amount);
         }
     }
 
@@ -142,15 +163,36 @@ public class Zombie implements Tickable {
 
     public void addPoisonDamagePerTick(int amount) {
         if (amount > 0 && !this.dead) {
-            this.poisonDamagePerTick += amount;
+            this.poisonDamagePerTick = Math.max(this.poisonDamagePerTick, amount);
         }
     }
 
     public void die() {
-        this.dead=true;
+        if (this.dead) {
+            return;
+        }
+
+        this.dead = true;
+
+        if (!this.deathBehaviorCalled && this.behavior != null) {
+            this.deathBehaviorCalled = true;
+            this.behavior.onDeath(this, this.board);
+        }
     }
 
     public void addCondition(ZombieCondition condition) {
+        if (condition == null || this.dead) {
+            return;
+        }
+
+        if (!this.acceptsCondition(condition, null)) {
+            return;
+        }
+
+        this.addConditionInternal(condition);
+    }
+
+    private void addConditionInternal(ZombieCondition condition) {
         if (condition == null || this.dead) {
             return;
         }
@@ -165,9 +207,17 @@ public class Zombie implements Tickable {
     }
 
     public void addCondition(ZombieCondition condition, long durationTicks) {
-        this.addCondition(condition);
+        this.addCondition(condition, durationTicks, null);
+    }
 
-        if (condition == null || durationTicks <= 0 || this.dead) {
+    public void addCondition(ZombieCondition condition, long durationTicks, Projectile projectile) {
+        if (!this.acceptsCondition(condition, projectile)) {
+            return;
+        }
+
+        this.addConditionInternal(condition);
+
+        if (condition == null || durationTicks <= 0 || this.dead || !this.hasCondition(condition)) {
             return;
         }
 
@@ -197,6 +247,32 @@ public class Zombie implements Tickable {
         if (this.conditionRemainingTicks != null) {
             this.conditionRemainingTicks.remove(condition);
         }
+
+        if (condition == ZombieCondition.POISONED) {
+            this.poisonDamagePerTick = 0;
+        }
+    }
+
+    public boolean acceptsCondition(ZombieCondition condition, Projectile projectile) {
+        if (condition == null) {
+            return false;
+        }
+
+        if ((condition == ZombieCondition.CHILLED || condition == ZombieCondition.FROZEN)
+                && this.definition != null
+                && this.definition.getChapter() == ZombieChapter.FROSTBITE_CAVES) {
+            return false;
+        }
+
+        if (this.definition != null && this.definition.getConditionResistances() != null) {
+            for (ConditionResistance resistance : this.definition.getConditionResistances()) {
+                if (resistance != null && resistance.getCondition() == condition && resistance.isImmune()) {
+                    return false;
+                }
+            }
+        }
+
+        return this.behavior == null || this.behavior.acceptsCondition(this, condition, projectile);
     }
 
     public void dropActiveArmor() {
@@ -221,6 +297,12 @@ public class Zombie implements Tickable {
         return null;
     }
 
+    public void addArmor(ZombieArmor armor) {
+        if (armor != null) {
+            this.armors.add(armor);
+        }
+    }
+
     public <T extends ZombieBehavior> T findBehavior(Class<T> behaviorType) {
         if (behaviorType == null || this.behavior == null) {
             return null;
@@ -239,6 +321,52 @@ public class Zombie implements Tickable {
 
     public boolean isDead() {
         return this.dead || this.health <= 0;
+    }
+
+    public boolean markDeathProcessed() {
+        if (this.deathProcessed) {
+            return false;
+        }
+
+        this.deathProcessed = true;
+        return true;
+    }
+
+    public void setPosition(Position position) {
+        this.position = position;
+
+        if (position != null) {
+            this.exactX = position.getX();
+        }
+    }
+
+    public void setTilePosition(Position position) {
+        this.position = position;
+    }
+
+    public void setCurrentSpeed(double currentSpeed) {
+        this.currentSpeed = Math.max(0, currentSpeed);
+    }
+
+    public void setAttacking(boolean attacking) {
+        this.attacking = attacking;
+    }
+
+    public void setGlowing(boolean glowing) {
+        this.glowing = glowing;
+    }
+
+    public void setBoard(Board board) {
+        this.board = board;
+    }
+
+    private void applyDamageToHealth(int amount) {
+        this.health -= amount;
+
+        if (this.health <= 0) {
+            this.health = 0;
+            this.die();
+        }
     }
 
     private void tickConditions() {

@@ -3,7 +3,9 @@ package model.zombie.behavior;
 import model.Plant;
 import model.mechanism.Board;
 import model.plant.PlantUpgradeEffect;
+import model.plant.Projectile;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,5 +71,73 @@ public class CompositeZombieBehavior implements ZombieBehavior {
         for (ZombieBehavior behavior : this.behaviors) {
             behavior.applyPlantUpgrade(effect);
         }
+    }
+
+    @Override
+    public void onDeath(Zombie zombie, Board board) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            behavior.onDeath(zombie, board);
+        }
+    }
+
+    @Override
+    public boolean canMove(Zombie zombie, Board board) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (!behavior.canMove(zombie, board)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean canAttackPlant(Zombie zombie, Plant plant, Board board) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (!behavior.canAttackPlant(zombie, plant, board)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean canBeHitBy(Zombie zombie, Projectile projectile) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (!behavior.canBeHitBy(zombie, projectile)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public boolean onProjectileHit(Zombie zombie, Projectile projectile, Board board) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (behavior.onProjectileHit(zombie, projectile, board)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean acceptsCondition(Zombie zombie, ZombieCondition condition, Projectile projectile) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            if (!behavior.acceptsCondition(zombie, condition, projectile)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int getMovementDirection(Zombie zombie) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            int direction = behavior.getMovementDirection(zombie);
+            if (direction != -1) {
+                return direction;
+            }
+        }
+        return -1;
     }
 }

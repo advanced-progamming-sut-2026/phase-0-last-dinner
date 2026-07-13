@@ -1,7 +1,6 @@
 package model.plant;
 
 import lombok.Getter;
-import lombok.Setter;
 import model.mechanism.Position;
 import model.mechanism.Tickable;
 import model.zombie.Zombie;
@@ -11,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-@Setter
 public class Projectile implements Tickable {
     private String damageExpression;
     private Position position;
@@ -27,6 +25,16 @@ public class Projectile implements Tickable {
     private int splashRadius;
     private int maxRange;
     private List<Zombie> hitZombies;
+    private int horizontalDirection;
+    private int verticalDirection;
+    private double exactX;
+    private double exactY;
+    private double originX;
+    private double originY;
+    private double travelledDistance;
+    private long remainingTicks;
+    private boolean expired;
+    private boolean lobbed;
 
     public Projectile(
             String damageExpression,
@@ -68,10 +76,18 @@ public class Projectile implements Tickable {
         this.splashRadius = Math.max(0, splashRadius);
         this.maxRange = Math.max(0, maxRange);
         this.hitZombies = hitZombies == null ? new ArrayList<>() : hitZombies;
+        this.horizontalDirection = 1;
+        this.verticalDirection = 0;
+        this.remainingTicks = 100;
+        this.setPosition(position);
     }
 
     public Projectile copyAt(Position position) {
-        return new Projectile(
+        return this.copyAt(position, this.horizontalDirection, this.verticalDirection);
+    }
+
+    public Projectile copyAt(Position position, int horizontalDirection, int verticalDirection) {
+        Projectile copy = new Projectile(
                 this.damageExpression,
                 position,
                 this.speed,
@@ -87,10 +103,16 @@ public class Projectile implements Tickable {
                 this.maxRange,
                 new ArrayList<>()
         );
+
+        copy.horizontalDirection = normalizeDirection(horizontalDirection, 1);
+        copy.verticalDirection = normalizeDirection(verticalDirection, 0);
+        copy.lobbed = this.lobbed;
+        copy.remainingTicks = this.remainingTicks;
+        return copy;
     }
 
     public Projectile copyAtTarget(Position position, Zombie target) {
-        return new Projectile(
+        Projectile copy = new Projectile(
                 this.damageExpression,
                 position,
                 this.speed,
@@ -106,6 +128,12 @@ public class Projectile implements Tickable {
                 this.maxRange,
                 new ArrayList<>()
         );
+
+        copy.horizontalDirection = this.horizontalDirection;
+        copy.verticalDirection = this.verticalDirection;
+        copy.lobbed = this.lobbed;
+        copy.remainingTicks = this.remainingTicks;
+        return copy;
     }
 
     public void addDamageBonus(int bonusDamage) {
@@ -151,9 +179,9 @@ public class Projectile implements Tickable {
             return true;
         }
 
-        int deltaX = Math.abs(targetPosition.getX() - this.position.getX());
-        int deltaY = Math.abs(targetPosition.getY() - this.position.getY());
-        return deltaX + deltaY <= this.maxRange;
+        double deltaX = targetPosition.getX() - this.originX;
+        double deltaY = targetPosition.getY() - this.originY;
+        return Math.abs(deltaX) + Math.abs(deltaY) <= this.maxRange;
     }
 
     public boolean canHit(Zombie zombie) {
@@ -189,9 +217,119 @@ public class Projectile implements Tickable {
     }
 
     public void move() {
+        if (this.expired || this.position == null) {
+            return;
+        }
+
+        if (this.remainingTicks-- <= 0) {
+            this.expired = true;
+            return;
+        }
+
+        double deltaX = this.horizontalDirection;
+        double deltaY = this.verticalDirection;
+
+        if (this.target != null && !this.target.isDead() && this.target.getPosition() != null) {
+            deltaX = this.target.getExactX() - this.exactX;
+            deltaY = this.target.getPosition().getY() - this.exactY;
+        }
+
+        double length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+        if (length == 0) {
+            return;
+        }
+
+        double distance = Math.max(0.1, this.speed);
+        this.exactX += deltaX / length * distance;
+        this.exactY += deltaY / length * distance;
+        this.travelledDistance += distance;
+        this.position = new Position((int) Math.round(this.exactX), (int) Math.round(this.exactY));
+
+        if ((this.maxRange > 0 && this.travelledDistance > this.maxRange)
+                || this.exactX < -1 || this.exactX > 9 || this.exactY < -1 || this.exactY > 5) {
+            this.expired = true;
+        }
     }
 
     public void hit(Zombie zombie) {
         this.target = zombie;
+    }
+
+    public void expire() {
+        this.expired = true;
+    }
+
+    public void setPosition(Position position) {
+        this.position = position;
+
+        if (position != null) {
+            this.exactX = position.getX();
+            this.exactY = position.getY();
+            this.originX = position.getX();
+            this.originY = position.getY();
+        }
+    }
+
+    public void setTarget(Zombie target) {
+        this.target = target;
+    }
+
+    public void setType(ProjectileType type) {
+        this.type = type == null ? ProjectileType.NORMAL : type;
+    }
+
+    public void setDamageExpression(String damageExpression) {
+        this.damageExpression = damageExpression == null || damageExpression.trim().isEmpty()
+                ? "0"
+                : damageExpression.trim();
+    }
+
+    public void setPierceCount(int pierceCount) {
+        this.pierceCount = Math.max(0, pierceCount);
+    }
+
+    public void setBounceCount(int bounceCount) {
+        this.bounceCount = Math.max(0, bounceCount);
+    }
+
+    public void setConditionDurationTicks(long conditionDurationTicks) {
+        this.conditionDurationTicks = Math.max(0, conditionDurationTicks);
+    }
+
+    public void setPoisonDamagePerTick(int poisonDamagePerTick) {
+        this.poisonDamagePerTick = Math.max(0, poisonDamagePerTick);
+    }
+
+    public void setStunChancePercent(int stunChancePercent) {
+        this.stunChancePercent = Math.max(0, Math.min(100, stunChancePercent));
+    }
+
+    public void setSplashRadius(int splashRadius) {
+        this.splashRadius = Math.max(0, splashRadius);
+    }
+
+    public void setMaxRange(int maxRange) {
+        this.maxRange = Math.max(0, maxRange);
+    }
+
+    public void setLobbed(boolean lobbed) {
+        this.lobbed = lobbed;
+    }
+
+    public void setRemainingTicks(long remainingTicks) {
+        this.remainingTicks = Math.max(1, remainingTicks);
+    }
+
+    private static int normalizeDirection(int value, int defaultValue) {
+        if (value < 0) {
+            return -1;
+        }
+
+        if (value > 0) {
+            return 1;
+        }
+
+        return defaultValue;
     }
 }

@@ -3,7 +3,6 @@ package model.plant;
 import lombok.Getter;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Getter
@@ -27,7 +26,7 @@ public class PlantUpgradeData {
             int requiredCoins,
             List<PlantUpgradeEffect> upgradeEffects
     ) {
-        this.upgradeEffects = copyEffects(upgradeEffects);
+        this.upgradeEffects = upgradeEffects == null ? new ArrayList<>() : new ArrayList<>(upgradeEffects);
         this.maximumLevel = Math.max(1, maximumLevel);
         this.currentLevel = Math.max(1, Math.min(currentLevel, this.maximumLevel));
         this.seedPackets = Math.max(0, seedPackets);
@@ -113,11 +112,4 @@ public class PlantUpgradeData {
         return upgradeEffects == null ? 0 : upgradeEffects.size();
     }
 
-    private static List<PlantUpgradeEffect> copyEffects(List<PlantUpgradeEffect> upgradeEffects) {
-        if (upgradeEffects == null || upgradeEffects.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return Collections.unmodifiableList(new ArrayList<>(upgradeEffects));
-    }
 }

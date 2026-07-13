@@ -5,5 +5,6 @@ public enum TerrainType {
     WATER,
     GRAVE,
     FROZEN,
+    CRATER,
     NECROMANCY
 }

@@ -1,5 +1,6 @@
 package model.mechanism;
 
+import model.Plant;
 import view.GameEventListener;
 
 import java.util.ArrayList;
@@ -22,6 +23,10 @@ public class SunSystem implements Tickable {
         this.sunAmount = 50;
         this.lastSunSpawnTick = 0;
         this.random = new Random();
+
+        if (board != null) {
+            board.setSunSystem(this);
+        }
     }
 
     public void setListener(GameEventListener listener) {
@@ -78,31 +83,114 @@ public class SunSystem implements Tickable {
         return sun;
     }
 
+    public Sun addPlantSun(Plant producer, int amount) {
+        if (this.clock == null || producer == null || producer.getPosition() == null || amount <= 0) {
+            return null;
+        }
+
+        Sun sun = new Sun(
+                SunType.PLANT_PRODUCED,
+                producer.getPosition(),
+                this.clock.getCurrentTick(),
+                amount,
+                producer
+        );
+        this.suns.add(sun);
+        return sun;
+    }
+
+    public boolean hasUncollectedSunFrom(Plant producer) {
+        if (producer == null) {
+            return false;
+        }
+
+        for (Sun sun : this.suns) {
+            if (sun != null && !sun.isCollected() && sun.getProducer() == producer) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public int collectSun(Position position) {
         if (position == null) {
             return 0;
         }
 
-        for (Sun sun : this.suns) {
+        for (int i = 0; i < this.suns.size(); i++) {
+            Sun sun = this.suns.get(i);
             if (!sun.isCollected()
                     && sun.getPosition().getX() == position.getX()
                     && sun.getPosition().getY() == position.getY()) {
-                sun.collect();
-                int value = sun.getType().getValue();
-                this.sunAmount += value;
-                return value;
+                return this.collectSun(sun);
             }
         }
 
         return 0;
     }
 
+    public int collectSun(Sun sun) {
+        if (sun == null || sun.isCollected() || !this.suns.contains(sun)) {
+            return 0;
+        }
+
+        sun.collect();
+        this.suns.remove(sun);
+
+        if (sun.getType() == SunType.RADIOACTIVE && sun.isFalling()) {
+            if (this.board != null && this.board.getCombatSystem() != null) {
+                this.board.getCombatSystem().applyRadioactiveSunExplosion(sun.getPosition());
+            }
+
+            this.fireEvent("Radioactive sun exploded before reaching the ground.");
+            return 0;
+        }
+
+        this.sunAmount += sun.getValue();
+        return sun.getValue();
+    }
+
     public void addSun(int amount) {
-        this.sunAmount += amount;
+        this.sunAmount = Math.max(0, this.sunAmount + amount);
     }
 
     public int getSunAmount() {
         return this.sunAmount;
+    }
+
+    public List<Sun> getSuns() {
+        return this.suns;
+    }
+
+    public int stealGroundSun(int maximumAmount) {
+        if (maximumAmount <= 0) {
+            return 0;
+        }
+
+        int stolen = 0;
+
+        for (Sun sun : new ArrayList<>(this.suns)) {
+            if (sun == null || sun.isCollected() || sun.isFalling()) {
+                continue;
+            }
+
+            int value = sun.getValue();
+
+            if (stolen + value > maximumAmount) {
+                continue;
+            }
+
+            sun.collect();
+            this.suns.remove(sun);
+            stolen += value;
+
+            if (stolen >= maximumAmount) {
+                break;
+            }
+        }
+
+        return stolen;
     }
 
     public void cheatCode(int amount) {

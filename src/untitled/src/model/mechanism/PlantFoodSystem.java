@@ -46,6 +46,11 @@ public class PlantFoodSystem {
         }
 
         Plant plant = tile.getPlants().get(tile.getPlants().size() - 1);
+
+        if (plant == null || !plant.canReceivePlantFood()) {
+            return false;
+        }
+
         plant.receivePlantFood();
         this.plantFoodAmount--;
         this.fireEvent("Plant food used on " + plant.getName() + ".");

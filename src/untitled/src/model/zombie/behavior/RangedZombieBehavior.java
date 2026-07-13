@@ -29,7 +29,7 @@ public class RangedZombieBehavior implements ZombieBehavior {
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        // Attack-e melee ba BasicZombieBehavior anjam mishe; in class ability-e ranged ro handle mikone.
+        // BasicZombieBehavior handles bites; this behavior only handles the ranged ability.
     }
 
     @Override

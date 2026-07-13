@@ -2,7 +2,6 @@ package model.plant;
 
 import lombok.Getter;
 
-import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
@@ -49,7 +48,9 @@ public class PlantUpgradeEffect {
         this.bounceBonus = builder.bounceBonus;
         this.plantFoodChanceBonusPercent = builder.plantFoodChanceBonusPercent;
         this.poisonDamageBonusPerTick = builder.poisonDamageBonusPerTick;
-        this.specialEffects = copySpecialEffects(builder.specialEffects);
+        this.specialEffects = builder.specialEffects.isEmpty()
+                ? EnumSet.noneOf(PlantUpgradeSpecialEffect.class)
+                : EnumSet.copyOf(builder.specialEffects);
     }
 
     public static Builder builder(String description) {
@@ -68,14 +69,6 @@ public class PlantUpgradeEffect {
         }
 
         return Math.max(1, upgradedInterval);
-    }
-
-    private static Set<PlantUpgradeSpecialEffect> copySpecialEffects(Set<PlantUpgradeSpecialEffect> specialEffects) {
-        if (specialEffects == null || specialEffects.isEmpty()) {
-            return Collections.emptySet();
-        }
-
-        return Collections.unmodifiableSet(EnumSet.copyOf(specialEffects));
     }
 
     public static class Builder {

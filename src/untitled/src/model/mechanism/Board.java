@@ -14,7 +14,10 @@ public class Board {
     private final int columnCount = 9;
     @Getter
     private List<Tile> tiles;
+    @Getter
     private List<LawnMower> lawnMowers;
+    @Getter
+    private boolean brainEaten;
     @Getter
     @Setter
     private SunSystem sunSystem;
@@ -33,7 +36,7 @@ public class Board {
 
     public Board(List<Tile> tiles) {
         this.tiles = tiles == null ? createDefaultTiles() : tiles;
-        this.lawnMowers = new ArrayList<>();
+        this.lawnMowers = createDefaultLawnMowers();
     }
 
     public void addProjectile(Projectile projectile) {
@@ -65,6 +68,10 @@ public class Board {
             return false;
         }
 
+        if (destination.getX() < 0) {
+            return this.handleZombieAtHouse(zombie);
+        }
+
         Tile destinationTile = this.getTile(destination);
 
         if (destinationTile == null) {
@@ -77,10 +84,55 @@ public class Board {
             sourceTile.removeZombie(zombie);
         }
 
-        zombie.setPosition(destination);
+        zombie.setTilePosition(destination);
         zombie.setBoard(this);
         destinationTile.addZombie(zombie);
         return true;
+    }
+
+    public boolean handleZombieAtHouse(Zombie zombie) {
+        if (zombie == null || zombie.isDead() || zombie.getPosition() == null) {
+            return false;
+        }
+
+        LawnMower lawnMower = this.getLawnMower(zombie.getPosition().getY());
+
+        if (lawnMower != null && lawnMower.canTrigger()) {
+            List<Zombie> killedZombies = lawnMower.trigger(this.getZombiesInLane(zombie.getPosition()));
+
+            for (Zombie killedZombie : killedZombies) {
+                if (this.combatSystem != null) {
+                    this.combatSystem.killZombie(killedZombie);
+                } else {
+                    this.removeZombie(killedZombie);
+                }
+            }
+
+            if (zombie.isDead()) {
+                return true;
+            }
+        }
+
+        this.brainEaten = true;
+        return false;
+    }
+
+    public LawnMower getLawnMower(int row) {
+        for (LawnMower lawnMower : this.lawnMowers) {
+            if (lawnMower != null && lawnMower.getRow() == row) {
+                return lawnMower;
+            }
+        }
+
+        return null;
+    }
+
+    public boolean isInsideBoard(Position position) {
+        return position != null
+                && position.getX() >= 0
+                && position.getX() < this.columnCount
+                && position.getY() >= 0
+                && position.getY() < this.rowCount;
     }
 
     public boolean removeZombie(Zombie zombie) {
@@ -304,8 +356,15 @@ public class Board {
             return plantsInRange;
         }
 
-        for (Plant plant : this.getPlantsInLane(position)) {
-            if (plant == null || plant.getPosition() == null || plant.isDead()) {
+        for (Tile tile : this.tiles) {
+            if (tile == null || tile.getPosition() == null || tile.getPosition().getY() != position.getY()
+                    || tile.getPlants() == null || tile.getPlants().isEmpty()) {
+                continue;
+            }
+
+            Plant plant = tile.getPlants().get(tile.getPlants().size() - 1);
+
+            if (plant == null || plant.getPosition() == null || plant.isDead() || plant.isTransformed()) {
                 continue;
             }
 
@@ -570,6 +629,16 @@ public class Board {
         }
 
         return defaultTiles;
+    }
+
+    private static List<LawnMower> createDefaultLawnMowers() {
+        List<LawnMower> lawnMowers = new ArrayList<>();
+
+        for (int row = 0; row < 5; row++) {
+            lawnMowers.add(new LawnMower(row));
+        }
+
+        return lawnMowers;
     }
 
 }
