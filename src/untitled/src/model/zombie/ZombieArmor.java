@@ -14,16 +14,23 @@ public class ZombieArmor {
     }
 
     public void takeDamage(int amount) {
+        this.absorbDamage(amount);
+    }
+
+    public int absorbDamage(int amount) {
         if (amount <= 0 || this.dropped || this.isDestroyed()) {
-            return;
+            return Math.max(0, amount);
         }
 
+        int absorbedDamage = Math.min(amount, this.currentHealth);
         this.currentHealth -= amount;
 
         if (this.currentHealth <= 0) {
             this.currentHealth = 0;
             this.drop();
         }
+
+        return amount - absorbedDamage;
     }
 
     public boolean isDestroyed() {

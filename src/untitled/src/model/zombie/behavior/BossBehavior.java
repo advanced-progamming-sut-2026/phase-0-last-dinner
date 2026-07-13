@@ -2,6 +2,7 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.mechanism.TerrainType;
 import model.zombie.Zombie;
 
 import java.util.List;
@@ -9,6 +10,8 @@ import java.util.List;
 public class BossBehavior implements ZombieBehavior {
     private List<BossStage> stages;
     private int currentStageIndex;
+    private long ticksSinceLastAction;
+    private long actionIntervalTicks = 50;
 
     public BossBehavior(List<BossStage> stages) {
         this.stages = stages;
@@ -16,15 +19,28 @@ public class BossBehavior implements ZombieBehavior {
 
     @Override
     public void onTick(Zombie zombie, Board board) {
-        this.activate(zombie, board);
-    }
+        this.ticksSinceLastAction++;
 
-    @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
+        if (this.ticksSinceLastAction >= this.actionIntervalTicks) {
+            this.activate(zombie, board);
+            this.ticksSinceLastAction = 0;
+        }
     }
 
     @Override
     public void activate(Zombie zombie, Board board) {
+        if (zombie == null || board == null || board.getCombatSystem() == null) {
+            return;
+        }
+
+        Plant target = board.getNearestPlant(zombie.getPosition());
+
+        if (target != null) {
+            board.getCombatSystem().applyDamageToPlant(target, 250);
+        }
+
+        board.placeTerrainNear(zombie.getPosition(), TerrainType.GRAVE, 1);
+        this.advanceStage();
     }
 
     public BossStage getCurrentStage() {

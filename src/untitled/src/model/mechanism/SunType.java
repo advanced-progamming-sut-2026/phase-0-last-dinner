@@ -1,5 +1,8 @@
 package model.mechanism;
 
+import lombok.Getter;
+
+@Getter
 public enum SunType {
     NORMAL(25),
     SPECIAL(100),
@@ -11,7 +14,4 @@ public enum SunType {
         this.value = value;
     }
 
-    public int getValue() {
-        return value;
-    }
 }

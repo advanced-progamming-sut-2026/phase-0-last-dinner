@@ -1,11 +1,15 @@
 package model.level;
 
+import lombok.Getter;import lombok.Setter;
 import model.Plant;
+import model.chapters.Chapter;
 import model.mechanism.Board;
 import model.mechanism.Wave;
 
+import java.util.ArrayList;
 import java.util.List;
-
+@Setter
+@Getter
 public abstract class Level {
     private LevelType levelType;
     private List<Plant> allowedPlants;
@@ -16,6 +20,18 @@ public abstract class Level {
 
     protected Level(LevelType levelType) {
         this.levelType = levelType;
+    }
+
+    protected Level(LevelType levelType, Chapter chapter,
+                    List<Plant> allowedPlants, double baseDifficulty) {
+        this.levelType = levelType;
+        this.board = chapter == null ? new Board() : chapter.buildBoard();
+        this.allowedPlants = allowedPlants;
+        this.waves = this.buildWaves(baseDifficulty);
+    }
+
+    protected List<Wave> buildWaves(double baseDifficulty) {
+        return new ArrayList<>();
     }
 
     public abstract void start();

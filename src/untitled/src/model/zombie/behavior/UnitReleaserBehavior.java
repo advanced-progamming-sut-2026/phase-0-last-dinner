@@ -41,10 +41,6 @@ public class UnitReleaserBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
         if (this.released || zombie == null || board == null
                 || this.zombieFactory == null || this.releasedUnitDefinition == null) {

@@ -1,5 +1,6 @@
 package model.GameMenuRelated;
 
+import lombok.Getter;
 import model.minigame.BeghouledMiniGame;
 import model.minigame.izombieminigame.IZombieMiniGame;
 import model.minigame.ZombotanyMiniGame;
@@ -7,6 +8,7 @@ import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
 import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
 
 public class TravelLog {
+    @Getter
     private Page[] pages;
 
     public TravelLog() {
@@ -40,10 +42,6 @@ public class TravelLog {
         miniGamesPage
                 .getMiniGames()
                 .add(new ZombotanyMiniGame());
-    }
-
-    public Page[] getPages() {
-        return pages;
     }
 
     public Page getPage(PageName pageName) {

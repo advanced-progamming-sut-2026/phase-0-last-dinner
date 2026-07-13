@@ -1,5 +1,8 @@
 package model;
 
+import lombok.Getter;
+
+@Getter
 public enum DailyOffer {
     DISCOUNTED_SEED_PACKET(
             10,
@@ -29,23 +32,4 @@ public enum DailyOffer {
         this.currency = currency;
     }
 
-    public int getSeedPacketAmount() {
-        return seedPacketAmount;
-    }
-
-    public int getBasePrice() {
-        return basePrice;
-    }
-
-    public int getDiscountPercent() {
-        return discountPercent;
-    }
-
-    public int getFinalPrice() {
-        return finalPrice;
-    }
-
-    public CurrencyType getCurrency() {
-        return currency;
-    }
 }

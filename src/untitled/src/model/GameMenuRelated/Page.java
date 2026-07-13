@@ -1,9 +1,11 @@
 package model.GameMenuRelated;
 
+import lombok.Getter;
 import model.minigame.MiniGame;
 
 import java.util.ArrayList;
 
+@Getter
 public class Page {
     private PageName pageName;
     private ArrayList<QuestObj> questObjects;
@@ -15,15 +17,4 @@ public class Page {
         this.miniGames = new ArrayList<MiniGame>();
     }
 
-    public PageName getPageName() {
-        return pageName;
-    }
-
-    public ArrayList<QuestObj> getQuestObjects() {
-        return questObjects;
-    }
-
-    public ArrayList<MiniGame> getMiniGames() {
-        return miniGames;
-    }
 }

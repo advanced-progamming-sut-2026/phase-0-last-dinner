@@ -2,13 +2,16 @@ package model.zombie.behavior;
 
 import model.Plant;
 import model.mechanism.Board;
+import model.zombie.ArmorType;
 import model.zombie.Zombie;
+import model.zombie.ZombieArmor;
 
 public class PhaseChangeBehavior implements ZombieBehavior {
-    private ZombieBehavior firstPhase;
-    private ZombieBehavior secondPhase;
     private double transitionHealthPercent;
     private double secondPhaseSpeedMultiplier;
+    private double secondPhaseDamageMultiplier = 1.0;
+    // agar trigger armor set bashe phase dovom ba shekastan haman armor faal mishe
+    private ArmorType triggerArmorType;
     private boolean transitioned;
 
     public PhaseChangeBehavior(
@@ -17,33 +20,39 @@ public class PhaseChangeBehavior implements ZombieBehavior {
             double transitionHealthPercent,
             double secondPhaseSpeedMultiplier
     ) {
-        this.firstPhase = firstPhase;
-        this.secondPhase = secondPhase;
         this.transitionHealthPercent = transitionHealthPercent;
         this.secondPhaseSpeedMultiplier = secondPhaseSpeedMultiplier;
     }
 
+    public PhaseChangeBehavior(
+            ArmorType triggerArmorType,
+            double secondPhaseSpeedMultiplier,
+            double secondPhaseDamageMultiplier
+    ) {
+        this.triggerArmorType = triggerArmorType;
+        this.secondPhaseSpeedMultiplier = secondPhaseSpeedMultiplier;
+        this.secondPhaseDamageMultiplier = secondPhaseDamageMultiplier;
+    }
+
     @Override
     public void onTick(Zombie zombie, Board board) {
-        if (!this.transitioned && zombie != null && zombie.getDefinition() != null
-                && zombie.getHealth() <= zombie.getDefinition().getHitpoints() * this.transitionHealthPercent) {
-            this.activate(zombie, board);
+        if (this.transitioned || zombie == null) {
+            return;
         }
 
-        if (this.transitioned && this.secondPhase != null) {
-            this.secondPhase.onTick(zombie, board);
-        } else if (this.firstPhase != null) {
-            this.firstPhase.onTick(zombie, board);
+        boolean shouldTransition = this.triggerArmorType == null
+                ? zombie.getDefinition() != null
+                    && zombie.getHealth() <= zombie.getDefinition().getHitpoints() * this.transitionHealthPercent
+                : !this.hasIntactTriggerArmor(zombie);
+
+        if (shouldTransition) {
+            this.activate(zombie, board);
         }
     }
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        if (this.transitioned && this.secondPhase != null) {
-            this.secondPhase.attack(zombie, plant, board);
-        } else if (this.firstPhase != null) {
-            this.firstPhase.attack(zombie, plant, board);
-        }
+        // bite ro basic behavior mizane in behavior faghat phase ro avaz mikone
     }
 
     @Override
@@ -52,6 +61,30 @@ public class PhaseChangeBehavior implements ZombieBehavior {
 
         if (zombie != null) {
             zombie.setCurrentSpeed(zombie.getCurrentSpeed() * this.secondPhaseSpeedMultiplier);
+            BasicZombieBehavior basicBehavior = zombie.findBehavior(BasicZombieBehavior.class);
+            if (basicBehavior != null) {
+                basicBehavior.multiplyDamage(this.secondPhaseDamageMultiplier);
+            }
         }
+    }
+
+    private boolean hasIntactTriggerArmor(Zombie zombie) {
+        if (zombie.getArmors() == null) {
+            return false;
+        }
+
+        for (ZombieArmor armor : zombie.getArmors()) {
+            if (armor != null && armor.getDefinition() != null
+                    && armor.getDefinition().getType() == this.triggerArmorType
+                    && !armor.isDestroyed() && !armor.isDropped()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean runsWhileHypnotized() {
+        return true;
     }
 }

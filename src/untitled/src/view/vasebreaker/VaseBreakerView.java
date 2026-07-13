@@ -682,7 +682,7 @@ public class VaseBreakerView implements CommandHandler {
             String plantName
     ) {
         if (plantName == null
-                || plantName.isBlank()) {
+                || plantName.trim().isEmpty()) {
             return "unknown plant";
         }
 

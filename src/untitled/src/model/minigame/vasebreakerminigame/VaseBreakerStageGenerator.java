@@ -16,7 +16,7 @@ public class VaseBreakerStageGenerator {
 
     public VaseBreakerStageGenerator() {
         this(
-                new PendingVasebreakerIntegration(),
+                new PlantZombieVasebreakerIntegration(),
                 new Random()
         );
     }
@@ -36,7 +36,7 @@ public class VaseBreakerStageGenerator {
     ) {
         if (integration == null) {
             this.integration =
-                    new PendingVasebreakerIntegration();
+                    new PlantZombieVasebreakerIntegration();
         } else {
             this.integration = integration;
         }
@@ -49,15 +49,18 @@ public class VaseBreakerStageGenerator {
     }
 
     public List<Vase> generateStage(int stageNumber) {
-        return switch (stageNumber) {
-            case 1 -> generateStageOne();
-            case 2 -> generateStageTwo();
-            case 3 -> generateStageThree();
-
-            default -> throw new IllegalArgumentException(
-                    "Vasebreaker stage must be between 1 and 3."
-            );
-        };
+        switch (stageNumber) {
+            case 1:
+                return this.generateStageOne();
+            case 2:
+                return this.generateStageTwo();
+            case 3:
+                return this.generateStageThree();
+            default:
+                throw new IllegalArgumentException(
+                        "Vasebreaker stage must be between 1 and 3."
+                );
+        }
     }
 
     public List<Vase> generateStageOne() {

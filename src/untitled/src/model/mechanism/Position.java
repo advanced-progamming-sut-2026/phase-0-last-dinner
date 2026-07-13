@@ -1,8 +1,10 @@
 package model.mechanism;
 
-public class Position {
-    private int x;
-    private int y;
+import java.util.Objects;
+
+public final class Position {
+    private final int x;
+    private final int y;
 
     public Position(int x, int y) {
         this.x = x;
@@ -27,7 +29,17 @@ public class Position {
             return false;
         }
 
-        Position position = (Position) object;
-        return this.x == position.x && this.y == position.y;
+        Position other = (Position) object;
+        return this.x == other.x && this.y == other.y;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.x, this.y);
+    }
+
+    @Override
+    public String toString() {
+        return "(" + this.x + ", " + this.y + ")";
     }
 }

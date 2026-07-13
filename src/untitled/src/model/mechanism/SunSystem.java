@@ -1,8 +1,12 @@
 package model.mechanism;
 
+import model.Plant;
 import view.GameEventListener;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Random;
 
 public class SunSystem implements Tickable {
     private List<Sun> suns;
@@ -12,6 +16,7 @@ public class SunSystem implements Tickable {
     private long lastSunSpawnTick;
     private GameEventListener listener;
     private GameClock clock;
+    private boolean automaticSunEnabled;
 
     public SunSystem(Board board, GameClock clock) {
         this.board = board;
@@ -20,87 +25,212 @@ public class SunSystem implements Tickable {
         this.sunAmount = 50;
         this.lastSunSpawnTick = 0;
         this.random = new Random();
+        this.automaticSunEnabled = true;
+
+        if (board != null) {
+            board.setSunSystem(this);
+        }
     }
+
     public void setListener(GameEventListener listener) {
         this.listener = listener;
-    }
-    private void fireEvent(String message) {
-        if (listener != null) {
-            listener.onGameEvent(message);
-        }
     }
 
     @Override
     public void onTick() {
-        long currentTick = clock.getCurrentTick();
-        double elapsedSeconds = clock.getElapsedSeconds();
-
-        double intervalSeconds = Math.max(6 + 0.05 * elapsedSeconds, 12);
-        long intervalTicks = (long)(intervalSeconds * 10);
-        if (currentTick - lastSunSpawnTick >= intervalTicks) {
-            spawnFallingSun(); //سقوط خورشید جدید
-            lastSunSpawnTick = currentTick;
+        if (this.clock == null) {
+            return;
         }
-        for (Sun sun : suns) {
+
+        long currentTick = this.clock.getCurrentTick();
+        double elapsedSeconds = this.clock.getElapsedSeconds();
+        double intervalSeconds = Math.max(6 + 0.05 * elapsedSeconds, 12);
+        long intervalTicks = (long) (intervalSeconds * this.clock.getTicksPerSecond());
+
+        if (this.automaticSunEnabled && currentTick - this.lastSunSpawnTick >= intervalTicks) {
+            this.spawnFallingSun();
+            this.lastSunSpawnTick = currentTick;
+        }
+
+        for (Sun sun : this.suns) {
             if (sun.isFalling() && currentTick >= sun.getLandingTick()) {
                 sun.reachGround();
-                fireEvent("Sun reached the ground at position ("
-                        + sun.getPosition().getX() + ", "
-                        + sun.getPosition().getY() + ")");
+                this.fireEvent("Sun reached ground at (" + sun.getPosition().getX()
+                        + ", " + sun.getPosition().getY() + ").");
             }
         }
     }
-    private SunType chooseSunType() {  // انتخاب نوع خورشید به صورت رندم
-        int roll = random.nextInt(100);
-        if (roll < 80) return SunType.NORMAL;
-        if (roll < 95) return SunType.SPECIAL;
-        return SunType.RADIOACTIVE;
-    }
-
 
     public Sun spawnFallingSun() {
-        int x = random.nextInt(9);
-        int y = random.nextInt(5); //انتخاب یک سطر و ستون رندم برای فرود امدن
+        if (this.clock == null) {
+            return null;
+        }
+
+        int x = this.random.nextInt(9);
+        int y = this.random.nextInt(5);
         Position position = new Position(x, y);
-        SunType type = chooseSunType();
-
-        Sun sun = new Sun(type, position, clock.getCurrentTick());
-        suns.add(sun);
-
-        fireEvent("New " + type + " sun is dropping at position ("
-                + x + ", " + y + ")");
-
+        SunType type = this.chooseSunType();
+        Sun sun = new Sun(type, position, this.clock.getCurrentTick());
+        this.suns.add(sun);
+        this.fireEvent("New " + type + " sun is dropping at (" + x + ", " + y + ").");
         return sun;
     }
 
     public Sun addPlantSun(Position position) {
-        Sun sun = new Sun(SunType.PLANT_PRODUCED, position, clock.getCurrentTick());
-        suns.add(sun); //اینجا چک نمیکنم که خورشید قبلی برداشته شده یا نه بهتره توی بخش گیاه ها هندل شه
+        if (this.clock == null || position == null) {
+            return null;
+        }
+
+        Sun sun = new Sun(SunType.PLANT_PRODUCED, position, this.clock.getCurrentTick());
+        this.suns.add(sun);
         return sun;
     }
 
+    public Sun addPlantSun(Plant producer, int amount) {
+        if (this.clock == null || producer == null || producer.getPosition() == null || amount <= 0) {
+            return null;
+        }
+
+        Sun sun = new Sun(
+                SunType.PLANT_PRODUCED,
+                producer.getPosition(),
+                this.clock.getCurrentTick(),
+                amount,
+                producer
+        );
+        this.suns.add(sun);
+        return sun;
+    }
+
+    public boolean hasUncollectedSunFrom(Plant producer) {
+        if (producer == null) {
+            return false;
+        }
+
+        for (Sun sun : this.suns) {
+            if (sun != null && !sun.isCollected() && sun.getProducer() == producer) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public int collectSun(Position position) {
-        for (Sun sun : suns) {
+        if (position == null) {
+            return 0;
+        }
+
+        for (Sun sun : this.suns) {
             if (!sun.isCollected()
                     && sun.getPosition().getX() == position.getX()
                     && sun.getPosition().getY() == position.getY()) {
-                sun.collect();
-                int value = sun.getType().getValue();
-                sunAmount += value;
-                return value;
+                return this.collectSun(sun);
             }
         }
+
         return 0;
     }
 
+    public int collectSun(Sun sun) {
+        if (sun == null || sun.isCollected() || !this.suns.contains(sun)) {
+            return 0;
+        }
+
+        sun.collect();
+        this.suns.remove(sun);
+
+        if (sun.getType() == SunType.RADIOACTIVE && sun.isFalling()) {
+            if (this.board != null && this.board.getCombatSystem() != null) {
+                this.board.getCombatSystem().applyRadioactiveSunExplosion(sun.getPosition());
+            }
+
+            this.fireEvent("Radioactive sun exploded before reaching the ground.");
+            return 0;
+        }
+
+        this.sunAmount += sun.getValue();
+        return sun.getValue();
+    }
+
     public void addSun(int amount) {
-        this.sunAmount += amount;
+        this.sunAmount = Math.max(0, this.sunAmount + amount);
     }
 
     public int getSunAmount() {
-        return sunAmount;
+        return this.sunAmount;
     }
-    public void cheatCode(int amount){
-        addSun(amount);
+
+    public boolean isAutomaticSunEnabled() {
+        return this.automaticSunEnabled;
+    }
+
+    public void setAutomaticSunEnabled(boolean automaticSunEnabled) {
+        this.automaticSunEnabled = automaticSunEnabled;
+    }
+
+    public List<Sun> getSuns() {
+        return this.suns;
+    }
+
+    public int stealGroundSun(int maximumAmount) {
+        return this.stealGroundSun(maximumAmount, maximumAmount);
+    }
+
+    // ta meghdar hadaf midozde vali az hadaksar bishtar nemigire
+    public int stealGroundSun(int targetAmount, int maximumAmount) {
+        if (targetAmount <= 0 || maximumAmount <= 0) {
+            return 0;
+        }
+
+        int stolen = 0;
+        Iterator<Sun> iterator = this.suns.iterator();
+
+        while (iterator.hasNext()) {
+            Sun sun = iterator.next();
+            if (sun == null || sun.isCollected() || sun.isFalling()) {
+                continue;
+            }
+
+            int value = sun.getValue();
+
+            if (stolen + value > maximumAmount) {
+                continue;
+            }
+
+            sun.collect();
+            iterator.remove();
+            stolen += value;
+
+            if (stolen >= targetAmount) {
+                break;
+            }
+        }
+
+        return stolen;
+    }
+
+    public void cheatCode(int amount) {
+        this.addSun(amount);
+    }
+
+    private SunType chooseSunType() {
+        int roll = this.random.nextInt(100);
+
+        if (roll < 80) {
+            return SunType.NORMAL;
+        }
+
+        if (roll < 95) {
+            return SunType.SPECIAL;
+        }
+
+        return SunType.RADIOACTIVE;
+    }
+
+    private void fireEvent(String message) {
+        if (this.listener != null) {
+            this.listener.onGameEvent(message);
+        }
     }
 }

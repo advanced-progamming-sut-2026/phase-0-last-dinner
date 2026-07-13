@@ -43,7 +43,7 @@ public class VasebreakerMiniGame extends MiniGame {
     private int highestUnlockedStage;
 
     public VasebreakerMiniGame() {
-        this(new PendingVasebreakerIntegration());
+        this(new PlantZombieVasebreakerIntegration());
     }
 
     public VasebreakerMiniGame(
@@ -53,7 +53,7 @@ public class VasebreakerMiniGame extends MiniGame {
 
         if (integration == null) {
             this.integration =
-                    new PendingVasebreakerIntegration();
+                    new PlantZombieVasebreakerIntegration();
         } else {
             this.integration = integration;
         }
@@ -502,7 +502,7 @@ public class VasebreakerMiniGame extends MiniGame {
             }
 
             if (plantName == null
-                    || plantName.isBlank()) {
+                    || plantName.trim().isEmpty()) {
 
                 return seedPacket;
             }
