@@ -15,6 +15,7 @@ import model.zombie.ZombieCondition;
 import java.util.ArrayList;
 import java.util.List;
 
+// buff va tabdil movaghat giah ya zombie ro bar asas trigger ejra mikone
 public class ModifierBehavior implements PlantBehavior, OnPlantingBehavior {
     private ModifierType modifierType;
     private ActivationTrigger activationTrigger;
@@ -23,9 +24,11 @@ public class ModifierBehavior implements PlantBehavior, OnPlantingBehavior {
     private boolean active;
     private long durationTicks;
     private long activeTicks;
+    // in effect ha baad az hypnotize rooye khod zombie apply mishan
     private List<PlantUpgradeEffect> hypnotizedZombieUpgradeEffects = new ArrayList<>();
     private PlantCategory familyCategory;
     private PlantTag familyTag;
+    // timer buff projectile az duration asli modifier joda ast
     private long projectileBoostTicks;
 
     public ModifierBehavior(
@@ -120,28 +123,40 @@ public class ModifierBehavior implements PlantBehavior, OnPlantingBehavior {
     }
 
     private void hypnotizeContactZombies(Plant plant, Board board) {
-        List<Zombie> zombies = board.getZombiesAt(plant.getPosition());
+        Zombie target = null;
 
-        if (zombies.isEmpty() && plant.getPosition() != null) {
+        for (Zombie zombie : board.getZombiesAt(plant.getPosition())) {
+            if (this.canHypnotize(zombie)) {
+                target = zombie;
+                break;
+            }
+        }
+
+        if (target == null && plant.getPosition() != null) {
             for (Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
-                if (zombie != null && !zombie.isDead() && zombie.getPosition() != null
+                if (this.canHypnotize(zombie) && zombie.getPosition() != null
                         && Math.abs(zombie.getPosition().getX() - plant.getPosition().getX()) <= 1) {
-                    zombies.add(zombie);
+                    target = zombie;
                     break;
                 }
             }
         }
 
-        for (Zombie zombie : zombies) {
-            if (zombie != null) {
-                zombie.addCondition(ZombieCondition.HYPNOTIZED);
-                this.applyHypnotizedZombieUpgrades(zombie);
-            }
+        if (target == null) {
+            return;
         }
 
-        if (!zombies.isEmpty()) {
+        target.addCondition(ZombieCondition.HYPNOTIZED);
+
+        if (target.isHypnotized()) {
+            this.applyHypnotizedZombieUpgrades(target);
             board.removePlant(plant);
         }
+    }
+
+    private boolean canHypnotize(Zombie zombie) {
+        return zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                && !zombie.hasCondition(ZombieCondition.SUBMERGED);
     }
 
     private void buffNearbyPlants(Plant plant, Board board) {
@@ -228,7 +243,8 @@ public class ModifierBehavior implements PlantBehavior, OnPlantingBehavior {
 
         for (Projectile projectile : board.getProjectiles()) {
             if (projectile == null || projectile.getPosition() == null
-                    || projectile.getType() != ProjectileType.NORMAL
+                    || !projectile.isPeaBased()
+                    || !this.canTransformPea(projectile.getType())
                     || projectile.isLobbed() || projectile.getHorizontalDirection() <= 0) {
                 continue;
             }
@@ -243,5 +259,11 @@ public class ModifierBehavior implements PlantBehavior, OnPlantingBehavior {
                 projectile.setType(ProjectileType.FIRE);
             }
         }
+    }
+
+    private boolean canTransformPea(ProjectileType projectileType) {
+        return projectileType == ProjectileType.NORMAL
+                || projectileType == ProjectileType.ICE
+                || projectileType == ProjectileType.POISON;
     }
 }

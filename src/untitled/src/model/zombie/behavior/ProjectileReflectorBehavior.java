@@ -1,8 +1,6 @@
 package model.zombie.behavior;
 
-import model.Plant;
 import model.mechanism.Board;
-import model.plant.DamageExpressionParser;
 import model.plant.Projectile;
 import model.plant.ProjectileType;
 import model.zombie.Zombie;
@@ -32,6 +30,7 @@ public class ProjectileReflectorBehavior implements ZombieBehavior {
             if (this.isReflectable(projectile)
                     && projectile.getPosition() != null
                     && projectile.getPosition().getY() == zombie.getPosition().getY()
+                    && projectile.getHorizontalDirection() > 0
                     && projectile.getPosition().getX() <= zombie.getPosition().getX()) {
                 projectileApproaching = true;
                 break;
@@ -43,65 +42,31 @@ public class ProjectileReflectorBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
         this.reflecting = true;
     }
 
-    public Projectile reflect(Projectile projectile) {
-        if (!this.reflecting || projectile == null) {
-            return projectile;
-        }
-
-        return projectile.copyAt(projectile.getPosition());
-    }
-
-    public boolean reflect(Projectile projectile, Zombie zombie, Board board) {
-        if (!this.isReflectable(projectile) || zombie == null || board == null
-                || board.getCombatSystem() == null) {
+    @Override
+    public boolean onProjectileHit(Zombie zombie, Projectile projectile, Board board) {
+        if (!this.isReflectable(projectile) || zombie == null
+                || zombie.getPosition() == null || board == null) {
             return false;
         }
 
         this.reflecting = true;
-
-        Plant target = board.getNearestPlant(zombie.getPosition());
-
-        if (target == null) {
-            return true;
-        }
-
-        if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
-            board.getCombatSystem().destroyPlant(target);
-            return true;
-        }
-
-        int damage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
-
-        if (damage > 0) {
-            board.getCombatSystem().applyDamageToPlant(target, damage);
-        }
-
-        if (projectile.getType() == ProjectileType.ICE && !target.isDead()) {
-            target.disable();
-        }
-
+        // haman projectile baraks mishe ta pipeline collision board hefz beshe
+        projectile.reflectTowardPlants(zombie.getPosition());
         return true;
     }
 
-    @Override
-    public boolean onProjectileHit(Zombie zombie, Projectile projectile, Board board) {
-        return this.reflect(projectile, zombie, board);
-    }
-
     private boolean isReflectable(Projectile projectile) {
-        if (projectile == null || projectile.getType() == null) {
+        if (projectile == null || projectile.getType() == null
+                || projectile.isHostileToPlants()) {
             return false;
         }
 
         return !projectile.isLobbed()
+                && projectile.getType() != ProjectileType.LOBBED
                 && projectile.getType() != ProjectileType.HOMING;
     }
 }

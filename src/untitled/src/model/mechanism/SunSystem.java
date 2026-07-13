@@ -4,6 +4,7 @@ import model.Plant;
 import view.GameEventListener;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 
@@ -15,6 +16,7 @@ public class SunSystem implements Tickable {
     private long lastSunSpawnTick;
     private GameEventListener listener;
     private GameClock clock;
+    private boolean automaticSunEnabled;
 
     public SunSystem(Board board, GameClock clock) {
         this.board = board;
@@ -23,6 +25,7 @@ public class SunSystem implements Tickable {
         this.sunAmount = 50;
         this.lastSunSpawnTick = 0;
         this.random = new Random();
+        this.automaticSunEnabled = true;
 
         if (board != null) {
             board.setSunSystem(this);
@@ -44,7 +47,7 @@ public class SunSystem implements Tickable {
         double intervalSeconds = Math.max(6 + 0.05 * elapsedSeconds, 12);
         long intervalTicks = (long) (intervalSeconds * this.clock.getTicksPerSecond());
 
-        if (currentTick - this.lastSunSpawnTick >= intervalTicks) {
+        if (this.automaticSunEnabled && currentTick - this.lastSunSpawnTick >= intervalTicks) {
             this.spawnFallingSun();
             this.lastSunSpawnTick = currentTick;
         }
@@ -158,18 +161,33 @@ public class SunSystem implements Tickable {
         return this.sunAmount;
     }
 
+    public boolean isAutomaticSunEnabled() {
+        return this.automaticSunEnabled;
+    }
+
+    public void setAutomaticSunEnabled(boolean automaticSunEnabled) {
+        this.automaticSunEnabled = automaticSunEnabled;
+    }
+
     public List<Sun> getSuns() {
         return this.suns;
     }
 
     public int stealGroundSun(int maximumAmount) {
-        if (maximumAmount <= 0) {
+        return this.stealGroundSun(maximumAmount, maximumAmount);
+    }
+
+    // ta meghdar hadaf midozde vali az hadaksar bishtar nemigire
+    public int stealGroundSun(int targetAmount, int maximumAmount) {
+        if (targetAmount <= 0 || maximumAmount <= 0) {
             return 0;
         }
 
         int stolen = 0;
+        Iterator<Sun> iterator = this.suns.iterator();
 
-        for (Sun sun : new ArrayList<>(this.suns)) {
+        while (iterator.hasNext()) {
+            Sun sun = iterator.next();
             if (sun == null || sun.isCollected() || sun.isFalling()) {
                 continue;
             }
@@ -181,10 +199,10 @@ public class SunSystem implements Tickable {
             }
 
             sun.collect();
-            this.suns.remove(sun);
+            iterator.remove();
             stolen += value;
 
-            if (stolen >= maximumAmount) {
+            if (stolen >= targetAmount) {
                 break;
             }
         }

@@ -1,6 +1,5 @@
 package model.zombie.behavior;
 
-import model.Plant;
 import model.mechanism.Board;
 import model.zombie.ArmorFlag;
 import model.zombie.ArmorType;
@@ -26,10 +25,6 @@ public class KingBehavior implements ZombieBehavior {
             this.activate(zombie, board);
             this.ticksSinceKnighting = 0;
         }
-    }
-
-    @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
     }
 
     @Override
@@ -64,7 +59,8 @@ public class KingBehavior implements ZombieBehavior {
         }
 
         for (Zombie zombie : board.getZombiesInRadius(king.getPosition(), 4)) {
-            if (zombie == null || zombie == king || zombie.isDead() || zombie.getDefinition() == null
+            if (zombie == null || zombie == king || zombie.isDead() || zombie.isHypnotized()
+                    || zombie.getDefinition() == null
                     || zombie.getDefinition().getType() != ZombieType.BASIC || zombie.getPosition() == null) {
                 continue;
             }

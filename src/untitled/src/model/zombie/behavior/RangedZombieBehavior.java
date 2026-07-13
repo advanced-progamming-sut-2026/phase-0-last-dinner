@@ -28,11 +28,6 @@ public class RangedZombieBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-        // BasicZombieBehavior handles bites; this behavior only handles the ranged ability.
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
         if (zombie == null || board == null || board.getCombatSystem() == null) {
             return;

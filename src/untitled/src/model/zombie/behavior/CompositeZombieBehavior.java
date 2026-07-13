@@ -48,6 +48,10 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public void onTick(Zombie zombie, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (zombie != null && zombie.isHypnotized() && !behavior.runsWhileHypnotized()) {
+                continue;
+            }
+
             behavior.onTick(zombie, board);
         }
     }
@@ -55,6 +59,10 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (this.shouldSkipWhileHypnotized(zombie, behavior)) {
+                continue;
+            }
+
             behavior.attack(zombie, plant, board);
         }
     }
@@ -62,6 +70,10 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public void activate(Zombie zombie, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (this.shouldSkipWhileHypnotized(zombie, behavior)) {
+                continue;
+            }
+
             behavior.activate(zombie, board);
         }
     }
@@ -83,6 +95,10 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public boolean canMove(Zombie zombie, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (this.shouldSkipWhileHypnotized(zombie, behavior)) {
+                continue;
+            }
+
             if (!behavior.canMove(zombie, board)) {
                 return false;
             }
@@ -93,6 +109,10 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public boolean canAttackPlant(Zombie zombie, Plant plant, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (this.shouldSkipWhileHypnotized(zombie, behavior)) {
+                continue;
+            }
+
             if (!behavior.canAttackPlant(zombie, plant, board)) {
                 return false;
             }
@@ -112,6 +132,7 @@ public class CompositeZombieBehavior implements ZombieBehavior {
 
     @Override
     public boolean onProjectileHit(Zombie zombie, Projectile projectile, Board board) {
+        // avalin behavior ke projectile ro consume kone damage va handler badi ro migire
         for (ZombieBehavior behavior : this.behaviors) {
             if (behavior.onProjectileHit(zombie, projectile, board)) {
                 return true;
@@ -133,11 +154,20 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     @Override
     public int getMovementDirection(Zombie zombie) {
         for (ZombieBehavior behavior : this.behaviors) {
+            if (this.shouldSkipWhileHypnotized(zombie, behavior)) {
+                continue;
+            }
+
             int direction = behavior.getMovementDirection(zombie);
             if (direction != -1) {
                 return direction;
             }
         }
         return -1;
+    }
+
+    private boolean shouldSkipWhileHypnotized(Zombie zombie, ZombieBehavior behavior) {
+        // behavior hostile dar hypnosis skip mishe magar khodesh ejaze bede
+        return zombie != null && zombie.isHypnotized() && !behavior.runsWhileHypnotized();
     }
 }

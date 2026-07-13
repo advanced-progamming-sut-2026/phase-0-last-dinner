@@ -6,11 +6,13 @@ import model.zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 public class WizardBehavior implements ZombieBehavior {
     private long castIntervalTicks;
     private long ticksSinceCast;
     private List<Plant> transformedPlants = new ArrayList<>();
+    private Random random = new Random();
 
     public WizardBehavior(long castIntervalTicks) {
         this.castIntervalTicks = Math.max(1, castIntervalTicks);
@@ -32,29 +34,22 @@ public class WizardBehavior implements ZombieBehavior {
 
     @Override
     public void activate(Zombie zombie, Board board) {
-        if (zombie == null || zombie.getPosition() == null || board == null) {
+        if (zombie == null || board == null) {
             return;
         }
 
-        Plant nearest = null;
-        int nearestDistance = Integer.MAX_VALUE;
+        List<Plant> eligiblePlants = new ArrayList<>();
 
-        for (Plant plant : board.getPlantsInRadius(zombie.getPosition(), 4)) {
-            if (plant == null || plant.isDead() || plant.isDisabled() || plant.getPosition() == null) {
-                continue;
-            }
-
-            int deltaX = plant.getPosition().getX() - zombie.getPosition().getX();
-            int deltaY = plant.getPosition().getY() - zombie.getPosition().getY();
-            int distance = deltaX * deltaX + deltaY * deltaY;
-
-            if (distance < nearestDistance) {
-                nearest = plant;
-                nearestDistance = distance;
+        for (Plant plant : board.getAllPlants()) {
+            if (plant != null && !plant.isDead() && !plant.isDisabled()
+                    && plant.getPosition() != null) {
+                eligiblePlants.add(plant);
             }
         }
 
-        this.transform(nearest);
+        if (!eligiblePlants.isEmpty()) {
+            this.transform(eligiblePlants.get(this.random.nextInt(eligiblePlants.size())));
+        }
     }
 
     @Override
@@ -70,6 +65,10 @@ public class WizardBehavior implements ZombieBehavior {
             }
         }
         this.transformedPlants.clear();
+    }
+
+    public void setRandom(Random random) {
+        this.random = random == null ? new Random() : random;
     }
 
     private void transform(Plant plant) {

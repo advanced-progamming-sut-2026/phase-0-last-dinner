@@ -49,6 +49,7 @@ public class JsonZombieDefinitionRepository implements ZombieDefinitionRepositor
         this.definitions = definitions;
     }
 
+    // resource classpath az dakhel package load mishe va be masir system vabaste nist
     public static JsonZombieDefinitionRepository fromClasspath(
             String zombieResourceName,
             String armorResourceName
@@ -130,7 +131,16 @@ public class JsonZombieDefinitionRepository implements ZombieDefinitionRepositor
         }
 
         for (ZombieDefinition definition : this.definitions) {
-            if (definition.getChapter() == chapter) {
+            if (definition == null) {
+                continue;
+            }
+
+            ZombieChapter definitionChapter = definition.getChapter();
+
+            if (chapter == ZombieChapter.ALL_CHAPTERS
+                    || definitionChapter == null
+                    || definitionChapter == ZombieChapter.ALL_CHAPTERS
+                    || definitionChapter == chapter) {
                 result.add(definition);
             }
         }

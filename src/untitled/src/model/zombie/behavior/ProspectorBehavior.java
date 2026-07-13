@@ -12,6 +12,7 @@ public class ProspectorBehavior implements ZombieBehavior {
     private long launchCountdownTicks;
     private long elapsedTicks;
     private boolean dynamiteExtinguished;
+    // reversed yani dynamite amal karde va zombie az samte khane be rast barmigarde
     private boolean reversed;
     private boolean attackingPlantToTheRight;
 
@@ -21,10 +22,14 @@ public class ProspectorBehavior implements ZombieBehavior {
 
     @Override
     public void onTick(Zombie zombie, Board board) {
+        if (zombie != null && zombie.isHypnotized()) {
+            return;
+        }
+
         if (!this.dynamiteExtinguished && !this.reversed) {
             this.elapsedTicks++;
             if (this.elapsedTicks >= this.launchCountdownTicks) {
-                this.reversed = true;
+                this.launchToHouseEnd(zombie, board);
             }
         }
 
@@ -46,13 +51,9 @@ public class ProspectorBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
-        if (!this.dynamiteExtinguished) {
-            this.reversed = true;
+        if (!this.dynamiteExtinguished && (zombie == null || !zombie.isHypnotized())) {
+            this.launchToHouseEnd(zombie, board);
         }
     }
 
@@ -84,5 +85,24 @@ public class ProspectorBehavior implements ZombieBehavior {
             return 1;
         }
         return this.reversed ? 1 : -1;
+    }
+
+    @Override
+    public boolean runsWhileHypnotized() {
+        return true;
+    }
+
+    private void launchToHouseEnd(Zombie zombie, Board board) {
+        if (this.reversed || zombie == null || zombie.getPosition() == null || board == null) {
+            return;
+        }
+
+        Position houseEnd = new Position(0, zombie.getPosition().getY());
+        if (board.moveZombie(zombie, houseEnd)) {
+            // set position exact x ro ham ba tile jadid sync mikone
+            zombie.setPosition(houseEnd);
+            zombie.setAttacking(false);
+            this.reversed = true;
+        }
     }
 }

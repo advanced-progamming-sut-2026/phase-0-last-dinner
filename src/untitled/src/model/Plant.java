@@ -15,6 +15,7 @@ import model.plant.behavior.PlantFoodBehavior;
 
 import java.util.Set;
 
+// state va behavior yek giah sakhte shode dar board ro negah midare
 @Getter
 public class Plant implements Tickable {
     private String name;
@@ -31,8 +32,14 @@ public class Plant implements Tickable {
     private PlantBehavior behavior;
     private PlantFoodBehavior plantFoodBehavior;
     private PlantUpgradeData upgradeData;
+    // in flag ha dalil haye joda baraye gheire faal shodan giah hastan
     private boolean disabled;
     private boolean transformed;
+    private boolean covered;
+    private boolean terrainDisabled;
+    // jeloye dobar apply shodan ertegha haye collection ro migire
+    private boolean storedUpgradesApplied;
+    // meghdar zero yani giah omr mahdood nadare
     private long lifespanTicks;
     private long fullLifespanTicks;
     private boolean upgradeDeathEffectUsed;
@@ -100,11 +107,7 @@ public class Plant implements Tickable {
 
     @Override
     public void onTick() {
-        if (this.isDisabled()) {
-            return;
-        }
-
-        if (this.behavior != null) {
+        if (!this.isDisabled() && this.behavior != null) {
             this.behavior.onTick(this, this.board);
         }
 
@@ -135,20 +138,29 @@ public class Plant implements Tickable {
                 && this.plantFoodBehavior.canActivate();
     }
 
+    // ertegha dar collection sabt mishe va rooye yek instance anjam nemishe
+    @Deprecated
     public boolean upgrade() {
-        if (this.upgradeData == null || !this.upgradeData.canUpgrade()) {
-            return false;
+        return false;
+    }
+
+    // ertegha haye sabt shode collection ro faghat yek bar apply mikone
+    public void applyStoredUpgrades() {
+        if (this.storedUpgradesApplied || this.upgradeData == null) {
+            return;
         }
 
-        PlantUpgradeEffect effect = this.upgradeData.upgrade();
+        int appliedEffectCount = Math.min(
+                this.upgradeData.getCurrentLevel() - 1,
+                this.upgradeData.getUpgradeEffects().size()
+        );
 
-        if (effect == null) {
-            return false;
+        for (int i = 0; i < appliedEffectCount; i++) {
+            this.applyUpgradeEffect(this.upgradeData.getUpgradeEffects().get(i));
         }
 
-        this.applyUpgradeEffect(effect);
         this.level = this.upgradeData.getCurrentLevel();
-        return true;
+        this.storedUpgradesApplied = true;
     }
 
     public void takeDamage(int amount) {
@@ -201,6 +213,7 @@ public class Plant implements Tickable {
         this.health += amount;
     }
 
+    // baraye clone plant food yek giah joda ba state feli misaze
     public Plant copyForPlantFood(Position position) {
         Plant copy = new Plant(
                 this.name,
@@ -213,12 +226,13 @@ public class Plant implements Tickable {
                 this.tags,
                 this.behavior == null ? null : this.behavior.copy(),
                 this.plantFoodBehavior == null ? null : this.plantFoodBehavior.copy(),
-                this.upgradeData == null ? null : this.upgradeData.copy(),
+                this.upgradeData,
                 this.lifespanTicks
         );
 
         copy.health = this.health;
         copy.fullLifespanTicks = this.fullLifespanTicks;
+        copy.storedUpgradesApplied = this.storedUpgradesApplied;
         copy.setPosition(position);
         copy.setBoard(this.board);
         return copy;
@@ -238,12 +252,20 @@ public class Plant implements Tickable {
         this.transformed = false;
     }
 
+    public void setCovered(boolean covered) {
+        this.covered = covered;
+    }
+
+    public void setTerrainDisabled(boolean terrainDisabled) {
+        this.terrainDisabled = terrainDisabled;
+    }
+
     public void resetLifespan() {
         this.lifespanTicks = this.fullLifespanTicks;
     }
 
     public boolean isDisabled() {
-        return this.disabled || this.transformed;
+        return this.disabled || this.transformed || this.covered || this.terrainDisabled;
     }
 
     public boolean isDead() {
@@ -254,6 +276,7 @@ public class Plant implements Tickable {
         return this.upgradeData != null && this.upgradeData.hasSpecialEffect(specialEffect);
     }
 
+    // asar marg ertegha ro dar har instance faghat yek bar ejra mikone
     public void activateUpgradeDeathEffects(Board board) {
         if (this.upgradeDeathEffectUsed || board == null || board.getCombatSystem() == null) {
             return;

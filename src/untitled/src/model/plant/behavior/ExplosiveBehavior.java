@@ -11,9 +11,11 @@ import model.plant.PlantUpgradeSpecialEffect;
 import model.plant.Projectile;
 import model.zombie.Zombie;
 import model.zombie.ZombieCondition;
+import model.zombie.behavior.FlyingBehavior;
 
 import java.util.List;
 
+// arm shodan va effect giah haye enfajari ya terrain remover ro modiriat mikone
 public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     private String damageExpression;
     private int effectRadius;
@@ -31,6 +33,11 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     private boolean meltsLane;
     private Projectile secondaryProjectileTemplate;
     private int secondaryProjectileCount;
+    private boolean waterTargetsOnly;
+    // in state baraye effect takhiri mesl khordan grave estefade mishe
+    private long terrainRemovalDelayTicks;
+    private long terrainRemovalElapsedTicks;
+    private boolean terrainRemovalStarted;
 
     public ExplosiveBehavior(
             String damageExpression,
@@ -52,6 +59,15 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
     @Override
     public void onTick(Plant plant, Board board) {
+        if (this.terrainRemovalStarted) {
+            this.terrainRemovalElapsedTicks++;
+
+            if (this.terrainRemovalElapsedTicks >= this.terrainRemovalDelayTicks) {
+                this.finishTerrainRemoval(plant, board, TerrainType.GRAVE);
+            }
+            return;
+        }
+
         if (!this.triggeredByContact || plant == null || board == null) {
             return;
         }
@@ -61,32 +77,34 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
             return;
         }
 
-        if (!board.getZombiesAt(plant.getPosition()).isEmpty()) {
+        if (!this.getContactZombies(plant, board).isEmpty()) {
             this.activate(plant, board);
         }
     }
 
     @Override
     public void activate(Plant plant, Board board) {
-        if (plant == null || board == null || this.consumed) {
+        if (plant == null || board == null || this.consumed || this.terrainRemovalStarted) {
+            return;
+        }
+
+        if (this.waterTargetsOnly && !this.isWaterTile(board, plant.getPosition())) {
             return;
         }
 
         List<Zombie> zombies;
 
         if (this.explosivePattern == ExplosivePattern.TERRAIN_ONLY) {
-            this.consumed = true;
-            this.clearTerrain(plant, board, TerrainType.FROZEN);
-            this.explodeAfterFinishIfNeeded(plant, board);
-            board.removePlant(plant);
+            this.finishTerrainRemoval(plant, board, TerrainType.FROZEN);
             return;
         }
 
         if (this.explosivePattern == ExplosivePattern.GRAVE_ONLY) {
-            this.consumed = true;
-            this.clearTerrain(plant, board, TerrainType.GRAVE);
-            this.explodeAfterFinishIfNeeded(plant, board);
-            board.removePlant(plant);
+            if (this.terrainRemovalDelayTicks > 0) {
+                this.terrainRemovalStarted = true;
+            } else {
+                this.finishTerrainRemoval(plant, board, TerrainType.GRAVE);
+            }
             return;
         }
 
@@ -101,18 +119,30 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         } else if (this.explosivePattern == ExplosivePattern.FULL_BOARD) {
             zombies = board.getAllZombies();
         } else if (this.explosivePattern == ExplosivePattern.CONTACT_SINGLE) {
-            zombies = this.targetCount > 1
-                    ? board.getNearestZombies(plant.getPosition(), this.targetCount)
-                    : board.getZombiesAt(plant.getPosition());
+            zombies = this.getContactZombies(plant, board);
+
+            if (zombies.size() > this.targetCount) {
+                zombies.subList(this.targetCount, zombies.size()).clear();
+            }
         } else {
             zombies = board.getZombiesInRadius(plant.getPosition(), this.effectRadius);
         }
 
         for (Zombie zombie : zombies) {
+            if (zombie == null || zombie.isHypnotized()
+                    || (this.waterTargetsOnly && !this.isSubmergedWaterZombie(zombie, board))
+                    || (!this.waterTargetsOnly && zombie.hasCondition(ZombieCondition.SUBMERGED))) {
+                continue;
+            }
+
             this.applyCondition(zombie);
 
             if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
-                board.getCombatSystem().killZombie(zombie);
+                if (this.waterTargetsOnly) {
+                    board.getCombatSystem().killZombieIgnoringAllegiance(zombie);
+                } else {
+                    board.getCombatSystem().killZombie(zombie);
+                }
             } else {
                 int damage = DamageExpressionParser.parseTotalDamage(this.damageExpression);
 
@@ -154,6 +184,14 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         this.secondaryProjectileCount = Math.max(0, projectileCount);
     }
 
+    public void setWaterTargetsOnly(boolean waterTargetsOnly) {
+        this.waterTargetsOnly = waterTargetsOnly;
+    }
+
+    public void setTerrainRemovalDelayTicks(long delayTicks) {
+        this.terrainRemovalDelayTicks = Math.max(0, delayTicks);
+    }
+
     @Override
     public PlantBehavior copy() {
         ExplosiveBehavior copy = new ExplosiveBehavior(
@@ -175,6 +213,10 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
                 ? null
                 : this.secondaryProjectileTemplate.copyAt(null);
         copy.secondaryProjectileCount = this.secondaryProjectileCount;
+        copy.waterTargetsOnly = this.waterTargetsOnly;
+        copy.terrainRemovalDelayTicks = this.terrainRemovalDelayTicks;
+        copy.terrainRemovalElapsedTicks = this.terrainRemovalElapsedTicks;
+        copy.terrainRemovalStarted = this.terrainRemovalStarted;
         return copy;
     }
 
@@ -189,6 +231,10 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         this.armDelayTicks = Math.max(0, this.armDelayTicks - effect.getArmDelayReductionTicks());
         this.conditionDurationTicks += effect.getDurationBonusTicks();
         this.targetCount += effect.getTargetCountBonus();
+
+        if (this.terrainRemovalDelayTicks > 0) {
+            this.terrainRemovalDelayTicks = effect.upgradeInterval(this.terrainRemovalDelayTicks);
+        }
 
         if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.CAN_CRUSH_EXTRA_TARGET)) {
             this.targetCount = Math.max(this.targetCount, 2);
@@ -235,12 +281,26 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         }
     }
 
+    private void finishTerrainRemoval(Plant plant, Board board, TerrainType terrainType) {
+        if (plant == null || board == null || this.consumed) {
+            return;
+        }
+
+        this.consumed = true;
+        this.clearTerrain(plant, board, terrainType);
+        this.explodeAfterFinishIfNeeded(plant, board);
+        board.removePlant(plant);
+    }
+
     private void explodeAfterFinishIfNeeded(Plant plant, Board board) {
         if (!this.explodeOnFinish || plant == null || board == null || board.getCombatSystem() == null) {
             return;
         }
 
-        int damage = Math.max(300, DamageExpressionParser.parseTotalDamage(this.damageExpression));
+        int parsedDamage = DamageExpressionParser.isInstantKill(this.damageExpression)
+                ? 0
+                : DamageExpressionParser.parseTotalDamage(this.damageExpression);
+        int damage = Math.max(300, parsedDamage);
 
         for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), Math.max(1, this.effectRadius))) {
             board.getCombatSystem().applyDamageToZombie(zombie, damage);
@@ -286,5 +346,43 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
                     direction[1]
             ));
         }
+    }
+
+    private List<Zombie> getContactZombies(Plant plant, Board board) {
+        List<Zombie> zombies = new java.util.ArrayList<>();
+
+        if (plant == null || plant.getPosition() == null || board == null) {
+            return zombies;
+        }
+
+        for (Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
+            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                    && zombie.getPosition() != null
+                    && zombie.findBehavior(FlyingBehavior.class) == null
+                    && !zombie.hasCondition(ZombieCondition.FLYING)
+                    && ((this.waterTargetsOnly && this.isSubmergedWaterZombie(zombie, board))
+                    || (!this.waterTargetsOnly && !zombie.hasCondition(ZombieCondition.SUBMERGED)))
+                    && Math.abs(zombie.getExactX() - plant.getPosition().getX()) <= 1.0) {
+                zombies.add(zombie);
+            }
+        }
+
+        zombies.sort((first, second) -> Double.compare(
+                Math.abs(first.getExactX() - plant.getPosition().getX()),
+                Math.abs(second.getExactX() - plant.getPosition().getX())
+        ));
+        return zombies;
+    }
+
+    private boolean isSubmergedWaterZombie(Zombie zombie, Board board) {
+        return zombie != null
+                && zombie.getPosition() != null
+                && zombie.hasCondition(ZombieCondition.SUBMERGED)
+                && this.isWaterTile(board, zombie.getPosition());
+    }
+
+    private boolean isWaterTile(Board board, Position position) {
+        Tile tile = board == null ? null : board.getTile(position);
+        return tile != null && tile.getTerrainType() == TerrainType.WATER;
     }
 }

@@ -1,14 +1,24 @@
 package model.plant;
 
 import model.plant.behavior.ConfiguredPlantFoodBehavior;
+import model.plant.behavior.AllLaneBarragePlantFoodBehavior;
+import model.plant.behavior.AlliedGargantuarPlantFoodBehavior;
+import model.plant.behavior.DefenderPlantFoodBehavior;
+import model.plant.behavior.FumeKnockbackPlantFoodBehavior;
+import model.plant.behavior.GiantPeaPlantFoodBehavior;
+import model.plant.behavior.KernelButterPlantFoodBehavior;
 import model.plant.behavior.PlantFoodBehavior;
 import model.plant.behavior.PlantFoodEffectType;
+import model.plant.behavior.TangleKelpPlantFoodBehavior;
 
 import java.util.Locale;
 import java.util.Set;
 
+// asar plant food ro az name va tozih definition entekhab va config mikone
 final class PlantFoodBehaviorFactory {
     private static final int TICKS_PER_SECOND = 10;
+    private static final int DEFAULT_BARRAGE_SHOTS = 5;
+    private static final int MAGNET_RANGE_TILES = 3;
 
     PlantFoodBehavior create(PlantDefinition definition) {
         String name = this.normalize(definition.getName());
@@ -44,49 +54,85 @@ final class PlantFoodBehaviorFactory {
             return this.createPlantFood(PlantFoodEffectType.ARM_AND_CLONE, definition, 2, 0, 1, 0, 0, null);
         }
 
-        if (name.contains("citron") || name.contains("fire peashooter") || name.contains("cactus")
-                || name.contains("fume-shroom")) {
+        if (name.contains("fire peashooter")) {
+            return this.createPlantFood(
+                    PlantFoodEffectType.REPEAT_ABILITY,
+                    definition,
+                    DEFAULT_BARRAGE_SHOTS,
+                    0,
+                    0,
+                    0,
+                    0,
+                    null
+            );
+        }
+
+        if (name.contains("citron") || name.contains("cactus")) {
             return this.createPlantFood(PlantFoodEffectType.LANE_DAMAGE, definition, 1, 0, 0, 0, 0, null);
         }
 
+        if (name.contains("fume-shroom")) {
+            return new FumeKnockbackPlantFoodBehavior(
+                    DamageExpressionParser.parseTotalDamage(definition.getDamageExpression()),
+                    2
+            );
+        }
+
         if (name.contains("kernel-pult")) {
-            return this.createPlantFood(PlantFoodEffectType.BOARD_DAMAGE, definition, 1, 0, 0, 0, 0, null);
+            return new KernelButterPlantFoodBehavior(
+                    DamageExpressionParser.parseDamageAt(definition.getDamageExpression(), 1),
+                    this.secondsToTicks(3)
+            );
         }
 
         if (name.contains("iceberg lettuce")) {
-            return this.createPlantFood(PlantFoodEffectType.FREEZE_BOARD, definition, 1, 0, 0, 0, 0, null);
+            return this.createPlantFood(
+                    PlantFoodEffectType.FREEZE_BOARD, definition, 1, 0, 0, 0, 0, null
+            ).withTimedCondition(this.secondsToTicks(3), 0);
         }
 
         if (name.contains("snow pea")) {
-            return this.createPlantFood(PlantFoodEffectType.FREEZE_LANE, definition, 5, 0, 0, 0, 0, null);
+            return this.createPlantFood(
+                    PlantFoodEffectType.FREEZE_LANE, definition, 5, 0, 0, 0, 0, null
+            ).withTimedCondition(this.secondsToTicks(3), 0);
         }
 
         if (name.contains("goo peashooter")) {
-            return this.createPlantFood(PlantFoodEffectType.POISON_TARGETS, definition, 5, 5, 0, 0, 0, null);
+            return this.createPlantFood(
+                    PlantFoodEffectType.POISON_TARGETS, definition, 5, 5, 0, 0, 0, null
+            ).withTimedCondition(this.secondsToTicks(3), 5);
         }
 
         if (name.contains("caulipower")) {
-            return this.createPlantFood(PlantFoodEffectType.HYPNOTIZE_TARGETS, definition, 1, 3, 0, 0, 0, null);
+            return this.createPlantFood(
+                    PlantFoodEffectType.HYPNOTIZE_TARGETS, definition, 1, 3, 0, 0, 0, null
+            ).withRandomTargets();
         }
 
         if (name.contains("hypno-shroom")) {
-            return this.createPlantFood(PlantFoodEffectType.HYPNOTIZE_TARGETS, definition, 1, 1, 0, 0, 0, null);
+            return new AlliedGargantuarPlantFoodBehavior();
         }
 
         if (name.contains("magnet-shroom")) {
-            return this.createPlantFood(PlantFoodEffectType.REMOVE_ARMOR, definition, 1, 5, 0, 0, 0, null);
+            return this.createPlantFood(
+                    PlantFoodEffectType.REMOVE_ARMOR, definition, 1, 5, 0, 0, 0, null
+            ).withMetallicTargetsOnly().withTargetRange(MAGNET_RANGE_TILES);
         }
 
         if (name.contains("electric blueberry")) {
-            return this.createPlantFood(PlantFoodEffectType.TARGETED_DAMAGE, definition, 1, 3, 0, 0, 0, "Insta-kill");
+            return this.createPlantFood(
+                    PlantFoodEffectType.TARGETED_DAMAGE, definition, 1, 3, 0, 0, 0, "Insta-kill"
+            ).withRandomTargets();
         }
 
         if (name.contains("squash")) {
-            return this.createPlantFood(PlantFoodEffectType.TARGETED_DAMAGE, definition, 1, 2, 0, 0, 0, "Insta-kill");
+            return this.createPlantFood(
+                    PlantFoodEffectType.TARGETED_DAMAGE, definition, 1, 2, 0, 0, 0, "Insta-kill"
+            ).withRandomTargets().withGroundTargetsOnly();
         }
 
         if (name.contains("tangle kelp")) {
-            return this.createPlantFood(PlantFoodEffectType.TARGETED_DAMAGE, definition, 1, 3, 0, 0, 0, "Insta-kill");
+            return new TangleKelpPlantFoodBehavior(3);
         }
 
         if (name.contains("chomper")) {
@@ -95,15 +141,16 @@ final class PlantFoodBehaviorFactory {
 
         if (this.hasCategory(definition.getCategories(), PlantCategory.LOBBER)) {
             return this.createPlantFood(
-                    PlantFoodEffectType.TARGETED_DAMAGE,
+                    PlantFoodEffectType.PROJECTILE_BURST,
                     definition,
-                    1,
                     name.contains("pepper-pult") ? 3 : 4,
                     0,
                     0,
                     0,
-                    null
-            );
+                    0,
+                    null,
+                    this.createLobbedProjectile(definition)
+            ).withRandomTargets();
         }
 
         if (name.contains("bonk choy") || name.contains("wasabi whip")
@@ -118,6 +165,20 @@ final class PlantFoodBehaviorFactory {
 
             if (name.contains("sweet potato")) {
                 return this.createPlantFood(PlantFoodEffectType.HEAL_TO_FULL, definition, 1, 0, 1, 0, 0, null);
+            }
+
+            if (name.contains("endurian")) {
+                return new DefenderPlantFoodBehavior(
+                        DefenderPlantFoodBehavior.Boost.ENDURIAN_ARMOR,
+                        this.plantFoodArmorAmount(name)
+                );
+            }
+
+            if (name.contains("explode-o-nut")) {
+                return new DefenderPlantFoodBehavior(
+                        DefenderPlantFoodBehavior.Boost.EXPLOSIVE_ARMOR,
+                        this.plantFoodArmorAmount(name)
+                );
             }
 
             return this.createPlantFood(
@@ -137,6 +198,12 @@ final class PlantFoodBehaviorFactory {
         }
 
         if (name.contains("bowling bulb")) {
+            Projectile largeBulb = this.createProjectile(definition, ProjectileType.NORMAL);
+            largeBulb.setDamageExpression(DamageExpressionParser.selectExpressionAt(
+                    definition.getDamageExpression(),
+                    2
+            ));
+            largeBulb.setSplashRadius(1);
             return this.createPlantFood(
                     PlantFoodEffectType.PROJECTILE_BURST,
                     definition,
@@ -146,7 +213,7 @@ final class PlantFoodBehaviorFactory {
                     0,
                     0,
                     null,
-                    this.createProjectile(definition, ProjectileType.NORMAL)
+                    largeBulb
             );
         }
 
@@ -170,6 +237,29 @@ final class PlantFoodBehaviorFactory {
 
         if (name.contains("torchwood")) {
             return this.createPlantFood(PlantFoodEffectType.PROJECTILE_BUFF, definition, 1, 0, 0, 0, 0, null);
+        }
+
+        if (name.contains("repeater") || name.contains("pea pod")) {
+            return new GiantPeaPlantFoodBehavior(
+                    DamageExpressionParser.parseDamagePerHit(definition.getDamageExpression()) * 20,
+                    name.contains("repeater") ? 5 : 0,
+                    name.contains("pea pod")
+            );
+        }
+
+        if (name.contains("threepeater")) {
+            return new AllLaneBarragePlantFoodBehavior(
+                    this.createProjectile(definition, this.projectileTypeFor(definition)),
+                    DEFAULT_BARRAGE_SHOTS
+            );
+        }
+
+        if (name.contains("mega gatling")) {
+            return new GiantPeaPlantFoodBehavior(
+                    DamageExpressionParser.parseDamagePerHit(definition.getDamageExpression()) * 20,
+                    8,
+                    4
+            );
         }
 
         if (this.hasCategory(definition.getCategories(), PlantCategory.SHOOTER)
@@ -198,7 +288,7 @@ final class PlantFoodBehaviorFactory {
         );
     }
 
-    private PlantFoodBehavior createPlantFood(
+    private ConfiguredPlantFoodBehavior createPlantFood(
             PlantFoodEffectType effectType,
             PlantDefinition definition,
             int activationCount,
@@ -221,7 +311,7 @@ final class PlantFoodBehaviorFactory {
         );
     }
 
-    private PlantFoodBehavior createPlantFood(
+    private ConfiguredPlantFoodBehavior createPlantFood(
             PlantFoodEffectType effectType,
             PlantDefinition definition,
             int activationCount,
@@ -318,6 +408,7 @@ final class PlantFoodBehaviorFactory {
                 projectileType,
                 null
         );
+        projectile.setPeaBased(this.hasTag(definition.getTags(), PlantTag.PEA));
 
         if (projectileType == ProjectileType.PIERCING) {
             projectile.setPierceCount(2);
@@ -348,6 +439,28 @@ final class PlantFoodBehaviorFactory {
         }
 
         return projectile;
+    }
+
+    private Projectile createLobbedProjectile(PlantDefinition definition) {
+        Projectile projectile = this.createProjectile(definition, this.projectileTypeFor(definition));
+        projectile.setLobbed(true);
+        return projectile;
+    }
+
+    private ProjectileType projectileTypeFor(PlantDefinition definition) {
+        if (this.hasTag(definition.getTags(), PlantTag.FIRE)) {
+            return ProjectileType.FIRE;
+        }
+
+        if (this.hasTag(definition.getTags(), PlantTag.ICE)) {
+            return ProjectileType.ICE;
+        }
+
+        if (this.hasTag(definition.getTags(), PlantTag.POISON)) {
+            return ProjectileType.POISON;
+        }
+
+        return ProjectileType.NORMAL;
     }
 
     private boolean hasCategory(Set<PlantCategory> categories, PlantCategory category) {

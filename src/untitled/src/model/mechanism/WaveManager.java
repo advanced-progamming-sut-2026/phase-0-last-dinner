@@ -21,16 +21,17 @@ public class WaveManager implements Tickable {
     }
 
     public WaveManager(List<Wave> waves, ZombieSpawner zombieSpawner) {
-        this.waves = waves == null ? new ArrayList<Wave>() : waves;
         this.zombieSpawner = zombieSpawner;
-        this.currentWaveIndex = -1;
+        this.configureWaves(waves);
     }
 
     @Override
     public void onTick() {
         if (!this.started) {
-            this.startNextWave();
-            this.started = true;
+            if (this.hasNextWave()) {
+                this.startNextWave();
+                this.started = true;
+            }
             return;
         }
 
@@ -60,7 +61,7 @@ public class WaveManager implements Tickable {
         }
 
         this.fireEvent(wave.isFinalWave()
-                ? "The final wave has started."
+                ? "The final wave has come."
                 : "Wave " + wave.getNumber() + " started.");
     }
 
@@ -82,6 +83,13 @@ public class WaveManager implements Tickable {
         }
 
         return this.waves.get(waveNumber - 1).getDifficulty();
+    }
+
+    // list jadid ro migozare va shorue wave ha ro az aval reset mikone
+    public void configureWaves(List<Wave> waves) {
+        this.waves = waves == null ? new ArrayList<Wave>() : waves;
+        this.currentWaveIndex = -1;
+        this.started = false;
     }
 
     private void fireEvent(String message) {

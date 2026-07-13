@@ -38,19 +38,28 @@ public class PianoBehavior implements ZombieBehavior {
             return;
         }
 
-        for (Zombie dancer : board.getZombiesInRadius(zombie.getPosition(), 3)) {
-            if (dancer == null || dancer == zombie || dancer.isDead() || dancer.getPosition() == null) {
+        for (Zombie dancer : board.getAllZombies()) {
+            if (dancer == null || dancer == zombie || dancer.isDead() || dancer.isHypnotized()
+                    || dancer.getPosition() == null) {
                 continue;
             }
 
-            int direction = this.random.nextBoolean() ? 1 : -1;
+            int row = dancer.getPosition().getY();
+            int direction;
+
+            if (row <= 0) {
+                direction = 1;
+            } else if (row >= 4) {
+                direction = -1;
+            } else {
+                direction = this.random.nextBoolean() ? 1 : -1;
+            }
+
             Position destination = new Position(
                     dancer.getPosition().getX(),
-                    dancer.getPosition().getY() + direction
+                    row + direction
             );
-            if (board.getTile(destination) != null) {
-                board.moveZombie(dancer, destination);
-            }
+            board.moveZombie(dancer, destination);
         }
     }
 }

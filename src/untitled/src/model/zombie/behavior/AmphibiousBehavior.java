@@ -61,4 +61,9 @@ public class AmphibiousBehavior implements ZombieBehavior {
         }
         return projectile != null && projectile.isLobbed();
     }
+
+    @Override
+    public boolean runsWhileHypnotized() {
+        return true;
+    }
 }

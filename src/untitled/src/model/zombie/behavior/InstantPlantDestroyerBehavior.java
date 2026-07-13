@@ -14,10 +14,6 @@ public class InstantPlantDestroyerBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void onTick(Zombie zombie, Board board) {
-    }
-
-    @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
         if (plant == null || board == null || board.getCombatSystem() == null) {
             return;
@@ -29,7 +25,4 @@ public class InstantPlantDestroyerBehavior implements ZombieBehavior {
         }
     }
 
-    @Override
-    public void activate(Zombie zombie, Board board) {
-    }
 }

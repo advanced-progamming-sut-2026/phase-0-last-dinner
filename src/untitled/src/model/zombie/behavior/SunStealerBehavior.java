@@ -1,33 +1,28 @@
 package model.zombie.behavior;
 
-import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.SunSystem;
 import model.zombie.Zombie;
 
 public class SunStealerBehavior implements ZombieBehavior {
-    private int stealAmount;
-    private SunSystem sunSystem;
+    private final int stealAmount;
+    private final SunSystem sunSystem;
     private long ticksSinceLastSteal;
-    private long stealIntervalTicks = 30;
-    private int maximumStolenSun = Integer.MAX_VALUE;
+    private final long stealIntervalTicks;
     private int stolenSun;
 
     public SunStealerBehavior(int stealAmount, SunSystem sunSystem) {
-        this.stealAmount = stealAmount;
-        this.sunSystem = sunSystem;
+        this(stealAmount, 30, sunSystem);
     }
 
     public SunStealerBehavior(
             int stealAmount,
             long stealIntervalTicks,
-            int maximumStolenSun,
-            double deathRefundFraction,
             SunSystem sunSystem
     ) {
-        this(stealAmount, sunSystem);
+        this.stealAmount = Math.max(0, stealAmount);
         this.stealIntervalTicks = Math.max(1, stealIntervalTicks);
-        this.maximumStolenSun = Math.max(0, maximumStolenSun);
+        this.sunSystem = sunSystem;
     }
 
     @Override
@@ -38,11 +33,6 @@ public class SunStealerBehavior implements ZombieBehavior {
             this.activate(zombie, board);
             this.ticksSinceLastSteal = 0;
         }
-    }
-
-    @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-        this.activate(zombie, board);
     }
 
     @Override
@@ -57,9 +47,7 @@ public class SunStealerBehavior implements ZombieBehavior {
             return;
         }
 
-        int remainingCapacity = Math.max(0, this.maximumStolenSun - this.stolenSun);
-        int amount = Math.min(Math.max(0, this.stealAmount), remainingCapacity);
-        this.stolenSun += system.stealGroundSun(amount);
+        this.stolenSun += system.stealGroundSun(this.stealAmount, Integer.MAX_VALUE);
     }
 
     @Override

@@ -2359,7 +2359,7 @@
         "mX": 10,
         "mY": 10
       },
-      "Hitpoints": 490,
+      "Hitpoints": 1100,
       "JamStyle": "jam_8bit",
       "ScaledProps": [
         {
@@ -2401,6 +2401,21 @@
           "Value": "speed3"
         }
       ]
+    }
+  },
+  {
+    "aliases": [
+      "ZombieBarrelRoller"
+    ],
+    "objclass": "ZombieBarrelRollerProps",
+    "objdata": {
+      "CanSpawnPlantFood": true,
+      "Description": "Pushes a projectile-blocking barrel that releases two Imps when destroyed.",
+      "EatDPS": 100,
+      "Hitpoints": 490,
+      "Speed": 0.19,
+      "WavePointCost": 600,
+      "Weight": 1000
     }
   }
 ]

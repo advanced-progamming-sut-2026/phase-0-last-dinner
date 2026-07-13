@@ -5,7 +5,10 @@ import lombok.Setter;
 import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.Position;
+import model.mechanism.TerrainType;
 import model.mechanism.Tickable;
+import model.mechanism.Tile;
+import model.mechanism.Wave;
 import model.plant.Projectile;
 import model.zombie.behavior.ZombieBehavior;
 
@@ -31,10 +34,15 @@ public class Zombie implements Tickable {
     private ZombieBehavior behavior;
     @Setter
     private Board board;
+    @Setter
+    private Wave wave;
+    // exact x harekate kasri ro negah midare va position tile ro round mikone
     private double exactX;
     private int poisonDamagePerTick;
+    // behavior marg va remove reward do marhale joda hastan
     private boolean deathProcessed;
     private boolean deathBehaviorCalled;
+    private boolean terrainFrozen;
 
     public Zombie(
             ZombieDefinition definition,
@@ -62,13 +70,19 @@ public class Zombie implements Tickable {
 
         this.tickConditions();
 
+        if (this.terrainFrozen || this.hasCondition(ZombieCondition.FROZEN)
+                || this.hasCondition(ZombieCondition.STUNNED)
+                || this.hasCondition(ZombieCondition.TRANSFORMED)) {
+            return;
+        }
+
         if (this.behavior != null) {
             this.behavior.onTick(this, this.board);
         }
     }
 
     public void move() {
-        if (this.dead || this.position == null || this.attacking) {
+        if (this.dead || this.position == null || this.attacking || this.terrainFrozen) {
             return;
         }
 
@@ -100,7 +114,7 @@ public class Zombie implements Tickable {
         }
 
         if (this.exactX > 8) {
-            if (this.hasCondition(ZombieCondition.HYPNOTIZED)) {
+            if (direction > 0) {
                 this.die();
             }
             return;
@@ -109,6 +123,8 @@ public class Zombie implements Tickable {
         Position destination = new Position((int) Math.round(this.exactX), this.position.getY());
 
         if (destination.getX() != this.position.getX()) {
+            destination = this.applySlipperyLaneShift(destination);
+
             if (this.board != null) {
                 this.board.moveZombie(this, destination);
             } else {
@@ -134,19 +150,16 @@ public class Zombie implements Tickable {
             return;
         }
 
-        ZombieArmor activeArmor = this.getActiveArmor();
+        int remainingDamage = amount;
+        ZombieArmor activeArmor;
 
-        if (activeArmor != null && !activeArmor.isDestroyed()) {
-            int remainingDamage = activeArmor.absorbDamage(amount);
-
-            if (remainingDamage <= 0) {
-                return;
-            }
-
-            amount = remainingDamage;
+        while (remainingDamage > 0 && (activeArmor = this.getActiveArmor()) != null) {
+            remainingDamage = activeArmor.absorbDamage(remainingDamage);
         }
 
-        this.applyDamageToHealth(amount);
+        if (remainingDamage > 0) {
+            this.applyDamageToHealth(remainingDamage);
+        }
     }
 
     public void takeDirectDamage(int amount) {
@@ -323,6 +336,10 @@ public class Zombie implements Tickable {
         return this.dead || this.health <= 0;
     }
 
+    public boolean isHypnotized() {
+        return this.hasCondition(ZombieCondition.HYPNOTIZED);
+    }
+
     public boolean markDeathProcessed() {
         if (this.deathProcessed) {
             return false;
@@ -360,6 +377,10 @@ public class Zombie implements Tickable {
         this.board = board;
     }
 
+    public void setTerrainFrozen(boolean terrainFrozen) {
+        this.terrainFrozen = terrainFrozen;
+    }
+
     private void applyDamageToHealth(int amount) {
         this.health -= amount;
 
@@ -367,6 +388,33 @@ public class Zombie implements Tickable {
             this.health = 0;
             this.die();
         }
+    }
+
+    private Position applySlipperyLaneShift(Position destination) {
+        if (this.board == null || destination == null) {
+            return destination;
+        }
+
+        if (this.hasCondition(ZombieCondition.FLYING)) {
+            return destination;
+        }
+
+        Tile tile = this.board.getTile(destination);
+
+        if (tile == null) {
+            return destination;
+        }
+
+        int destinationRow = destination.getY();
+
+        if (tile.getTerrainType() == TerrainType.SLIPPERY_UP) {
+            destinationRow--;
+        } else if (tile.getTerrainType() == TerrainType.SLIPPERY_DOWN) {
+            destinationRow++;
+        }
+
+        destinationRow = Math.max(0, Math.min(4, destinationRow));
+        return new Position(destination.getX(), destinationRow);
     }
 
     private void tickConditions() {

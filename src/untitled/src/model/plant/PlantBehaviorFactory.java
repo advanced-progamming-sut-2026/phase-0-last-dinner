@@ -22,8 +22,11 @@ import model.zombie.ZombieCondition;
 import java.util.Locale;
 import java.util.Set;
 
+// behavior mamooli har giah ro az category va name definition misaze
 class PlantBehaviorFactory {
     private static final int TICKS_PER_SECOND = 10;
+    private static final int MAGNET_RANGE_TILES = 3;
+    private static final int GRAVE_BUSTER_EAT_SECONDS = 5;
 
     PlantBehavior create(PlantDefinition definition) {
         String name = this.normalize(definition.getName());
@@ -179,7 +182,8 @@ class PlantBehaviorFactory {
                 this.createProjectile(definition, projectileType),
                 this.secondsToTicks(definition.getActionIntervalSeconds()),
                 targetMode,
-                definition.getDamageExpression()
+                definition.getDamageExpression(),
+                targetMode == HomingTargetMode.ARMOR ? MAGNET_RANGE_TILES : 0
         );
     }
 
@@ -212,8 +216,10 @@ class PlantBehaviorFactory {
             pattern = ExplosivePattern.FULL_BOARD;
         } else if (name.contains("hot potato")) {
             pattern = ExplosivePattern.TERRAIN_ONLY;
+            radius = 0;
         } else if (name.contains("grave buster")) {
             pattern = ExplosivePattern.GRAVE_ONLY;
+            radius = 0;
         }
 
         ExplosiveBehavior behavior = new ExplosiveBehavior(
@@ -235,6 +241,14 @@ class PlantBehaviorFactory {
 
         if (name.contains("jalapeno")) {
             behavior.setMeltsLane(true);
+        }
+
+        if (name.contains("tangle kelp")) {
+            behavior.setWaterTargetsOnly(true);
+        }
+
+        if (name.contains("grave buster")) {
+            behavior.setTerrainRemovalDelayTicks(this.secondsToTicks(GRAVE_BUSTER_EAT_SECONDS));
         }
 
         if (name.contains("grapeshot")) {
@@ -326,6 +340,7 @@ class PlantBehaviorFactory {
                 projectileType,
                 null
         );
+        projectile.setPeaBased(this.hasTag(definition.getTags(), PlantTag.PEA));
 
         if (projectileType == ProjectileType.PIERCING) {
             projectile.setPierceCount(2);

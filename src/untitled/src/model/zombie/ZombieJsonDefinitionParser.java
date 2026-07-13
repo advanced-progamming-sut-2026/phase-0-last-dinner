@@ -260,7 +260,11 @@ final class ZombieJsonDefinitionParser {
         if (key.contains("wizard") || key.contains("juggler") || key.contains("ra")
                 || key.contains("tomb") || key.contains("fisher") || key.contains("octopus")
                 || key.contains("snorkel") || key.contains("surfer") || key.contains("king")
-                || key.contains("hunter") || key.contains("troglobite") || key.contains("explorer")) {
+                || key.contains("hunter") || key.contains("troglobite") || key.contains("explorer")
+                || key.contains("barrel") || key.contains("allstar")
+                || key.contains("lostcityjane") || key.contains("crystalskull")
+                || key.contains("prospector") || key.contains("piano")
+                || key.contains("arcade")) {
             return ZombieType.SPECIAL;
         }
 
@@ -269,6 +273,11 @@ final class ZombieJsonDefinitionParser {
 
     private static ZombieChapter inferChapter(String alias) {
         String key = normalize(alias);
+
+        // knight moshtarak alias dark dare vali be hame chapter ha taallogh dare
+        if ("zombiedarkarmor3".equals(key)) {
+            return ZombieChapter.ALL_CHAPTERS;
+        }
 
         if (key.contains("egypt") || key.contains("mummy") || key.contains("pharaoh")
                 || key.contains("ra") || key.contains("tomb") || key.contains("camel")

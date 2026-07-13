@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import model.zombie.Zombie;
+import model.zombie.ZombieChapter;
 import model.zombie.ZombieDefinition;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
@@ -19,6 +20,7 @@ public class ZombieSpawner {
     private Board board;
     private GameEventListener listener;
     private Random random;
+    private ZombieChapter activeChapter;
 
     public ZombieSpawner() {
         this(null, null, null);
@@ -33,6 +35,7 @@ public class ZombieSpawner {
         this.zombieFactory = zombieFactory == null ? new ZombieFactory(definitionRepository) : zombieFactory;
         this.board = board;
         this.random = new Random();
+        this.activeChapter = ZombieChapter.ALL_CHAPTERS;
     }
 
     public void setListener(GameEventListener listener) {
@@ -46,16 +49,24 @@ public class ZombieSpawner {
             return spawnedZombies;
         }
 
-        int remainingCost = Math.max(0, (int) wave.getDifficulty());
+        int requestedCost = Math.max(0, (int) wave.getDifficulty());
+        List<ZombieDefinition> definitions = this.getEligibleDefinitions(requestedCost);
+        boolean[] reachableCosts = this.calculateReachableCosts(requestedCost, definitions);
+        int remainingCost = this.findLargestReachableCost(requestedCost, reachableCosts);
 
         while (remainingCost > 0) {
-            ZombieDefinition definition = this.chooseZombieDefinition(remainingCost);
+            ZombieDefinition definition = this.chooseZombieDefinition(
+                    remainingCost,
+                    definitions,
+                    reachableCosts
+            );
 
             if (definition == null) {
                 break;
             }
 
-            Zombie zombie = this.spawnZombie(definition, null, this.chooseRandomRow());
+            int row = this.chooseRandomRow();
+            Zombie zombie = this.spawnZombie(definition, null, row);
 
             if (zombie == null) {
                 break;
@@ -64,8 +75,10 @@ public class ZombieSpawner {
             wave.addZombie(zombie);
             spawnedZombies.add(zombie);
             remainingCost -= Math.max(1, definition.getWavePointCost());
-            this.fireEvent("Zombie " + definition.getDisplayName() + " spawned in wave "
-                    + wave.getNumber() + ".");
+            this.fireEvent("Zombie " + this.getDefinitionName(definition)
+                    + " spawned at wave " + wave.getNumber()
+                    + " in lane " + (row + 1)
+                    + " which costed " + definition.getWavePointCost() + ".");
         }
 
         return spawnedZombies;
@@ -96,32 +109,59 @@ public class ZombieSpawner {
     }
 
     public ZombieDefinition chooseZombieDefinition(int remainingCost) {
-        if (this.definitionRepository == null) {
+        if (remainingCost <= 0) {
             return null;
         }
 
-        List<ZombieDefinition> affordableDefinitions = new ArrayList<>();
+        List<ZombieDefinition> definitions = this.getEligibleDefinitions(remainingCost);
+        boolean[] reachableCosts = this.calculateReachableCosts(remainingCost, definitions);
 
-        for (ZombieDefinition definition : this.definitionRepository.findAll()) {
-            if (definition != null && definition.getWavePointCost() <= remainingCost) {
-                affordableDefinitions.add(definition);
+        if (!reachableCosts[remainingCost]) {
+            return null;
+        }
+
+        return this.chooseZombieDefinition(remainingCost, definitions, reachableCosts);
+    }
+
+    public void setActiveChapter(ZombieChapter activeChapter) {
+        this.activeChapter = activeChapter == null
+                ? ZombieChapter.ALL_CHAPTERS
+                : activeChapter;
+    }
+
+    public void setRandom(Random random) {
+        this.random = random == null ? new Random() : random;
+    }
+
+    private ZombieDefinition chooseZombieDefinition(
+            int remainingCost,
+            List<ZombieDefinition> definitions,
+            boolean[] reachableCosts
+    ) {
+        List<ZombieDefinition> validChoices = new ArrayList<>();
+
+        for (ZombieDefinition definition : definitions) {
+            int cost = definition.getWavePointCost();
+
+            if (cost <= remainingCost && reachableCosts[remainingCost - cost]) {
+                validChoices.add(definition);
             }
         }
 
-        if (affordableDefinitions.isEmpty()) {
+        if (validChoices.isEmpty()) {
             return null;
         }
 
-        int totalWeight = 0;
+        long totalWeight = 0;
 
-        for (ZombieDefinition definition : affordableDefinitions) {
+        for (ZombieDefinition definition : validChoices) {
             totalWeight += Math.max(1, definition.getWeight());
         }
 
-        int roll = this.random.nextInt(totalWeight);
-        int cumulativeWeight = 0;
+        long roll = (long) (this.random.nextDouble() * totalWeight);
+        long cumulativeWeight = 0;
 
-        for (ZombieDefinition definition : affordableDefinitions) {
+        for (ZombieDefinition definition : validChoices) {
             cumulativeWeight += Math.max(1, definition.getWeight());
 
             if (roll < cumulativeWeight) {
@@ -129,7 +169,88 @@ public class ZombieSpawner {
             }
         }
 
-        return affordableDefinitions.get(affordableDefinitions.size() - 1);
+        return validChoices.get(validChoices.size() - 1);
+    }
+
+    private List<ZombieDefinition> getEligibleDefinitions(int maximumCost) {
+        List<ZombieDefinition> definitions = new ArrayList<>();
+
+        if (this.definitionRepository == null || maximumCost <= 0) {
+            return definitions;
+        }
+
+        List<ZombieDefinition> allDefinitions = this.definitionRepository.findAll();
+
+        if (allDefinitions == null) {
+            return definitions;
+        }
+
+        for (ZombieDefinition definition : allDefinitions) {
+            if (definition == null || definition.getWavePointCost() <= 0
+                    || definition.getWavePointCost() > maximumCost
+                    || !this.isAvailableInActiveChapter(definition)) {
+                continue;
+            }
+
+            definitions.add(definition);
+        }
+
+        return definitions;
+    }
+
+    private boolean isAvailableInActiveChapter(ZombieDefinition definition) {
+        if (this.activeChapter == ZombieChapter.ALL_CHAPTERS) {
+            return true;
+        }
+
+        ZombieChapter definitionChapter = definition.getChapter();
+        return definitionChapter == null
+                || definitionChapter == ZombieChapter.ALL_CHAPTERS
+                || definitionChapter == this.activeChapter;
+    }
+
+    // hazine haye ghabele sakht ro ba tarkib zombie ha peyda mikone
+    private boolean[] calculateReachableCosts(int maximumCost, List<ZombieDefinition> definitions) {
+        boolean[] reachable = new boolean[Math.max(0, maximumCost) + 1];
+        reachable[0] = true;
+
+        for (int cost = 1; cost <= maximumCost; cost++) {
+            for (ZombieDefinition definition : definitions) {
+                int zombieCost = definition.getWavePointCost();
+
+                if (zombieCost <= cost && reachable[cost - zombieCost]) {
+                    reachable[cost] = true;
+                    break;
+                }
+            }
+        }
+
+        return reachable;
+    }
+
+    private int findLargestReachableCost(int requestedCost, boolean[] reachableCosts) {
+        for (int cost = requestedCost; cost > 0; cost--) {
+            if (reachableCosts[cost]) {
+                return cost;
+            }
+        }
+
+        return 0;
+    }
+
+    private String getDefinitionName(ZombieDefinition definition) {
+        if (definition == null) {
+            return "Zombie";
+        }
+
+        String displayName = definition.getDisplayName();
+
+        if (displayName != null && !displayName.trim().isEmpty()) {
+            return displayName.trim();
+        }
+
+        String alias = definition.getAlias();
+        return alias == null || alias.trim().isEmpty() ? "Zombie" : alias.trim();
     }
 
     private void fireEvent(String message) {

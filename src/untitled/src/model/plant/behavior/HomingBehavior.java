@@ -21,6 +21,7 @@ public class HomingBehavior implements PlantBehavior {
     private HomingTargetMode targetMode;
     private String damageExpression;
     private boolean priorityUp;
+    private int targetRange;
     private final Random random = new Random();
 
     public HomingBehavior(
@@ -29,10 +30,21 @@ public class HomingBehavior implements PlantBehavior {
             HomingTargetMode targetMode,
             String damageExpression
     ) {
+        this(projectileTemplate, homingIntervalTicks, targetMode, damageExpression, 0);
+    }
+
+    public HomingBehavior(
+            Projectile projectileTemplate,
+            long homingIntervalTicks,
+            HomingTargetMode targetMode,
+            String damageExpression,
+            int targetRange
+    ) {
         this.projectileTemplate = projectileTemplate;
         this.homingIntervalTicks = homingIntervalTicks;
         this.targetMode = targetMode;
         this.damageExpression = damageExpression;
+        this.targetRange = Math.max(0, targetRange);
     }
 
     @Override
@@ -93,7 +105,8 @@ public class HomingBehavior implements PlantBehavior {
                 projectileCopy,
                 this.homingIntervalTicks,
                 this.targetMode,
-                this.damageExpression
+                this.damageExpression,
+                this.targetRange
         );
         copy.priorityUp = this.priorityUp;
         return copy;
@@ -115,6 +128,10 @@ public class HomingBehavior implements PlantBehavior {
         this.damageExpression = DamageExpressionParser.addFlatDamage(this.damageExpression, effect.getDamageBonus());
         this.homingIntervalTicks = effect.upgradeInterval(this.homingIntervalTicks);
 
+        if (this.targetRange > 0) {
+            this.targetRange += effect.getRangeBonus();
+        }
+
         if (effect.hasSpecialEffect(PlantUpgradeSpecialEffect.TARGET_PRIORITY_UP)) {
             this.priorityUp = true;
         }
@@ -125,19 +142,18 @@ public class HomingBehavior implements PlantBehavior {
             return null;
         }
 
+        if (this.targetMode == HomingTargetMode.RANDOM
+                || this.targetMode == HomingTargetMode.HYPNOSIS) {
+            List<Zombie> candidates = this.getEligibleTargets(board);
+            return candidates.isEmpty() ? null : candidates.get(this.random.nextInt(candidates.size()));
+        }
+
         if (this.targetMode != HomingTargetMode.PRIORITY) {
             return board.getNearestZombie(plant.getPosition());
         }
 
         if (!this.priorityUp) {
-            List<Zombie> candidates = new ArrayList<>();
-
-            for (Zombie zombie : board.getAllZombies()) {
-                if (zombie != null && !zombie.isDead()) {
-                    candidates.add(zombie);
-                }
-            }
-
+            List<Zombie> candidates = this.getEligibleTargets(board);
             return candidates.isEmpty() ? null : candidates.get(this.random.nextInt(candidates.size()));
         }
 
@@ -145,7 +161,7 @@ public class HomingBehavior implements PlantBehavior {
         int bestScore = Integer.MIN_VALUE;
 
         for (Zombie zombie : board.getAllZombies()) {
-            if (zombie == null || zombie.isDead()) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()) {
                 continue;
             }
 
@@ -161,19 +177,42 @@ public class HomingBehavior implements PlantBehavior {
         return bestTarget == null ? board.getNearestZombie(plant.getPosition()) : bestTarget;
     }
 
+    private List<Zombie> getEligibleTargets(Board board) {
+        List<Zombie> candidates = new ArrayList<>();
+
+        for (Zombie zombie : board.getAllZombies()) {
+            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()) {
+                candidates.add(zombie);
+            }
+        }
+
+        return candidates;
+    }
+
     private Zombie selectArmoredTarget(Plant plant, Board board) {
         Zombie nearest = null;
         double nearestDistance = Double.MAX_VALUE;
 
         for (Zombie zombie : board.getAllZombies()) {
-            if (zombie == null || zombie.isDead() || this.findMetallicArmor(zombie) == null
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                    || this.findMetallicArmor(zombie) == null
                     || zombie.getPosition() == null) {
                 continue;
             }
 
-            double distance = plant.getPosition() == null
+            int deltaX = plant.getPosition() == null
                     ? 0
                     : Math.abs(zombie.getPosition().getX() - plant.getPosition().getX());
+            int deltaY = plant.getPosition() == null
+                    ? 0
+                    : Math.abs(zombie.getPosition().getY() - plant.getPosition().getY());
+            int tileDistance = Math.max(deltaX, deltaY);
+
+            if (this.targetRange > 0 && tileDistance > this.targetRange) {
+                continue;
+            }
+
+            double distance = deltaX * deltaX + deltaY * deltaY;
 
             if (distance < nearestDistance) {
                 nearest = zombie;

@@ -2,6 +2,7 @@ package model.zombie;
 
 import model.plant.ProjectileType;
 import model.zombie.behavior.AmphibiousBehavior;
+import model.zombie.behavior.BarrelRollerBehavior;
 import model.zombie.behavior.BasicZombieBehavior;
 import model.zombie.behavior.BlockPusherBehavior;
 import model.zombie.behavior.ChargingZombieBehavior;
@@ -60,7 +61,7 @@ public class ZombieBehaviorFactory {
                 ));
                 break;
             case "zombiera":
-                behavior.addBehavior(new SunStealerBehavior(25, 10, 250, 1.0, null));
+                behavior.addBehavior(new SunStealerBehavior(25, 10, null));
                 break;
             case "zombieexplorer":
                 behavior.addBehavior(new TorchBearerBehavior());
@@ -78,7 +79,7 @@ public class ZombieBehaviorFactory {
                 break;
             case "zombieiceagetroglobite":
                 behavior.addBehavior(new ColdResistantBehavior());
-                behavior.addBehavior(new BlockPusherBehavior(1200, 3));
+                behavior.addBehavior(new BlockPusherBehavior("Ice Block", 1200, 3));
                 break;
             case "zombiebeachfisherman":
                 behavior.addBehavior(new FishermanBehavior(25));
@@ -124,7 +125,13 @@ public class ZombieBehaviorFactory {
                 behavior.addBehavior(new PhaseChangeBehavior(ArmorType.NEWSPAPER, 4.0, 4.0));
                 break;
             case "zombiearcade":
-                behavior.addBehavior(new BlockPusherBehavior(1100, 1));
+                behavior.addBehavior(new BlockPusherBehavior("Arcade Machine", 1100, 1));
+                break;
+            case "zombiebarrelroller":
+                behavior.addBehavior(new BarrelRollerBehavior(
+                        this.findImpDefinition(definition),
+                        this.getZombieFactory()
+                ));
                 break;
             default:
                 break;
@@ -163,6 +170,7 @@ public class ZombieBehaviorFactory {
     }
 
     private ZombieFactory getZombieFactory() {
+        // factory fallback lazeme ta zombie spawn shode behavior va armor kamel begire
         if (this.zombieFactory == null) {
             this.zombieFactory = new ZombieFactory(
                     new ZombieBehaviorFactory(this.definitionRepository),

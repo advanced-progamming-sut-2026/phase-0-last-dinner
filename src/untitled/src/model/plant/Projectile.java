@@ -9,6 +9,7 @@ import model.zombie.ZombieCondition;
 import java.util.ArrayList;
 import java.util.List;
 
+// state harekat va asar yek projectile dar board ro negah midare
 @Getter
 public class Projectile implements Tickable {
     private String damageExpression;
@@ -24,9 +25,11 @@ public class Projectile implements Tickable {
     private int stunChancePercent;
     private int splashRadius;
     private int maxRange;
+    // target haye sabt shode jeloye hit dobare dar yek masir ro migiran
     private List<Zombie> hitZombies;
     private int horizontalDirection;
     private int verticalDirection;
+    // mokhtasat double harekat narm ro negah midaran va position tile gerde shode ast
     private double exactX;
     private double exactY;
     private double originX;
@@ -35,6 +38,8 @@ public class Projectile implements Tickable {
     private long remainingTicks;
     private boolean expired;
     private boolean lobbed;
+    private boolean peaBased;
+    private boolean hostileToPlants;
 
     public Projectile(
             String damageExpression,
@@ -107,6 +112,8 @@ public class Projectile implements Tickable {
         copy.horizontalDirection = normalizeDirection(horizontalDirection, 1);
         copy.verticalDirection = normalizeDirection(verticalDirection, 0);
         copy.lobbed = this.lobbed;
+        copy.peaBased = this.peaBased;
+        copy.hostileToPlants = this.hostileToPlants;
         copy.remainingTicks = this.remainingTicks;
         return copy;
     }
@@ -132,6 +139,8 @@ public class Projectile implements Tickable {
         copy.horizontalDirection = this.horizontalDirection;
         copy.verticalDirection = this.verticalDirection;
         copy.lobbed = this.lobbed;
+        copy.peaBased = this.peaBased;
+        copy.hostileToPlants = this.hostileToPlants;
         copy.remainingTicks = this.remainingTicks;
         return copy;
     }
@@ -317,8 +326,23 @@ public class Projectile implements Tickable {
         this.lobbed = lobbed;
     }
 
+    public void setPeaBased(boolean peaBased) {
+        this.peaBased = peaBased;
+    }
+
     public void setRemainingTicks(long remainingTicks) {
         this.remainingTicks = Math.max(1, remainingTicks);
+    }
+
+    // projectile ro az noghte barkhord be samte giah ha hostile mikone
+    public void reflectTowardPlants(Position reflectionPosition) {
+        this.setPosition(reflectionPosition);
+        this.target = null;
+        this.horizontalDirection = -1;
+        this.verticalDirection = 0;
+        this.travelledDistance = 0;
+        this.hitZombies.clear();
+        this.hostileToPlants = true;
     }
 
     private static int normalizeDirection(int value, int defaultValue) {

@@ -41,7 +41,4 @@ public class SegmentedGroupBehavior implements ZombieBehavior {
         }
     }
 
-    @Override
-    public void activate(Zombie zombie, Board board) {
-    }
 }

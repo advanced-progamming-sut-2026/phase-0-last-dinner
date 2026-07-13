@@ -10,6 +10,7 @@ public class PhaseChangeBehavior implements ZombieBehavior {
     private double transitionHealthPercent;
     private double secondPhaseSpeedMultiplier;
     private double secondPhaseDamageMultiplier = 1.0;
+    // agar trigger armor set bashe phase dovom ba shekastan haman armor faal mishe
     private ArmorType triggerArmorType;
     private boolean transitioned;
 
@@ -51,7 +52,7 @@ public class PhaseChangeBehavior implements ZombieBehavior {
 
     @Override
     public void attack(Zombie zombie, Plant plant, Board board) {
-        // BasicZombieBehavior applies bite damage; this behavior only changes phase state.
+        // bite ro basic behavior mizane in behavior faghat phase ro avaz mikone
     }
 
     @Override
@@ -80,5 +81,10 @@ public class PhaseChangeBehavior implements ZombieBehavior {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean runsWhileHypnotized() {
+        return true;
     }
 }

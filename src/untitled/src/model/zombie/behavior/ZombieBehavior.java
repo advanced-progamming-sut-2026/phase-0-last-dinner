@@ -8,16 +8,23 @@ import model.zombie.Zombie;
 import model.zombie.ZombieCondition;
 
 public interface ZombieBehavior {
-    void onTick(Zombie zombie, Board board);
+    default void onTick(Zombie zombie, Board board) {
+    }
 
-    void attack(Zombie zombie, Plant plant, Board board);
+    default void attack(Zombie zombie, Plant plant, Board board) {
+    }
 
-    void activate(Zombie zombie, Board board);
+    default void activate(Zombie zombie, Board board) {
+    }
 
     default void applyPlantUpgrade(PlantUpgradeEffect effect) {
     }
 
     default void onDeath(Zombie zombie, Board board) {
+    }
+
+    default boolean runsWhileHypnotized() {
+        return false;
     }
 
     default boolean canMove(Zombie zombie, Board board) {

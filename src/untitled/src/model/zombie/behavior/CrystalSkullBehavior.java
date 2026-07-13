@@ -51,10 +51,6 @@ public class CrystalSkullBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
         this.fireLaser(zombie, board);
     }
@@ -77,12 +73,9 @@ public class CrystalSkullBehavior implements ZombieBehavior {
         if (zombie == null || zombie.getPosition() == null || board == null) {
             return false;
         }
-        for (Plant plant : board.getPlantsInLane(zombie.getPosition())) {
+        for (Plant plant : board.getPlantsInRadius(zombie.getPosition(), this.detectionRadius)) {
             if (plant != null && !plant.isDead() && plant.getPosition() != null) {
-                int distance = zombie.getPosition().getX() - plant.getPosition().getX();
-                if (distance >= 0 && distance <= this.detectionRadius) {
-                    return true;
-                }
+                return true;
             }
         }
         return false;
@@ -104,10 +97,15 @@ public class CrystalSkullBehavior implements ZombieBehavior {
         if (zombie == null || zombie.getPosition() == null || board == null || board.getCombatSystem() == null) {
             return;
         }
-        for (int distance = 1; distance <= 4; distance++) {
-            Position position = new Position(zombie.getPosition().getX() - distance, zombie.getPosition().getY());
+        for (int distance = 1; distance <= this.detectionRadius; distance++) {
+            Position position = new Position(
+                    zombie.getPosition().getX() - distance,
+                    zombie.getPosition().getY()
+            );
             for (Plant plant : board.getPlantsAt(position)) {
-                board.getCombatSystem().destroyPlant(plant);
+                if (plant != null && !plant.isDead()) {
+                    board.getCombatSystem().destroyPlant(plant);
+                }
             }
         }
     }

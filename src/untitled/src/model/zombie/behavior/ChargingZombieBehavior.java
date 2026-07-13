@@ -40,7 +40,7 @@ public class ChargingZombieBehavior implements ZombieBehavior {
                 }
 
                 if (Math.abs(other.getPosition().getX() - zombie.getPosition().getX()) <= 1) {
-                    board.getCombatSystem().killZombie(other);
+                    board.getCombatSystem().killZombieIgnoringAllegiance(other);
                     this.spendCharge(zombie);
                     break;
                 }
@@ -54,10 +54,6 @@ public class ChargingZombieBehavior implements ZombieBehavior {
             board.getCombatSystem().destroyPlant(plant);
             this.spendCharge(zombie);
         }
-    }
-
-    @Override
-    public void activate(Zombie zombie, Board board) {
     }
 
     private void spendCharge(Zombie zombie) {

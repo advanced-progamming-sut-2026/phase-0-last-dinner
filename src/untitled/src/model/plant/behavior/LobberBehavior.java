@@ -92,7 +92,8 @@ public class LobberBehavior implements PlantBehavior {
         double nearestDistance = Double.MAX_VALUE;
 
         for (model.zombie.Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
-            if (zombie == null || zombie.isDead() || zombie.getPosition() == null) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                    || zombie.getPosition() == null) {
                 continue;
             }
 

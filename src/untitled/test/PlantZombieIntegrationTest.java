@@ -24,7 +24,7 @@ public class PlantZombieIntegrationTest {
         Main application = Main.loadApplication();
 
         assertEquals(69, application.getPlantDefinitions().findAll().size());
-        assertEquals(27, application.getZombieDefinitions().findAll().size());
+        assertEquals(28, application.getZombieDefinitions().findAll().size());
     }
 
     @Test
@@ -43,6 +43,10 @@ public class PlantZombieIntegrationTest {
             assertNotNull(definition.getAlias(), zombie);
             assertNotNull(definition.getAlias(), zombie.getBehavior());
             assertTrue("Duplicate zombie alias: " + definition.getAlias(), zombieAliases.add(definition.getAlias()));
+
+            if (!definition.isCanSpawnPlantFood()) {
+                assertFalse(definition.getAlias(), zombie.isGlowing());
+            }
         }
     }
 

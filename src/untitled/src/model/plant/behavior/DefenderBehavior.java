@@ -6,14 +6,22 @@ import model.mechanism.Position;
 import model.plant.DamageExpressionParser;
 import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
+import model.zombie.behavior.FlyingBehavior;
 
 import java.util.List;
 
+// halat haye khas defender mesl reflect va avaz kardan lane ro ejra mikone
 public class DefenderBehavior implements PlantBehavior {
     private DefenderMode defenderMode;
     private String damageExpression;
     private boolean deathEffectUsed;
     private int contactSunAmount = 5;
+    private double reflectionDamageMultiplier = 1.0;
+    // hp giah ghabl az armor plant food marz shekast armor hesab mishe
+    private int plantFoodArmorBreakHealth = -1;
+    private boolean armorBreakExplosionArmed;
+    private boolean armorBreakExplosionUsed;
 
     public DefenderBehavior() {
         this(DefenderMode.BASIC, "0");
@@ -47,7 +55,10 @@ public class DefenderBehavior implements PlantBehavior {
         } else if (this.defenderMode == DefenderMode.ATTRACT_ZOMBIES
                 && plant != null && plant.getPosition() != null && board != null) {
             for (Zombie zombie : board.getAllZombies()) {
-                if (zombie != null && !zombie.isDead() && zombie.getPosition() != null) {
+                if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                        && zombie.findBehavior(FlyingBehavior.class) == null
+                        && !zombie.hasCondition(ZombieCondition.SUBMERGED)
+                        && zombie.getPosition() != null) {
                     board.moveZombie(
                             zombie,
                             new Position(zombie.getPosition().getX(), plant.getPosition().getY())
@@ -62,7 +73,8 @@ public class DefenderBehavior implements PlantBehavior {
             return;
         }
 
-        int damage = Math.max(10, DamageExpressionParser.parseTotalDamage(this.damageExpression));
+        int baseDamage = Math.max(10, DamageExpressionParser.parseTotalDamage(this.damageExpression));
+        int damage = Math.max(1, (int) Math.round(baseDamage * this.reflectionDamageMultiplier));
 
         for (Zombie zombie : this.getContactZombies(plant, board)) {
             board.getCombatSystem().applyDamageToZombie(zombie, damage);
@@ -73,7 +85,7 @@ public class DefenderBehavior implements PlantBehavior {
         List<Zombie> zombies = this.getContactZombies(plant, board);
 
         for (Zombie zombie : zombies) {
-            if (zombie == null || zombie.getPosition() == null) {
+            if (zombie == null || zombie.isHypnotized() || zombie.getPosition() == null) {
                 continue;
             }
 
@@ -94,7 +106,10 @@ public class DefenderBehavior implements PlantBehavior {
         }
 
         for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), 1)) {
-            if (zombie == null || zombie.getPosition() == null) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                    || zombie.getPosition() == null
+                    || zombie.findBehavior(FlyingBehavior.class) != null
+                    || zombie.hasCondition(ZombieCondition.SUBMERGED)) {
                 continue;
             }
 
@@ -119,6 +134,12 @@ public class DefenderBehavior implements PlantBehavior {
         } else if (this.defenderMode == DefenderMode.MOVE_ZOMBIES) {
             this.moveContactZombiesToAnotherLane(plant, board);
         }
+
+        if (this.armorBreakExplosionArmed && !this.armorBreakExplosionUsed
+                && plant != null && plant.getHealth() <= this.plantFoodArmorBreakHealth) {
+            this.armorBreakExplosionUsed = true;
+            this.explodeNearby(plant, board);
+        }
     }
 
     @Override
@@ -130,7 +151,28 @@ public class DefenderBehavior implements PlantBehavior {
     public PlantBehavior copy() {
         DefenderBehavior copy = new DefenderBehavior(this.defenderMode, this.damageExpression);
         copy.contactSunAmount = this.contactSunAmount;
+        copy.reflectionDamageMultiplier = this.reflectionDamageMultiplier;
+        copy.plantFoodArmorBreakHealth = this.plantFoodArmorBreakHealth;
+        copy.armorBreakExplosionArmed = this.armorBreakExplosionArmed;
+        copy.armorBreakExplosionUsed = this.armorBreakExplosionUsed;
         return copy;
+    }
+
+    public void grantPlantFoodArmor(Plant plant, int armorHealth, boolean explodeOnBreak) {
+        if (plant == null || armorHealth <= 0) {
+            return;
+        }
+
+        this.plantFoodArmorBreakHealth = plant.getHealth();
+        plant.addBonusHealth(armorHealth);
+        this.armorBreakExplosionArmed = explodeOnBreak;
+        this.armorBreakExplosionUsed = false;
+    }
+
+    public void multiplyReflectionDamage(double multiplier) {
+        if (multiplier > 1.0) {
+            this.reflectionDamageMultiplier *= multiplier;
+        }
     }
 
     private void activateDeathEffect(Plant plant, Board board) {
@@ -141,7 +183,20 @@ public class DefenderBehavior implements PlantBehavior {
 
         this.deathEffectUsed = true;
 
+        this.explodeNearby(plant, board);
+    }
+
+    private void explodeNearby(Plant plant, Board board) {
+        if (plant == null || board == null || board.getCombatSystem() == null) {
+            return;
+        }
+
         for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), 1)) {
+            if (zombie == null || zombie.isHypnotized()
+                    || zombie.hasCondition(ZombieCondition.SUBMERGED)) {
+                continue;
+            }
+
             if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
                 board.getCombatSystem().killZombie(zombie);
             } else {
@@ -159,7 +214,10 @@ public class DefenderBehavior implements PlantBehavior {
         }
 
         for (Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
-            if (zombie != null && !zombie.isDead() && zombie.getPosition() != null
+            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                    && zombie.getPosition() != null
+                    && zombie.findBehavior(FlyingBehavior.class) == null
+                    && !zombie.hasCondition(ZombieCondition.SUBMERGED)
                     && Math.abs(zombie.getPosition().getX() - plant.getPosition().getX()) <= 1) {
                 contactZombies.add(zombie);
             }

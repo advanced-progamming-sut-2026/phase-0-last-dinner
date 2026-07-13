@@ -1,6 +1,5 @@
 package model.zombie.behavior;
 
-import model.Plant;
 import model.mechanism.Board;
 import model.zombie.Zombie;
 
@@ -22,10 +21,6 @@ public class AuraBuffBehavior implements ZombieBehavior {
     @Override
     public void onTick(Zombie zombie, Board board) {
         this.activate(zombie, board);
-    }
-
-    @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
     }
 
     @Override

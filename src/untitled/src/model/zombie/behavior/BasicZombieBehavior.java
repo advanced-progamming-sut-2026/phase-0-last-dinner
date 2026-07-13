@@ -59,6 +59,11 @@ public class BasicZombieBehavior implements ZombieBehavior {
         }
     }
 
+    @Override
+    public boolean runsWhileHypnotized() {
+        return true;
+    }
+
     private void moveIfAllowed(Zombie zombie, Board board) {
         ZombieBehavior completeBehavior = zombie.getBehavior();
         if (completeBehavior == null || completeBehavior.canMove(zombie, board)) {
@@ -81,14 +86,10 @@ public class BasicZombieBehavior implements ZombieBehavior {
             return;
         }
 
-        int damage = this.nextDamagePerTick();
+        int damage = this.nextDamagePerTick(zombie);
         if (damage > 0) {
             board.getCombatSystem().applyDamageToPlant(plant, damage);
         }
-    }
-
-    @Override
-    public void activate(Zombie zombie, Board board) {
     }
 
     @Override
@@ -108,8 +109,18 @@ public class BasicZombieBehavior implements ZombieBehavior {
         }
     }
 
-    private int nextDamagePerTick() {
-        int total = this.damageRemainder + Math.max(0, this.eatDamagePerSecond);
+    public void ensureMinimumDamagePerSecond(int minimumDamage) {
+        this.eatDamagePerSecond = Math.max(this.eatDamagePerSecond, Math.max(0, minimumDamage));
+    }
+
+    private int nextDamagePerTick(Zombie zombie) {
+        int damagePerSecond = Math.max(0, this.eatDamagePerSecond);
+
+        if (zombie != null && zombie.hasCondition(ZombieCondition.CHILLED)) {
+            damagePerSecond /= 2;
+        }
+
+        int total = this.damageRemainder + damagePerSecond;
         int damage = total / TICKS_PER_SECOND;
         this.damageRemainder = total % TICKS_PER_SECOND;
         return damage;
@@ -126,6 +137,7 @@ public class BasicZombieBehavior implements ZombieBehavior {
 
         for (Zombie otherZombie : zombiesInLane) {
             if (otherZombie == null || otherZombie == zombie || otherZombie.isDead()
+                    || otherZombie.isHypnotized()
                     || otherZombie.getPosition() == null) {
                 continue;
             }
@@ -144,7 +156,7 @@ public class BasicZombieBehavior implements ZombieBehavior {
 
         if (target != null && nearestDistance <= 1) {
             zombie.setAttacking(true);
-            int damage = this.nextDamagePerTick();
+            int damage = this.nextDamagePerTick(zombie);
             if (damage > 0) {
                 board.getCombatSystem().applyDamageToZombie(target, damage);
             }

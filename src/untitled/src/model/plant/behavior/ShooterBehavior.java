@@ -18,6 +18,7 @@ public class ShooterBehavior implements PlantBehavior {
     private long shootIntervalTicks;
     private long ticksSinceLastShot;
     private ShooterPattern shooterPattern;
+    // har bulb cooldown joda dare ta nobati shlik beshe
     private final long[] bulbCooldowns = new long[3];
 
     public ShooterBehavior(
@@ -44,6 +45,11 @@ public class ShooterBehavior implements PlantBehavior {
 
     @Override
     public void onTick(Plant plant, Board board) {
+        if (this.shooterPattern == ShooterPattern.STACKED_FORWARD
+                && !this.isStackLeader(plant, board)) {
+            return;
+        }
+
         this.tickBulbCooldowns();
         this.ticksSinceLastShot++;
 
@@ -184,13 +190,29 @@ public class ShooterBehavior implements PlantBehavior {
         return Math.max(1, count);
     }
 
+    private boolean isStackLeader(Plant plant, Board board) {
+        if (plant == null || plant.getPosition() == null || board == null) {
+            return false;
+        }
+
+        for (Plant stackedPlant : board.getPlantsAt(plant.getPosition())) {
+            if (stackedPlant != null && plant.getName() != null
+                    && plant.getName().equals(stackedPlant.getName())) {
+                return stackedPlant == plant;
+            }
+        }
+
+        return false;
+    }
+
     private boolean hasTargetAlongPath(Position origin, Board board, int horizontalDirection, int verticalDirection) {
         if (origin == null || board == null) {
             return false;
         }
 
         for (Zombie zombie : board.getAllZombies()) {
-            if (zombie == null || zombie.isDead() || zombie.getPosition() == null) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                    || zombie.getPosition() == null) {
                 continue;
             }
 

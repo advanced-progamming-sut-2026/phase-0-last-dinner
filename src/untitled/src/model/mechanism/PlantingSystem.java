@@ -84,11 +84,9 @@ public class PlantingSystem {
             return;
         }
 
-        Plant removedPlant = tile.removeTopPlant();
-
-        if (removedPlant != null) {
-            removedPlant.setPosition(null);
-            removedPlant.setBoard(null);
+        if (tile.getPlants() != null && !tile.getPlants().isEmpty()) {
+            Plant topPlant = tile.getPlants().get(tile.getPlants().size() - 1);
+            this.board.removePlant(topPlant);
         }
     }
 
@@ -104,6 +102,11 @@ public class PlantingSystem {
         }
 
         String newName = this.normalizedName(plant);
+
+        if (("hot potato".equals(newName) && tile.getTerrainType() == TerrainType.FROZEN)
+                || ("grave buster".equals(newName) && tile.getTerrainType() == TerrainType.GRAVE)) {
+            return true;
+        }
 
         if ("pea pod".equals(newName)) {
             if (tile.getPlants().size() >= 5) {

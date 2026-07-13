@@ -65,7 +65,7 @@ public class ZombieFactory {
                 behavior
         );
 
-        zombie.setGlowing(this.random.nextInt(100) < 5);
+        zombie.setGlowing(definition.isCanSpawnPlantFood() && this.random.nextInt(100) < 5);
         return zombie;
     }
 

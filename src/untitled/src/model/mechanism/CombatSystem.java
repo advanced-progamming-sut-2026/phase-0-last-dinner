@@ -38,6 +38,7 @@ public class CombatSystem implements Tickable {
             return;
         }
 
+        this.updateEnvironment();
         this.resolveProjectiles();
         this.applyPoisonDamage();
         this.removeDeadZombies();
@@ -60,7 +61,7 @@ public class CombatSystem implements Tickable {
     }
 
     public void applyDamageToZombie(Zombie zombie, int damage) {
-        if (zombie == null || damage <= 0 || zombie.isDead()) {
+        if (!this.canTakePlantDamage(zombie, damage) || this.isSubmerged(zombie)) {
             return;
         }
 
@@ -69,7 +70,7 @@ public class CombatSystem implements Tickable {
     }
 
     public void applyDirectDamageToZombie(Zombie zombie, int damage) {
-        if (zombie == null || damage <= 0 || zombie.isDead()) {
+        if (!this.canTakePlantDamage(zombie, damage) || this.isSubmerged(zombie)) {
             return;
         }
 
@@ -98,6 +99,15 @@ public class CombatSystem implements Tickable {
     }
 
     public void killZombie(Zombie zombie) {
+        if (zombie == null || zombie.isHypnotized() || this.isSubmerged(zombie)) {
+            return;
+        }
+
+        this.killZombieIgnoringAllegiance(zombie);
+    }
+
+    // baraye marg mostaghim ke ally ya submerged boodan nabayad jelosh ro begire
+    public void killZombieIgnoringAllegiance(Zombie zombie) {
         if (zombie == null) {
             return;
         }
@@ -160,16 +170,30 @@ public class CombatSystem implements Tickable {
 
             projectile.move();
 
-            if (projectile.getType() == ProjectileType.FIRE && projectile.getPosition() != null) {
-                Tile tile = this.board.getTile(projectile.getPosition());
-
-                if (tile != null && tile.getTerrainType() == TerrainType.FROZEN) {
-                    this.board.setTerrain(projectile.getPosition(), TerrainType.CLASSIC);
-                }
-            }
-
             if (projectile.isExpired()) {
                 iterator.remove();
+                continue;
+            }
+
+            Tile tile = this.board.getTile(projectile.getPosition());
+
+            if (tile != null && tile.intercept(projectile)) {
+                iterator.remove();
+                continue;
+            }
+
+            if (this.board.getPlantCoverSystem().intercept(projectile)) {
+                iterator.remove();
+                continue;
+            }
+
+            if (projectile.isHostileToPlants()) {
+                Plant plant = this.findCollidingPlant(projectile);
+
+                if (plant != null) {
+                    this.applyReflectedProjectileHit(projectile, plant);
+                    iterator.remove();
+                }
                 continue;
             }
 
@@ -182,7 +206,9 @@ public class CombatSystem implements Tickable {
             ZombieBehavior behavior = target.getBehavior();
 
             if (behavior != null && behavior.onProjectileHit(target, projectile, this.board)) {
-                iterator.remove();
+                if (!projectile.isHostileToPlants()) {
+                    iterator.remove();
+                }
                 continue;
             }
 
@@ -205,18 +231,18 @@ public class CombatSystem implements Tickable {
     }
 
     private void applyPoisonDamage() {
-        for (Zombie zombie : new ArrayList<>(this.board.getAllZombies())) {
+        for (Zombie zombie : this.board.getAllZombies()) {
             if (zombie == null || zombie.isDead() || !zombie.hasCondition(ZombieCondition.POISONED)
                     || zombie.getPoisonDamagePerTick() <= 0) {
                 continue;
             }
 
-            this.applyDirectDamageToZombie(zombie, zombie.getPoisonDamagePerTick());
+            this.applyDirectDamageFromProjectile(zombie, zombie.getPoisonDamagePerTick());
         }
     }
 
     private void removeDeadZombies() {
-        for (Zombie zombie : new ArrayList<>(this.board.getAllZombies())) {
+        for (Zombie zombie : this.board.getAllZombies()) {
             this.finishZombieDeath(zombie);
         }
     }
@@ -236,14 +262,14 @@ public class CombatSystem implements Tickable {
             }
 
             if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
-                this.killZombie(target);
+                this.killZombieIgnoringAllegiance(target);
             } else {
                 int damage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
 
                 if (projectile.getType() == ProjectileType.POISON) {
-                    this.applyDirectDamageToZombie(target, damage);
+                    this.applyDirectDamageFromProjectile(target, damage);
                 } else {
-                    this.applyDamageToZombie(target, damage);
+                    this.applyDamageFromProjectile(target, damage);
                 }
             }
 
@@ -260,7 +286,7 @@ public class CombatSystem implements Tickable {
         }
 
         for (Zombie zombie : this.board.getZombiesInRadius(directTarget.getPosition(), projectile.getSplashRadius())) {
-            if (zombie != null && !targets.contains(zombie)) {
+            if (zombie != null && !zombie.isHypnotized() && !targets.contains(zombie)) {
                 targets.add(zombie);
             }
         }
@@ -296,6 +322,48 @@ public class CombatSystem implements Tickable {
         }
     }
 
+    private void applyReflectedProjectileHit(Projectile projectile, Plant plant) {
+        if (projectile == null || plant == null || plant.isDead()) {
+            return;
+        }
+
+        if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
+            this.destroyPlant(plant);
+        } else {
+            int damage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
+            this.applyDamageToPlant(plant, damage);
+        }
+
+        if (projectile.getType() == ProjectileType.ICE && !plant.isDead()) {
+            this.board.getPlantCoverSystem().hitWithSnowball(plant);
+        }
+    }
+
+    private Plant findCollidingPlant(Projectile projectile) {
+        if (projectile == null || projectile.getPosition() == null) {
+            return null;
+        }
+
+        Plant nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+
+        for (Plant plant : this.board.getPlantsInLane(projectile.getPosition())) {
+            if (plant == null || plant.isDead() || plant.getPosition() == null) {
+                continue;
+            }
+
+            double distance = Math.abs(plant.getPosition().getX() - projectile.getExactX());
+
+            if (distance <= Math.max(0.55, projectile.getSpeed() * 0.6)
+                    && distance <= nearestDistance) {
+                nearest = plant;
+                nearestDistance = distance;
+            }
+        }
+
+        return nearest;
+    }
+
     private Zombie findCollidingZombie(Projectile projectile) {
         if (projectile.getPosition() == null) {
             return null;
@@ -308,7 +376,8 @@ public class CombatSystem implements Tickable {
         double nearestDistance = Double.MAX_VALUE;
 
         for (Zombie zombie : candidates) {
-            if (!this.canPhysicallyCollide(projectile, zombie) || zombie.getPosition() == null) {
+            if (zombie.isHypnotized() || !this.canPhysicallyCollide(projectile, zombie)
+                    || zombie.getPosition() == null) {
                 continue;
             }
 
@@ -330,7 +399,8 @@ public class CombatSystem implements Tickable {
         double nearestDistance = Double.MAX_VALUE;
 
         for (Zombie zombie : this.board.getAllZombies()) {
-            if (!this.canProjectileHit(projectile, zombie) || zombie.getPosition() == null) {
+            if (zombie.isHypnotized() || !this.canProjectileHit(projectile, zombie)
+                    || zombie.getPosition() == null) {
                 continue;
             }
 
@@ -366,8 +436,7 @@ public class CombatSystem implements Tickable {
             return;
         }
 
-        if (zombie.isGlowing()
-                || zombie.getDefinition() != null && zombie.getDefinition().isCanSpawnPlantFood()) {
+        if (zombie.isGlowing()) {
             return;
         }
 
@@ -381,14 +450,51 @@ public class CombatSystem implements Tickable {
             return;
         }
 
-        if (this.board.getPlantFoodSystem() != null
-                && (zombie.isGlowing()
-                || zombie.getDefinition() != null && zombie.getDefinition().isCanSpawnPlantFood())) {
-            this.board.getPlantFoodSystem().addPlantFood();
+        if (this.board.getPlantFoodSystem() != null && zombie.isGlowing()
+                && this.board.getPlantFoodSystem().addPlantFood()) {
+            this.fireEvent("The glowing zombie dropeed a plant food; you have "
+                    + this.board.getPlantFoodSystem().getPlantFoodAmount()
+                    + " plant foods now.");
         }
 
         this.fireZombieDiedEvent(zombie);
         this.removeZombieFromBoard(zombie);
+    }
+
+    private void updateEnvironment() {
+        this.board.getPlantCoverSystem().onTick(this.board);
+
+        for (Tile tile : this.board.getTiles()) {
+            if (tile != null) {
+                tile.onEnvironmentTick(this.board);
+            }
+        }
+    }
+
+    private boolean canTakePlantDamage(Zombie zombie, int damage) {
+        return zombie != null && damage > 0 && !zombie.isDead() && !zombie.isHypnotized();
+    }
+
+    private boolean isSubmerged(Zombie zombie) {
+        return zombie != null && zombie.hasCondition(ZombieCondition.SUBMERGED);
+    }
+
+    private void applyDamageFromProjectile(Zombie zombie, int damage) {
+        if (!this.canTakePlantDamage(zombie, damage)) {
+            return;
+        }
+
+        zombie.takeDamage(damage);
+        this.finishZombieDeath(zombie);
+    }
+
+    private void applyDirectDamageFromProjectile(Zombie zombie, int damage) {
+        if (!this.canTakePlantDamage(zombie, damage)) {
+            return;
+        }
+
+        zombie.takeDirectDamage(damage);
+        this.finishZombieDeath(zombie);
     }
 
     private void removeZombieFromBoard(Zombie zombie) {
@@ -406,10 +512,23 @@ public class CombatSystem implements Tickable {
     }
 
     private void fireZombieDiedEvent(Zombie zombie) {
-        String name = zombie == null || zombie.getDefinition() == null
-                ? "Zombie"
-                : "Zombie " + zombie.getDefinition().getDisplayName();
-        this.fireEvent(name + " died.");
+        String type = "Zombie";
+
+        if (zombie != null && zombie.getDefinition() != null) {
+            String displayName = zombie.getDefinition().getDisplayName();
+            String alias = zombie.getDefinition().getAlias();
+
+            if (displayName != null && !displayName.trim().isEmpty()) {
+                type = displayName.trim();
+            } else if (alias != null && !alias.trim().isEmpty()) {
+                type = alias.trim();
+            }
+        }
+
+        Position position = zombie == null ? null : zombie.getPosition();
+        int x = position == null ? 0 : position.getX() + 1;
+        int y = position == null ? 0 : position.getY() + 1;
+        this.fireEvent("Zombie of type " + type + " is dead at (" + x + ", " + y + ")");
     }
 
     private void firePlantDestroyedEvent(Plant plant) {

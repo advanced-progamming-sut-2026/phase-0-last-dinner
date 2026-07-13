@@ -53,6 +53,11 @@ public class GargantuarBehavior implements ZombieBehavior {
         Position landingPosition = new Position(2, gargantuarPosition.getY());
         Zombie imp = this.zombieFactory.create(this.impDefinition, landingPosition);
         board.addZombie(imp, landingPosition);
+
+        if (imp != null && zombie.getWave() != null) {
+            zombie.getWave().addZombie(imp);
+        }
+
         this.impThrown = true;
         return imp;
     }

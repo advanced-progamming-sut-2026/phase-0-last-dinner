@@ -28,10 +28,6 @@ public class BossBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
     public void activate(Zombie zombie, Board board) {
         if (zombie == null || board == null || board.getCombatSystem() == null) {
             return;

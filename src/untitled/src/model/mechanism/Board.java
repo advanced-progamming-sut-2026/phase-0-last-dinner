@@ -29,6 +29,9 @@ public class Board {
     @Getter
     @Setter
     private CombatSystem combatSystem;
+    @Getter
+    // cover haye plant ro markazi negah midare ta combat be an dastresi dashte bashe
+    private final PlantCoverSystem plantCoverSystem = new PlantCoverSystem();
     public Board() {
         this(createDefaultTiles());
     }
@@ -101,7 +104,7 @@ public class Board {
 
             for (Zombie killedZombie : killedZombies) {
                 if (this.combatSystem != null) {
-                    this.combatSystem.killZombie(killedZombie);
+                    this.combatSystem.killZombieIgnoringAllegiance(killedZombie);
                 } else {
                     this.removeZombie(killedZombie);
                 }
@@ -166,6 +169,7 @@ public class Board {
             sourceTile.removePlant(plant);
         }
 
+        this.plantCoverSystem.removePlant(plant);
         plant.setPosition(destination);
         plant.setBoard(this);
         destinationTile.addPlant(plant);
@@ -183,6 +187,7 @@ public class Board {
             return false;
         }
 
+        this.plantCoverSystem.removePlant(plant);
         plant.setPosition(null);
         plant.setBoard(null);
         return true;
@@ -491,7 +496,8 @@ public class Board {
             int distance = this.getSquaredDistance(tile.getPosition(), position);
 
             for (Zombie zombie : tile.getZombies()) {
-                if (zombie != null && distance < nearestDistance) {
+                if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                        && distance < nearestDistance) {
                     nearestZombie = zombie;
                     nearestDistance = distance;
                 }
@@ -503,6 +509,7 @@ public class Board {
 
     public List<Zombie> getNearestZombies(Position position, int limit) {
         List<Zombie> zombies = this.getAllZombies();
+        zombies.removeIf(zombie -> zombie == null || zombie.isDead() || zombie.isHypnotized());
 
         if (position == null || zombies.isEmpty() || limit <= 0) {
             return new ArrayList<>();
@@ -517,7 +524,8 @@ public class Board {
             return zombies;
         }
 
-        return new ArrayList<>(zombies.subList(0, limit));
+        zombies.subList(limit, zombies.size()).clear();
+        return zombies;
     }
 
     public Tile getTile(Position position) {
@@ -553,17 +561,7 @@ public class Board {
 
             if (tile.getPosition().getX() == position.getX()
                     && tile.getPosition().getY() == position.getY()) {
-                Tile replacement = new Tile(tile.getPosition(), terrainType);
-
-                for (Plant plant : tile.getPlants()) {
-                    replacement.addPlant(plant);
-                }
-
-                for (Zombie zombie : tile.getZombies()) {
-                    replacement.addZombie(zombie);
-                }
-
-                this.tiles.set(i, replacement);
+                tile.setTerrainType(terrainType);
                 return true;
             }
         }

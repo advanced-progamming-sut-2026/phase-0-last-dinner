@@ -8,14 +8,17 @@ import model.zombie.Zombie;
 
 import java.util.List;
 
+// attack nazdik va state haye khas digest ya roshd range ro ejra mikone
 public class MeleeBehavior implements PlantBehavior {
     private String damageExpression;
     private int range;
     private long attackIntervalTicks;
     private long ticksSinceLastAttack;
     private MeleePattern meleePattern;
+    // ta payan in timer giah dobare attack nemikone
     private long digestTicks;
     private long remainingDigestTicks;
+    // age marhale roshd giah haye ramping ro moshakhas mikone
     private long ageTicks;
 
     public MeleeBehavior(
@@ -78,6 +81,11 @@ public class MeleeBehavior implements PlantBehavior {
         );
 
         for (Zombie zombie : zombies) {
+            if (zombie == null || zombie.isHypnotized()
+                    || zombie.hasCondition(model.zombie.ZombieCondition.SUBMERGED)) {
+                continue;
+            }
+
             if (DamageExpressionParser.isInstantKill(activeDamage)) {
                 board.getCombatSystem().killZombie(zombie);
                 this.remainingDigestTicks = this.digestTicks;
@@ -122,7 +130,8 @@ public class MeleeBehavior implements PlantBehavior {
         double nearestDistance = Double.MAX_VALUE;
 
         for (Zombie zombie : board.getZombiesInLane(plant.getPosition())) {
-            if (zombie == null || zombie.isDead() || zombie.getPosition() == null) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                    || zombie.getPosition() == null) {
                 continue;
             }
 

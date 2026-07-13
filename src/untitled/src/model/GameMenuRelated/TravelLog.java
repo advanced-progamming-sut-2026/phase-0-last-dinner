@@ -3,7 +3,7 @@ package model.GameMenuRelated;
 import lombok.Getter;
 import model.minigame.BeghouledMiniGame;
 import model.minigame.IZombieMiniGame;
-import model.minigame.VasebreakerMiniGame;
+import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
 import model.minigame.WallnutBowlingMiniGame;
 import model.minigame.ZombotanyMiniGame;
 

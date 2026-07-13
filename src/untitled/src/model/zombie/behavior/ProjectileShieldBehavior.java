@@ -1,6 +1,5 @@
 package model.zombie.behavior;
 
-import model.Plant;
 import model.mechanism.Board;
 import model.plant.Projectile;
 import model.plant.ProjectileType;
@@ -14,24 +13,8 @@ public class ProjectileShieldBehavior implements ZombieBehavior {
     }
 
     @Override
-    public void onTick(Zombie zombie, Board board) {
-    }
-
-    @Override
-    public void attack(Zombie zombie, Plant plant, Board board) {
-    }
-
-    @Override
-    public void activate(Zombie zombie, Board board) {
-    }
-
-    @Override
-    public boolean canBeHitBy(Zombie zombie, Projectile projectile) {
-        return !this.blocks(projectile);
-    }
-
-    @Override
     public boolean onProjectileHit(Zombie zombie, Projectile projectile, Board board) {
+        // true yani projectile consume mishe va damage mamooli ejra nemishe
         return this.blocks(projectile);
     }
 
