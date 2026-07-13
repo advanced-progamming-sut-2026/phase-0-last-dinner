@@ -118,8 +118,7 @@ public class SunSystem implements Tickable {
             return 0;
         }
 
-        for (int i = 0; i < this.suns.size(); i++) {
-            Sun sun = this.suns.get(i);
+        for (Sun sun : this.suns) {
             if (!sun.isCollected()
                     && sun.getPosition().getX() == position.getX()
                     && sun.getPosition().getY() == position.getY()) {

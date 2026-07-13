@@ -6,5 +6,8 @@ public enum TerrainType {
     GRAVE,
     FROZEN,
     CRATER,
+    SLIPPERY_UP,
+    SLIPPERY_DOWN,
+    LOW_BEACH,
     NECROMANCY
 }

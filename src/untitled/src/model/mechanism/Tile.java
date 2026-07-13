@@ -1,13 +1,16 @@
 package model.mechanism;
 
 import lombok.Getter;
+import lombok.Setter;
 import model.Plant;
 import model.plant.PlantTag;
 import model.zombie.Zombie;
 
 import java.util.ArrayList;
 import java.util.List;
+
 @Getter
+@Setter
 public class Tile {
     private Position position;
     private TerrainType terrainType;
@@ -30,7 +33,9 @@ public class Tile {
             return false;
         }
 
-        String name = plant.getName() == null ? "" : plant.getName().toLowerCase(java.util.Locale.ROOT);
+        String name = plant.getName() == null
+                ? ""
+                : plant.getName().toLowerCase(java.util.Locale.ROOT);
 
         if (name.contains("grave buster")) {
             return this.terrainType == TerrainType.GRAVE;
@@ -40,20 +45,16 @@ public class Tile {
             return this.terrainType == TerrainType.FROZEN;
         }
 
-        if (this.terrainType == TerrainType.CRATER) {
-            return false;
-        }
-
-        if (this.terrainType == TerrainType.GRAVE) {
-            return false;
-        }
-
-        if (this.terrainType == TerrainType.FROZEN) {
+        if (this.terrainType == TerrainType.CRATER
+                || this.terrainType == TerrainType.GRAVE
+                || this.terrainType == TerrainType.FROZEN) {
             return false;
         }
 
         if (this.terrainType == TerrainType.WATER) {
-            if (name.contains("lily pad") || name.contains("tangle kelp") || name.contains("sea-shroom")) {
+            if (name.contains("lily pad")
+                    || name.contains("tangle kelp")
+                    || name.contains("sea-shroom")) {
                 return true;
             }
 
@@ -66,31 +67,25 @@ public class Tile {
             return plant.getTags() != null && plant.getTags().contains(PlantTag.WATER);
         }
 
-        return !name.contains("lily pad") && !name.contains("tangle kelp") && !name.contains("sea-shroom");
+        return !name.contains("lily pad")
+                && !name.contains("tangle kelp")
+                && !name.contains("sea-shroom");
     }
 
     public void addPlant(Plant plant) {
-        if (plant == null) {
-            return;
+        if (plant != null) {
+            this.plants.add(plant);
         }
-
-        this.plants.add(plant);
     }
 
     public void addZombie(Zombie zombie) {
-        if (zombie == null) {
-            return;
+        if (zombie != null) {
+            this.zombies.add(zombie);
         }
-
-        this.zombies.add(zombie);
     }
 
     public boolean removePlant(Plant plant) {
-        if (plant == null || this.plants == null) {
-            return false;
-        }
-
-        return this.plants.remove(plant);
+        return plant != null && this.plants != null && this.plants.remove(plant);
     }
 
     public Plant removeTopPlant() {
@@ -102,10 +97,6 @@ public class Tile {
     }
 
     public boolean removeZombie(Zombie zombie) {
-        if (zombie == null || this.zombies == null) {
-            return false;
-        }
-
-        return this.zombies.remove(zombie);
+        return zombie != null && this.zombies != null && this.zombies.remove(zombie);
     }
 }

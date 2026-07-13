@@ -29,7 +29,6 @@ public class Board {
     @Getter
     @Setter
     private CombatSystem combatSystem;
-
     public Board() {
         this(createDefaultTiles());
     }

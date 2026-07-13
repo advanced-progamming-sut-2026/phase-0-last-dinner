@@ -59,7 +59,9 @@ public class GameStatusService {
             }
 
             boolean available = this.cooldownManager == null || this.cooldownManager.isAvailable(plant);
-            long remainingTicks = this.cooldownManager == null ? 0 : this.cooldownManager.getRemainingTicks(plant);
+            long remainingTicks = this.cooldownManager == null
+                    ? 0
+                    : this.cooldownManager.getRemainingTicks(plant);
             statuses.add(new PlantStatus(plant, available, remainingTicks));
         }
 

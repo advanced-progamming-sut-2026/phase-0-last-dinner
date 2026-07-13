@@ -64,7 +64,8 @@ public class ZombieSpawner {
             wave.addZombie(zombie);
             spawnedZombies.add(zombie);
             remainingCost -= Math.max(1, definition.getWavePointCost());
-            this.fireEvent("Zombie " + definition.getDisplayName() + " spawned in wave " + wave.getNumber() + ".");
+            this.fireEvent("Zombie " + definition.getDisplayName() + " spawned in wave "
+                    + wave.getNumber() + ".");
         }
 
         return spawnedZombies;
