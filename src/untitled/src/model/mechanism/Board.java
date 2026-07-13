@@ -400,5 +400,12 @@ public class Board {
 
         return this.getSquaredDistance(first, second);
     }
+    public LawnMower getLawnMower(int row) {
+        if (lawnMowers == null) return null;
+        for (LawnMower mower : lawnMowers) {
+            if (mower.getRow() == row) return mower;
+        }
+        return null;
+    }
 
 }
