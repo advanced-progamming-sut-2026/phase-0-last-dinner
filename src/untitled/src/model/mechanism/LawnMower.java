@@ -9,11 +9,14 @@ public class LawnMower {
     private int row;
     private boolean active;
     private boolean used;
+    private boolean gameOver;
     private GameEventListener listener;
-    public LawnMower(int row) {
+    private GameEngine gameEngine;
+    public LawnMower(int row, GameEngine gameEngine) {
         this.row = row;
         this.active = true;
         this.used = false;
+        this.gameEngine = gameEngine;
     }
     private void fireEvent(String message) {
         if (listener != null) listener.onGameEvent(message);
@@ -32,6 +35,7 @@ public class LawnMower {
                 killed.add(zombie);
                 if (killedNames.length() > 0) killedNames.append(", ");
                 killedNames.append(zombie.getDefinition().getDisplayName());
+                used = true;
             }
             fireEvent("The lawn mower in the row " + row
                     + " is triggered and killed these zombies: " + killedNames);
@@ -39,7 +43,9 @@ public class LawnMower {
             active = false;
 
         } else {
+            gameOver = true;
             fireEvent("The zombie ate your brain; LOSER!!!");
+            gameEngine.endGame();
         }
         return killed;
     }

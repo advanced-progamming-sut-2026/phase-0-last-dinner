@@ -10,8 +10,10 @@ import view.GameEventListener;import java.util.List;
 public class CombatSystem implements Tickable {
     private Board board;
     private GameEventListener listener;
-    public CombatSystem(Board board) {
+    private GameEngine gameEngine;
+    public CombatSystem(Board board, GameEngine gameEngine) {
         this.board = board;
+        this.gameEngine = gameEngine;
     }
     private void fireEvent(String message) {
         if (listener != null) listener.onGameEvent(message);
