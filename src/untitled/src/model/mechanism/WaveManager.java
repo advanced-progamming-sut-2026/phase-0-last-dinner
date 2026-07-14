@@ -11,12 +11,14 @@ public class WaveManager implements Tickable {
     private ZombieSpawner zombieSpawner;
     private GameEventListener listener;
     private boolean started;
+    private GameEngine gameEngine;
 
-    public WaveManager(List<Wave> waves, ZombieSpawner zombieSpawner) {
+    public WaveManager(List<Wave> waves, ZombieSpawner zombieSpawner, GameEngine gameEngine) {
         this.waves = waves;
         this.zombieSpawner = zombieSpawner;
         this.currentWaveIndex = -1;
         this.started = false;
+        this.gameEngine = gameEngine;
     }
 
 
@@ -36,6 +38,10 @@ public class WaveManager implements Tickable {
 
         if (current.canStartNextWave() && hasNextWave()) {
             startNextWave();
+        }
+        if (!hasNextWave() && current.getRemainingHealthPercentage() == 0) {
+            fireEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.");
+            gameEngine.endGame();
         }
     }
 
