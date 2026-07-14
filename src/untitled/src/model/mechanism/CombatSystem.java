@@ -10,8 +10,10 @@ import view.GameEventListener;import java.util.List;
 public class CombatSystem implements Tickable {
     private Board board;
     private GameEventListener listener;
-    public CombatSystem(Board board) {
+    private GameEngine gameEngine;
+    public CombatSystem(Board board, GameEngine gameEngine) {
         this.board = board;
+        this.gameEngine = gameEngine;
     }
     private void fireEvent(String message) {
         if (listener != null) listener.onGameEvent(message);
@@ -29,6 +31,20 @@ public class CombatSystem implements Tickable {
             // از اونجایی که منطق اتک برای هر زامبی متفاوته بودن متود اتک میک سنس نمیکنه زیاد توی این کلاس
             //بهتره هرکاری که قراره انجام بشه توی رفتار زامبی ها هندل شه
             // و نکته مهم توی متود اتک مخصوص هر زامبی چک بشه که فاصله مجاز باشه برای حمله
+            zombie.onTick(); //حرکت برای اون ماشینا
+            if (zombie.getPosition() != null && zombie.getPosition().getX() <= 0) {
+                LawnMower mower = board.getLawnMower(zombie.getPosition().getY());
+                if (mower != null) {
+                    List<Zombie> killed = mower.trigger(
+                            board.getZombiesInLane(zombie.getPosition()));
+                    for (Zombie dead : killed) {
+                        board.getTile(dead.getPosition()).removeZombie(dead);
+                    }
+                    if (mower.isGameOver()) {
+                        gameEngine.endGame();
+                    }
+                }
+            }
         }
     }
 
