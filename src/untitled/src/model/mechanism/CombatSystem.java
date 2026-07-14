@@ -11,9 +11,13 @@ public class CombatSystem implements Tickable {
     private Board board;
     private GameEventListener listener;
     private GameEngine gameEngine;
-    public CombatSystem(Board board, GameEngine gameEngine) {
+    private LootSystem lootSystem;
+    private PlantFoodSystem plantFoodSystem;
+    public CombatSystem(Board board, GameEngine gameEngine, LootSystem lootSystem, PlantFoodSystem plantFoodSystem) {
         this.board = board;
         this.gameEngine = gameEngine;
+        this.lootSystem = lootSystem;
+        this.plantFoodSystem = plantFoodSystem;
     }
     private void fireEvent(String message) {
         if (listener != null) listener.onGameEvent(message);
@@ -78,6 +82,10 @@ public class CombatSystem implements Tickable {
             fireEvent("Zombie of type " + zombie.getDefinition().getDisplayName()
                     + " is dead at (" + zombie.getPosition().getX()
                     + ", " + zombie.getPosition().getY() + ")");
+            Loot loot = lootSystem.generateZombieDrop(zombie);
+            if (zombie.isGlowing()) {
+                plantFoodSystem.addPlantFood();
+            }
             this.removeZombieFromBoard(zombie);
         }
     }
