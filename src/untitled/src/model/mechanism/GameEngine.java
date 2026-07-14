@@ -11,7 +11,6 @@ public class GameEngine {
     private List<Tickable> tickables;
     private boolean gameRunning;
     private GameEventListener listener;
-
     public GameEngine() {
         this.clock = new GameClock();
         this.tickables = new ArrayList<>();
@@ -42,6 +41,5 @@ public class GameEngine {
 
     public void endGame() {
         this.gameRunning = false;
-        fireEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.");
     }
 }
