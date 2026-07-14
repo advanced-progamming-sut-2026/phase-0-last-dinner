@@ -1,23 +1,56 @@
 package model.mechanism;
 
-import model.zombie.Zombie;
+import lombok.Getter;import lombok.Setter;import model.zombie.Zombie;import model.zombie.ZombieType;import view.GameEventListener;
 
-import java.util.List;
-
+import java.util.ArrayList;import java.util.List;
+@Getter
+@Setter
 public class LawnMower {
     private int row;
     private boolean active;
     private boolean used;
+    private boolean gameOver;
+    private GameEventListener listener;
+    private GameEngine gameEngine;
+    public LawnMower(int row, GameEngine gameEngine) {
+        this.row = row;
+        this.active = true;
+        this.used = false;
+        this.gameEngine = gameEngine;
+    }
+    private void fireEvent(String message) {
+        if (listener != null) listener.onGameEvent(message);
+    }
+    public List<Zombie> trigger(List<Zombie> zombiesInRow) {
+        List<Zombie> killed = new ArrayList<>();
 
-    public List<Zombie> trigger(List<Zombie> zombies) {
-        return null;
+        if (!active || zombiesInRow == null) return killed;
+
+        if (!used) {
+            StringBuilder killedNames = new StringBuilder();
+            for (Zombie zombie : zombiesInRow) {
+                if (zombie == null || zombie.isDead()) continue;
+                if (zombie.getDefinition().getType() == ZombieType.BOSS) continue;
+                zombie.die();
+                killed.add(zombie);
+                if (killedNames.length() > 0) killedNames.append(", ");
+                killedNames.append(zombie.getDefinition().getDisplayName());
+                used = true;
+            }
+            fireEvent("The lawn mower in the row " + row
+                    + " is triggered and killed these zombies: " + killedNames);
+            used = true;
+            active = false;
+
+        } else {
+            gameOver = true;
+            fireEvent("The zombie ate your brain; LOSER!!!");
+            gameEngine.endGame();
+        }
+        return killed;
     }
 
     public boolean canTrigger() {
-        return false;
-    }
-
-    public boolean isUsed() {
-        return false;
+        return active && !used;
     }
 }
