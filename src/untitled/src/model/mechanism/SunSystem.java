@@ -1,9 +1,12 @@
 package model.mechanism;
 
+import lombok.Getter;
+import lombok.Setter;
 import view.GameEventListener;
 
 import java.util.*;
-
+@Getter
+@Setter
 public class SunSystem implements Tickable {
     private List<Sun> suns;
     private int sunAmount;
@@ -12,6 +15,7 @@ public class SunSystem implements Tickable {
     private long lastSunSpawnTick;
     private GameEventListener listener;
     private GameClock clock;
+    private boolean skySunEnabled = true; // برای قرون وسطا و اسپشال لول
 
     public SunSystem(Board board, GameClock clock) {
         this.board = board;
@@ -20,9 +24,6 @@ public class SunSystem implements Tickable {
         this.sunAmount = 50;
         this.lastSunSpawnTick = 0;
         this.random = new Random();
-    }
-    public void setListener(GameEventListener listener) {
-        this.listener = listener;
     }
     private void fireEvent(String message) {
         if (listener != null) {
@@ -42,7 +43,7 @@ public class SunSystem implements Tickable {
             lastSunSpawnTick = currentTick;
         }
         for (Sun sun : suns) {
-            if (sun.isFalling() && currentTick >= sun.getLandingTick()) {
+            if (skySunEnabled && sun.isFalling() && currentTick >= sun.getLandingTick()) {
                 sun.reachGround();
                 fireEvent("Sun reached the ground at position ("
                         + sun.getPosition().getX() + ", "
@@ -100,10 +101,6 @@ public class SunSystem implements Tickable {
 
     public void addSun(int amount) {
         this.sunAmount += amount;
-    }
-
-    public int getSunAmount() {
-        return sunAmount;
     }
     public void cheatCode(int amount){
         addSun(amount);
