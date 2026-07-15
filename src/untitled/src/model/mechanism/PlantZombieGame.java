@@ -28,6 +28,7 @@ public class PlantZombieGame {
     private final PlantFoodSystem plantFoodSystem;
     private final PlantCooldownManager cooldownManager;
     private final PlantingSystem plantingSystem;
+    private final LootSystem lootSystem;
     private final CombatSystem combatSystem;
     private final ZombieSpawner zombieSpawner;
     private final WaveManager waveManager;
@@ -63,7 +64,8 @@ public class PlantZombieGame {
         this.plantFoodSystem = new PlantFoodSystem(this.board);
         this.cooldownManager = new PlantCooldownManager(this.engine.getClock());
         this.plantingSystem = new PlantingSystem(this.board, this.sunSystem, this.cooldownManager);
-        this.combatSystem = new CombatSystem(this.board);
+        this.lootSystem = new LootSystem();
+        this.combatSystem = new CombatSystem(this.board, this.lootSystem);
         this.zombieSpawner = new ZombieSpawner(this.zombieFactory, this.zombieDefinitions, this.board);
         this.waveManager = new WaveManager(null, this.zombieSpawner);
         this.gameStatusService = new GameStatusService(
@@ -148,6 +150,10 @@ public class PlantZombieGame {
 
     public CombatSystem getCombatSystem() {
         return this.combatSystem;
+    }
+
+    public LootSystem getLootSystem() {
+        return this.lootSystem;
     }
 
     public ZombieSpawner getZombieSpawner() {

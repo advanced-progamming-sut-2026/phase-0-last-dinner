@@ -18,17 +18,31 @@ public class CombatSystem implements Tickable {
     private Board board;
     private GameEventListener listener;
     private Random random;
+    private LootSystem lootSystem;
 
     public CombatSystem() {
-        this(null);
+        this(null, new LootSystem());
     }
 
     public CombatSystem(Board board) {
+        this(board, new LootSystem());
+    }
+
+    public CombatSystem(Board board, LootSystem lootSystem) {
         this.board = board;
         this.random = new Random();
+        this.lootSystem = lootSystem == null ? new LootSystem() : lootSystem;
 
         if (board != null) {
             board.setCombatSystem(this);
+        }
+    }
+
+    public CombatSystem(Board board, GameEngine gameEngine, LootSystem lootSystem, PlantFoodSystem plantFoodSystem) {
+        this(board, lootSystem);
+
+        if (board != null && plantFoodSystem != null) {
+            board.setPlantFoodSystem(plantFoodSystem);
         }
     }
 
@@ -155,6 +169,14 @@ public class CombatSystem implements Tickable {
 
     public void setRandom(Random random) {
         this.random = random == null ? new Random() : random;
+    }
+
+    public LootSystem getLootSystem() {
+        return this.lootSystem;
+    }
+
+    public void setLootSystem(LootSystem lootSystem) {
+        this.lootSystem = lootSystem == null ? new LootSystem() : lootSystem;
     }
 
     private void resolveProjectiles() {
@@ -457,6 +479,7 @@ public class CombatSystem implements Tickable {
                     + " plant foods now.");
         }
 
+        this.lootSystem.generateZombieDrop(zombie);
         this.fireZombieDiedEvent(zombie);
         this.removeZombieFromBoard(zombie);
     }

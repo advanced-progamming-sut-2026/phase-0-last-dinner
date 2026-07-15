@@ -615,7 +615,6 @@ public class Board {
 
         return this.getSquaredDistance(first, second);
     }
-
     private static List<Tile> createDefaultTiles() {
         List<Tile> defaultTiles = new ArrayList<>();
 

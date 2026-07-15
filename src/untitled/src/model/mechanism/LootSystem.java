@@ -1,17 +1,22 @@
 package model.mechanism;
 
+import lombok.Getter;
+import lombok.Setter;
 import model.zombie.Zombie;
-import model.zombie.ZombieType;
+import view.GameEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
+@Getter
+@Setter
 public class LootSystem {
     private List<Loot> droppedLoot;
     private int coinAmount;
     private int diamondAmount;
     private int potAmount;
+    private GameEventListener listener;
     private Random random;
 
     public LootSystem() {
@@ -20,27 +25,27 @@ public class LootSystem {
     }
 
     public Loot generateZombieDrop(Zombie zombie) {
-        if (zombie == null || zombie.getDefinition() == null) {
+        if (zombie == null || this.random.nextInt(100) >= 10) {
             return null;
         }
 
-        int roll = this.random.nextInt(100);
-        Loot loot = null;
+        LootType type;
+        int amount;
+        int roll = this.random.nextInt(3);
 
-        if (zombie.getDefinition().getType() == ZombieType.BOSS) {
-            loot = new Loot(LootType.DIAMOND, 3, zombie.getPosition());
-        } else if (zombie.getDefinition().getType() == ZombieType.GARGANTUAR) {
-            loot = new Loot(LootType.POT, 1, zombie.getPosition());
-        } else if (roll < 10) {
-            loot = new Loot(LootType.DIAMOND, 1, zombie.getPosition());
-        } else if (roll < 35) {
-            loot = new Loot(LootType.COIN, 25, zombie.getPosition());
+        if (roll == 0) {
+            type = LootType.COIN;
+            amount = 50;
+        } else if (roll == 1) {
+            type = LootType.DIAMOND;
+            amount = 1;
+        } else {
+            type = LootType.POT;
+            amount = 1;
         }
 
-        if (loot != null) {
-            this.droppedLoot.add(loot);
-        }
-
+        Loot loot = new Loot(type, amount, zombie.getPosition());
+        this.droppedLoot.add(loot);
         return loot;
     }
 
@@ -53,22 +58,19 @@ public class LootSystem {
 
         if (loot.getType() == LootType.COIN) {
             this.coinAmount += loot.getAmount();
+            this.fireEvent("A zombie dropped a coin; you have " + this.coinAmount + " coins now.");
         } else if (loot.getType() == LootType.DIAMOND) {
             this.diamondAmount += loot.getAmount();
+            this.fireEvent("A zombie dropped a diamond; you have " + this.diamondAmount + " diamonds now.");
         } else if (loot.getType() == LootType.POT) {
             this.potAmount += loot.getAmount();
+            this.fireEvent("A zombie dropped a pot; you have " + this.potAmount + " pots now.");
         }
     }
 
-    public int getCoinAmount() {
-        return this.coinAmount;
-    }
-
-    public int getDiamondAmount() {
-        return this.diamondAmount;
-    }
-
-    public int getPotAmount() {
-        return this.potAmount;
+    private void fireEvent(String message) {
+        if (this.listener != null) {
+            this.listener.onGameEvent(message);
+        }
     }
 }

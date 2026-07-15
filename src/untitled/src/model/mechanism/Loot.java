@@ -13,6 +13,7 @@ public class Loot {
         this.type = type;
         this.amount = amount;
         this.position = position;
+        this.collected = false;
     }
 
     public void collect() {
