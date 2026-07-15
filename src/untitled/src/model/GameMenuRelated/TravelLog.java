@@ -1,17 +1,24 @@
 package model.GameMenuRelated;
 
 import lombok.Getter;
-import model.minigame.BeghouledMiniGame;
-import model.minigame.izombieminigame.IZombieMiniGame;
-import model.minigame.ZombotanyMiniGame;
-import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
-import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
+import model.minigame.MiniGame;
+import model.minigame.MiniGameFactory;
+import model.minigame.MiniGameType;
 
+@Getter
 public class TravelLog {
-    @Getter
-    private Page[] pages;
+
+    private final Page[] pages;
 
     public TravelLog() {
+        this(new MiniGameFactory());
+    }
+
+    public TravelLog(MiniGameFactory miniGameFactory) {
+        if (miniGameFactory == null) {
+            miniGameFactory = new MiniGameFactory();
+        }
+
         pages = new Page[]{
                 new Page(PageName.ADVENTURE),
                 new Page(PageName.SPECIAL),
@@ -21,35 +28,76 @@ public class TravelLog {
                 new Page(PageName.MYSTERY)
         };
 
-        Page miniGamesPage = pages[2];
-
-        miniGamesPage
-                .getMiniGames()
-                .add(new VasebreakerMiniGame());
-
-        miniGamesPage
-                .getMiniGames()
-                .add(new WallnutBowlingMiniGame());
-
-        miniGamesPage
-                .getMiniGames()
-                .add(new IZombieMiniGame());
-
-        miniGamesPage
-                .getMiniGames()
-                .add(new BeghouledMiniGame());
-
-        miniGamesPage
-                .getMiniGames()
-                .add(new ZombotanyMiniGame());
+        initialiseMiniGames(miniGameFactory);
     }
 
     public Page getPage(PageName pageName) {
-        /*
-         * TODO: This method belongs to the general
-         * TravelLog implementation.
-         */
+        if (pageName == null) {
+            return null;
+        }
+
+        for (Page page : pages) {
+            if (page != null
+                    && page.getPageName() == pageName) {
+
+                return page;
+            }
+        }
 
         return null;
+    }
+
+    public MiniGame findMiniGame(
+            MiniGameType miniGameType
+    ) {
+        if (miniGameType == null) {
+            return null;
+        }
+
+        Page miniGamesPage =
+                getPage(PageName.MINIGAMES);
+
+        if (miniGamesPage == null
+                || miniGamesPage.getMiniGames() == null) {
+
+            return null;
+        }
+
+        for (MiniGame miniGame
+                : miniGamesPage.getMiniGames()) {
+
+            if (miniGame != null
+                    && miniGame.getType()
+                    == miniGameType) {
+
+                return miniGame;
+            }
+        }
+
+        return null;
+    }
+
+    private void initialiseMiniGames(
+            MiniGameFactory miniGameFactory
+    ) {
+        Page miniGamesPage =
+                getPage(PageName.MINIGAMES);
+
+        if (miniGamesPage == null) {
+            return;
+        }
+
+        for (MiniGameType type
+                : MiniGameType.values()) {
+
+            MiniGame miniGame =
+                    miniGameFactory.create(type);
+
+            if (miniGame != null) {
+                miniGamesPage
+                        .getMiniGames()
+                        .add(miniGame);
+            }
+        }
     }
 }

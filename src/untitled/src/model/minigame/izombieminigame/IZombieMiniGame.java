@@ -41,7 +41,7 @@ public class IZombieMiniGame extends MiniGame {
 
     public IZombieMiniGame() {
         this(
-                new PendingIZombieIntegration(),
+                new PlantZombieIZombieIntegration(),
                 new IZombieStageGenerator()
         );
     }

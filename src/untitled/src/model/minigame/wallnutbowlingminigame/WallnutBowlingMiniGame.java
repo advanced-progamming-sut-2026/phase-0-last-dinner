@@ -45,7 +45,7 @@ public class WallnutBowlingMiniGame extends MiniGame {
 
     public WallnutBowlingMiniGame() {
         this(
-                new PendingWallnutBowlingIntegration(),
+                new PlantZombieWallnutBowlingIntegration(),
                 new WallnutBowlingStageGenerator()
         );
     }
@@ -77,7 +77,7 @@ public class WallnutBowlingMiniGame extends MiniGame {
 
         if (integration == null) {
             this.integration =
-                    new PendingWallnutBowlingIntegration();
+                    new PlantZombieWallnutBowlingIntegration();
         } else {
             this.integration = integration;
         }

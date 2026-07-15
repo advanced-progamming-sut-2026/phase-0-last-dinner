@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import model.zombie.behavior.CompositeZombieBehavior;
 
 @Getter
 public class Zombie implements Tickable {
@@ -437,5 +438,39 @@ public class Zombie implements Tickable {
         for (ZombieCondition condition : expiredConditions) {
             this.removeCondition(condition);
         }
+    }
+
+    public void addBehavior(
+            ZombieBehavior additionalBehavior
+    ) {
+        if (additionalBehavior == null) {
+            return;
+        }
+
+        if (behavior == null) {
+            behavior = additionalBehavior;
+            return;
+        }
+
+        if (behavior instanceof CompositeZombieBehavior) {
+            CompositeZombieBehavior compositeBehavior =
+                    (CompositeZombieBehavior) behavior;
+
+            compositeBehavior.addBehavior(
+                    additionalBehavior
+            );
+
+            return;
+        }
+
+        CompositeZombieBehavior compositeBehavior =
+                new CompositeZombieBehavior();
+
+        compositeBehavior.addBehavior(behavior);
+        compositeBehavior.addBehavior(
+                additionalBehavior
+        );
+
+        behavior = compositeBehavior;
     }
 }
