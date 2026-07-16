@@ -470,7 +470,7 @@ public class IZombieMiniGame extends MiniGame {
         for (ZombieDefinition definition : definitions) {
             if (definition == null
                     || definition.getAlias() == null
-                    || definition.getAlias().isBlank()) {
+                    || definition.getAlias().trim().isEmpty()) {
                 return false;
             }
 
@@ -551,7 +551,7 @@ public class IZombieMiniGame extends MiniGame {
     }
 
     public ZombieDefinition findAvailableZombie(String aliasOrName) {
-        if (aliasOrName == null || aliasOrName.isBlank()) {
+        if (aliasOrName == null || aliasOrName.trim().isEmpty()) {
             return null;
         }
 
@@ -654,6 +654,6 @@ public class IZombieMiniGame extends MiniGame {
     }
 
     public List<Brain> getBrains() {
-        return List.copyOf(brains);
+        return Collections.unmodifiableList(brains);
     }
 }

@@ -545,16 +545,16 @@ public class WallnutBowlingView
             return "Unknown Wallnut";
         }
 
-        return switch (type) {
-            case BOWLING_WALLNUT ->
-                    "Bowling Wallnut";
-
-            case EXPLODE_O_NUT ->
-                    "Explode-O-Nut";
-
-            case GIANT_WALLNUT ->
-                    "Giant Wallnut";
-        };
+        switch (type) {
+            case BOWLING_WALLNUT:
+                return "Bowling Wallnut";
+            case EXPLODE_O_NUT:
+                return "Explode-O-Nut";
+            case GIANT_WALLNUT:
+                return "Giant Wallnut";
+            default:
+                return "Unknown Wallnut";
+        }
     }
 
     private String formatPosition(

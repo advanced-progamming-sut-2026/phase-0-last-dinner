@@ -11,21 +11,19 @@ public class MiniGameFactory {
             return null;
         }
 
-        return switch (type) {
-            case VASEBREAKER ->
-                    new VasebreakerMiniGame();
-
-            case WALLNUT_BOWLING ->
-                    new WallnutBowlingMiniGame();
-
-            case I_ZOMBIE ->
-                    new IZombieMiniGame();
-
-            case BEGHOULED ->
-                    new BeghouledMiniGame();
-
-            case ZOMBOTANY ->
-                    new ZombotanyMiniGame();
-        };
+        switch (type) {
+            case VASEBREAKER:
+                return new VasebreakerMiniGame();
+            case WALLNUT_BOWLING:
+                return new WallnutBowlingMiniGame();
+            case I_ZOMBIE:
+                return new IZombieMiniGame();
+            case BEGHOULED:
+                return new BeghouledMiniGame();
+            case ZOMBOTANY:
+                return new ZombotanyMiniGame();
+            default:
+                return null;
+        }
     }
 }

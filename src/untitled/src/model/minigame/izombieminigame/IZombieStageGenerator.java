@@ -9,15 +9,18 @@ public class IZombieStageGenerator {
     private static final int SUN_PRODUCTION_AMOUNT = 25;
 
     public IZombieStageConfig generateStage(int stageNumber) {
-        return switch (stageNumber) {
-            case 1 -> createStageOne();
-            case 2 -> createStageTwo();
-            case 3 -> createStageThree();
-
-            default -> throw new IllegalArgumentException(
-                    "Stage number must be between 1 and " + STAGE_COUNT + "."
-            );
-        };
+        switch (stageNumber) {
+            case 1:
+                return createStageOne();
+            case 2:
+                return createStageTwo();
+            case 3:
+                return createStageThree();
+            default:
+                throw new IllegalArgumentException(
+                        "Stage number must be between 1 and " + STAGE_COUNT + "."
+                );
+        }
     }
 
     private IZombieStageConfig createStageOne() {

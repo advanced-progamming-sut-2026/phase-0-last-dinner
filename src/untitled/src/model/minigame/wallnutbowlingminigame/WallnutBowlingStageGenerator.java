@@ -22,16 +22,19 @@ public class WallnutBowlingStageGenerator {
     public WallnutBowlingStageConfig generateStage(
             int stageNumber
     ) {
-        return switch (stageNumber) {
-            case 1 -> generateStageOne();
-            case 2 -> generateStageTwo();
-            case 3 -> generateStageThree();
-
-            default -> throw new IllegalArgumentException(
-                    "Wallnut Bowling stage must "
-                            + "be between 1 and 3."
-            );
-        };
+        switch (stageNumber) {
+            case 1:
+                return generateStageOne();
+            case 2:
+                return generateStageTwo();
+            case 3:
+                return generateStageThree();
+            default:
+                throw new IllegalArgumentException(
+                        "Wallnut Bowling stage must "
+                                + "be between 1 and 3."
+                );
+        }
     }
 
     public WallnutBowlingStageConfig generateStageOne() {

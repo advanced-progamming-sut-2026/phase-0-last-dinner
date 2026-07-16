@@ -134,7 +134,7 @@ public class IZombieView implements CommandHandler {
                     "Action failed: " + result.getStatus()
             );
 
-            if (!result.getMessage().isBlank()) {
+            if (!result.getMessage().trim().isEmpty()) {
                 System.out.println(
                         result.getMessage()
                 );
@@ -331,12 +331,12 @@ public class IZombieView implements CommandHandler {
         }
 
         if (definition.getDisplayName() != null
-                && !definition.getDisplayName().isBlank()) {
+                && !definition.getDisplayName().trim().isEmpty()) {
             return definition.getDisplayName();
         }
 
         if (definition.getAlias() != null
-                && !definition.getAlias().isBlank()) {
+                && !definition.getAlias().trim().isEmpty()) {
             return definition.getAlias();
         }
 
