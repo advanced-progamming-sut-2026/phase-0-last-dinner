@@ -323,4 +323,9 @@ public class Plant implements Tickable {
         }
     }
 
+    public void makePermanent() {
+        lifespanTicks = 0;
+        fullLifespanTicks = 0;
+    }
+
 }

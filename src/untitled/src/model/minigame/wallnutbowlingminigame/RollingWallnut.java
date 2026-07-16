@@ -75,7 +75,7 @@ public class RollingWallnut implements Tickable {
 
         if (integration == null) {
             this.integration =
-                    new PendingWallnutBowlingIntegration();
+                    new PlantZombieWallnutBowlingIntegration();
         } else {
             this.integration = integration;
         }

@@ -1,6 +1,12 @@
 package model.chapters;
 
-import model.mechanism.Board;import model.mechanism.Position;import model.mechanism.TerrainType;import model.mechanism.Tile;import java.util.ArrayList;import java.util.List;public class ChapterAncientEgypt extends Chapter {
+import model.mechanism.Board;
+import model.mechanism.Position;
+import model.mechanism.TerrainType;
+import model.mechanism.Tile;
+import java.util.ArrayList;
+import java.util.List;
+public class ChapterAncientEgypt extends Chapter {
     public void spawnGrave() {
     }
 

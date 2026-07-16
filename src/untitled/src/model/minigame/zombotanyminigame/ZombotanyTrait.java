@@ -1,4 +1,4 @@
-package model.minigame;
+package model.minigame.zombotanyminigame;
 
 public enum ZombotanyTrait {
     PEASHOOTER,

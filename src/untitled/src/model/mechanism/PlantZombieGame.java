@@ -1,8 +1,17 @@
 package model.mechanism;
 
+import lombok.Getter;
 import model.Plant;
+import model.minigame.beghouledminigame.BeghouledMiniGame;
+import model.minigame.beghouledminigame.PlantZombieBeghouledIntegration;
+import model.minigame.izombieminigame.IZombieMiniGame;
+import model.minigame.izombieminigame.PlantZombieIZombieIntegration;
 import model.minigame.vasebreakerminigame.PlantZombieVasebreakerIntegration;
 import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
+import model.minigame.wallnutbowlingminigame.PlantZombieWallnutBowlingIntegration;
+import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
+import model.minigame.zombotanyminigame.PlantZombieZombotanyIntegration;
+import model.minigame.zombotanyminigame.ZombotanyMiniGame;
 import model.plant.PlantDefinition;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantFactory;
@@ -13,6 +22,8 @@ import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
 
 import java.util.List;
+
+@Getter
 
 // system haye plant va zombie ro baraye yek bazi be ham vasl mikone
 public class PlantZombieGame {
@@ -124,61 +135,58 @@ public class PlantZombieGame {
         this.engine.advanceTime(tickCount);
     }
 
-    public Board getBoard() {
-        return this.board;
-    }
-
-    public GameEngine getEngine() {
-        return this.engine;
-    }
-
-    public SunSystem getSunSystem() {
-        return this.sunSystem;
-    }
-
-    public PlantFoodSystem getPlantFoodSystem() {
-        return this.plantFoodSystem;
-    }
-
-    public PlantingSystem getPlantingSystem() {
-        return this.plantingSystem;
-    }
-
-    public PlantUpgradeService getPlantUpgradeService() {
-        return this.plantUpgradeService;
-    }
-
-    public CombatSystem getCombatSystem() {
-        return this.combatSystem;
-    }
-
-    public LootSystem getLootSystem() {
-        return this.lootSystem;
-    }
-
-    public ZombieSpawner getZombieSpawner() {
-        return this.zombieSpawner;
-    }
-
-    public WaveManager getWaveManager() {
-        return this.waveManager;
-    }
-
-    public GameStatusService getGameStatusService() {
-        return this.gameStatusService;
-    }
-
     public void configureWaves(List<Wave> waves) {
         this.waveManager.configureWaves(waves);
     }
 
     // minigame ro ba hamin data va factory haye bazi misaze
     public VasebreakerMiniGame createVasebreakerMiniGame() {
-        return new VasebreakerMiniGame(new PlantZombieVasebreakerIntegration(
+        return new VasebreakerMiniGame(
+                new PlantZombieVasebreakerIntegration(
                 this.plantDefinitions,
                 this.zombieDefinitions,
                 this.zombieFactory
         ));
+    }
+
+    public WallnutBowlingMiniGame createWallnutBowlingMiniGame() {
+        return new WallnutBowlingMiniGame(
+                new PlantZombieWallnutBowlingIntegration(
+                        this.plantDefinitions,
+                        this.zombieDefinitions,
+                        this.zombieFactory
+                )
+        );
+    }
+
+    public IZombieMiniGame createIZombieMiniGame() {
+        return new IZombieMiniGame(
+                new PlantZombieIZombieIntegration(
+                        this.plantDefinitions,
+                        this.zombieDefinitions,
+                        this.zombieFactory
+                )
+        );
+    }
+
+    public BeghouledMiniGame createBeghouledMiniGame() {
+        return new BeghouledMiniGame(
+                new PlantZombieBeghouledIntegration(
+                        this.plantDefinitions,
+                        this.zombieDefinitions,
+                        this.zombieFactory
+                )
+        );
+    }
+
+    public ZombotanyMiniGame createZombotanyMiniGame() {
+        return new ZombotanyMiniGame(
+                new PlantZombieZombotanyIntegration(
+                        plantDefinitions,
+                        zombieDefinitions,
+                        zombieFactory
+                )
+        );
     }
 
     private boolean placePlant(Plant plant, Position position) {

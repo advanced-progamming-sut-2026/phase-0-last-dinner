@@ -1,5 +1,7 @@
 import controller.CollectionController;
 import controller.ApplicationController;
+import model.GameMenuRelated.TravelLog;
+import model.minigame.MiniGameFactory;
 import model.plant.CsvPlantDefinitionRepository;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantUpgradeService;
@@ -39,6 +41,20 @@ public final class Main {
                 plantUpgradeService
         );
         this.applicationController = new ApplicationController();
+    }
+
+    public MiniGameFactory createMiniGameFactory() {
+        return new MiniGameFactory(
+                this.plantDefinitions,
+                this.zombieDefinitions,
+                this.zombieFactory
+        );
+    }
+
+    public TravelLog createTravelLog() {
+        return new TravelLog(
+                createMiniGameFactory()
+        );
     }
 
     public static void main(String[] args) {
