@@ -1,0 +1,32 @@
+package model.Greenhouse;
+
+public enum GreenhouseActionStatus {
+
+    PLANTED,
+
+    HARVESTED,
+
+    GROWTH_ACCELERATED,
+
+    INVALID_POSITION,
+
+    GREENHOUSE_NOT_AVAILABLE,
+
+    POT_LOCKED,
+
+    POT_OCCUPIED,
+
+    POT_EMPTY,
+
+    PLANT_NOT_READY,
+
+    PLANT_ALREADY_READY,
+
+    NOT_ENOUGH_DIAMONDS,
+
+    PLANTING_FAILED,
+
+    HARVEST_FAILED,
+
+    INVALID_ACTION
+}

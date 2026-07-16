@@ -55,6 +55,7 @@ public class User {
         this.questionNum = questionNum;
         this.securityAnswer = securityAnswer;
         this.gender = gender;
+        this.greenhouse = new Greenhouse();
         this.level = 1;
         this.difficultyLevel = 3;
         this.unreadNews = new ArrayList<>();

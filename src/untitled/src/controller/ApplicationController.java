@@ -8,6 +8,8 @@ import model.User.AccountStatus;
 import model.User.User;
 import model.User.UserRepository;
 import view.CommandHandler;
+import view.greenhouse.GreenhouseCommands;
+import view.greenhouse.GreenhouseView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,6 +29,10 @@ public class ApplicationController implements CommandHandler {
     private final MainController mainController;
     private User currentUser;
     private String lastMessage;
+
+    // اینا برا گل خونن
+    private GreenhouseView greenhouseView;
+    private User greenhouseViewUser;
 
     public ApplicationController() {
         this(new UserRepository());
@@ -67,6 +73,13 @@ public class ApplicationController implements CommandHandler {
 
             if (this.menuContext.getCurrentMenu() == MenuType.LOGIN_MENU) {
                 return this.executeLoginCommand(tokens);
+            }
+
+            if (this.menuContext.getCurrentMenu()
+                    == MenuType.GAME_MENU
+                    && isGreenhouseCommand(input)) {
+
+                return executeGreenhouseCommand(input);
             }
 
             return "Command is not available in " + this.menuContext.getCurrentMenu();
@@ -112,11 +125,15 @@ public class ApplicationController implements CommandHandler {
         }
 
         if (this.matches(tokens, "menu", "logout")) {
-            if (this.menuContext.getCurrentMenu() != MenuType.MAIN_MENU) {
+            if (this.menuContext.getCurrentMenu()
+                    != MenuType.MAIN_MENU) {
+
                 return "Logout is only available in main menu";
             }
 
             this.currentUser = null;
+            clearGreenhouseConnection();
+
             return this.mainController.logout();
         }
 
@@ -222,6 +239,7 @@ public class ApplicationController implements CommandHandler {
 
         if (result.isSuccessful()) {
             this.currentUser = result.getUser();
+            clearGreenhouseConnection();
         }
 
         return result.getMessage();
@@ -394,5 +412,56 @@ public class ApplicationController implements CommandHandler {
         }
 
         return tokens;
+    }
+
+    private boolean isGreenhouseCommand(
+            String input
+    ) {
+        for (GreenhouseCommands command
+                : GreenhouseCommands.values()) {
+
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeGreenhouseCommand(
+            String input
+    ) {
+        if (currentUser == null) {
+            return "Login is required.";
+        }
+
+        ensureGreenhouseConnected();
+
+        greenhouseView.handleCommand(input);
+
+        accountService.save();
+
+        return "";
+    }
+
+    private void ensureGreenhouseConnected() {
+        if (greenhouseView != null
+                && greenhouseViewUser == currentUser) {
+            return;
+        }
+
+        greenhouseView = new GreenhouseView();
+
+        new GreenhouseController(
+                greenhouseView,
+                currentUser
+        );
+
+        greenhouseViewUser = currentUser;
+    }
+
+    private void clearGreenhouseConnection() {
+        greenhouseView = null;
+        greenhouseViewUser = null;
     }
 }
