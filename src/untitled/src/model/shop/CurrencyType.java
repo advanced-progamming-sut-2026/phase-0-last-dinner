@@ -1,4 +1,4 @@
-package model;
+package model.shop;
 
 public enum CurrencyType {
     COIN,

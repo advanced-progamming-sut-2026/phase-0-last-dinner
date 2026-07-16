@@ -1,6 +1,8 @@
 package model.mechanism;
 
 import lombok.Getter;
+import model.Greenhouse.Greenhouse;
+import model.Greenhouse.GreenhouseBoostService;
 import model.Plant;
 import model.minigame.beghouledminigame.BeghouledMiniGame;
 import model.minigame.beghouledminigame.PlantZombieBeghouledIntegration;
@@ -45,12 +47,15 @@ public class PlantZombieGame {
     private final WaveManager waveManager;
     private final GameStatusService gameStatusService;
 
+    //برا غذای گیاهان تو گلخونه
+    private final GreenhouseBoostService greenhouseBoostService;
+
     public PlantZombieGame(
             PlantDefinitionRepository plantDefinitions,
             ZombieDefinitionRepository zombieDefinitions,
             ZombieFactory zombieFactory
     ) {
-        this(plantDefinitions, zombieDefinitions, zombieFactory, new PlantUpgradeService());
+        this(plantDefinitions, zombieDefinitions, zombieFactory, new PlantUpgradeService() , null);
     }
 
     public PlantZombieGame(
@@ -58,6 +63,16 @@ public class PlantZombieGame {
             ZombieDefinitionRepository zombieDefinitions,
             ZombieFactory zombieFactory,
             PlantUpgradeService plantUpgradeService
+    ) {
+        this(plantDefinitions, zombieDefinitions, zombieFactory, plantUpgradeService , null);
+    }
+
+    public PlantZombieGame(
+            PlantDefinitionRepository plantDefinitions,
+            ZombieDefinitionRepository zombieDefinitions,
+            ZombieFactory zombieFactory,
+            PlantUpgradeService plantUpgradeService,
+            GreenhouseBoostService greenhouseBoostService
     ) {
         if (plantDefinitions == null || zombieDefinitions == null || zombieFactory == null
                 || plantUpgradeService == null) {
@@ -86,6 +101,7 @@ public class PlantZombieGame {
                 this.plantFoodSystem,
                 this.cooldownManager
         );
+        this.greenhouseBoostService = greenhouseBoostService;
 
         this.engine.register(this.sunSystem);
         this.engine.register(this.cooldownManager);
@@ -190,11 +206,12 @@ public class PlantZombieGame {
     }
 
     private boolean placePlant(Plant plant, Position position) {
-        if (!this.plantingSystem.canPlant(plant, position)) {
+        if (!this.plantingSystem.canPlant(plant, position))
             return false;
-        }
-
         this.plantingSystem.plant(plant, position);
+
+        if(greenhouseBoostService != null)
+            greenhouseBoostService.castBoost(plant);
         return true;
     }
 }

@@ -1,5 +1,6 @@
 package controller;
 
+import lombok.Getter;
 import model.Greenhouse.Greenhouse;
 import model.Greenhouse.GreenhouseActionResult;
 import model.Greenhouse.GreenhouseActionStatus;
@@ -7,17 +8,33 @@ import model.Greenhouse.GreenhouseStateResult;
 import model.Greenhouse.Pot;
 import model.User.User;
 import model.mechanism.Position;
+import model.plant.PlantUpgradeService;
+import view.CommandHandler;
 import view.greenhouse.GreenhouseView;
 import view.greenhouse.GreenhouseViewObserver;
+import view.shop.ShopView;
 
-public class GreenhouseController
-        implements GreenhouseViewObserver {
+@Getter
+public class GreenhouseController implements GreenhouseViewObserver {
 
     private final User user;
+    private final PlantUpgradeService plantUpgradeService;
 
     public GreenhouseController(
             GreenhouseView view,
             User user
+    ) {
+        this(
+                view,
+                user,
+                null
+        );
+    }
+
+    public GreenhouseController(
+            GreenhouseView view,
+            User user,
+            PlantUpgradeService plantUpgradeService
     ) {
         if (view == null) {
             throw new IllegalArgumentException(
@@ -32,17 +49,16 @@ public class GreenhouseController
         }
 
         this.user = user;
+        this.plantUpgradeService =
+                plantUpgradeService;
 
-        if (user.getGreenhouse() == null) {
-            user.setGreenhouse(new Greenhouse());
-        }
+        user.initializeMissingFields();
 
         view.setObserver(this);
     }
 
     @Override
-    public GreenhouseStateResult
-    onShowGreenhouseRequested() {
+    public GreenhouseStateResult onShowGreenhouseRequested() {
 
         return GreenhouseStateResult.from(
                 getGreenhouse(),
@@ -52,8 +68,7 @@ public class GreenhouseController
     }
 
     @Override
-    public GreenhouseActionResult
-    onPlantPotRequested(Position position) {
+    public GreenhouseActionResult onPlantPotRequested(Position position) {
 
         Pot pot = getPot(position);
 
@@ -106,8 +121,7 @@ public class GreenhouseController
     }
 
     @Override
-    public GreenhouseActionResult
-    onCollectRequested(Position position) {
+    public GreenhouseActionResult onCollectRequested(Position position) {
 
         Pot pot = getPot(position);
 
@@ -193,8 +207,7 @@ public class GreenhouseController
     }
 
     @Override
-    public GreenhouseActionResult
-    onGrowRequested(Position position) {
+    public GreenhouseActionResult onGrowRequested(Position position) {
 
         Pot pot = getPot(position);
 
@@ -283,12 +296,23 @@ public class GreenhouseController
                 );
     }
 
-    public Greenhouse getGreenhouse() {
-        return user.getGreenhouse();
+    @Override
+    public CommandHandler onEnterShopRequested() {
+        user.initializeMissingFields();
+
+        ShopView shopView = new ShopView();
+
+        new ShopController(
+                shopView,
+                user,
+                user.getPlantUpgradeService()
+        );
+
+        return shopView;
     }
 
-    public User getUser() {
-        return user;
+    public Greenhouse getGreenhouse() {
+        return user.getGreenhouse();
     }
 
     private Pot getPot(Position position) {

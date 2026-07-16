@@ -9,15 +9,11 @@ public interface GreenhouseViewObserver {
 
     GreenhouseStateResult onShowGreenhouseRequested();
 
-    GreenhouseActionResult onPlantPotRequested(
-            Position position
-    );
+    GreenhouseActionResult onPlantPotRequested(Position position);
 
-    GreenhouseActionResult onCollectRequested(
-            Position position
-    );
+    GreenhouseActionResult onCollectRequested(Position position);
 
-    GreenhouseActionResult onGrowRequested(
-            Position position
-    );
+    GreenhouseActionResult onGrowRequested(Position position);
+
+    CommandHandler onEnterShopRequested();
 }

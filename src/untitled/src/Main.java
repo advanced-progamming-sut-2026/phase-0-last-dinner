@@ -1,6 +1,11 @@
 import controller.CollectionController;
 import controller.ApplicationController;
+import lombok.Getter;
 import model.GameMenuRelated.TravelLog;
+import model.Greenhouse.Greenhouse;
+import model.Greenhouse.GreenhouseBoostService;
+import model.User.User;
+import model.User.UserRepository;
 import model.minigame.MiniGameFactory;
 import model.plant.CsvPlantDefinitionRepository;
 import model.plant.PlantDefinitionRepository;
@@ -13,6 +18,7 @@ import view.ConsoleApplication;
 
 import java.io.IOException;
 
+@Getter
 public final class Main {
     private static final String PLANTS_RESOURCE = "data/plants.csv";
     private static final String ZOMBIES_RESOURCE = "data/zombies.json";
@@ -40,7 +46,7 @@ public final class Main {
                 plantDefinitions,
                 plantUpgradeService
         );
-        this.applicationController = new ApplicationController();
+        this.applicationController = new ApplicationController(new UserRepository(), this.plantUpgradeService);
     }
 
     public MiniGameFactory createMiniGameFactory() {
@@ -86,36 +92,50 @@ public final class Main {
         }
     }
 
-    public PlantDefinitionRepository getPlantDefinitions() {
-        return this.plantDefinitions;
-    }
-
-    public ZombieDefinitionRepository getZombieDefinitions() {
-        return this.zombieDefinitions;
-    }
-
-    public ZombieFactory getZombieFactory() {
-        return this.zombieFactory;
-    }
-
-    public PlantUpgradeService getPlantUpgradeService() {
-        return this.plantUpgradeService;
-    }
-
-    public CollectionController getCollectionController() {
-        return this.collectionController;
-    }
-
-    public ApplicationController getApplicationController() {
-        return this.applicationController;
-    }
-
     public PlantZombieGame createGame() {
-        return new PlantZombieGame(
-                this.plantDefinitions,
-                this.zombieDefinitions,
-                this.zombieFactory,
-                this.plantUpgradeService
-        );
+        User user = applicationController.getCurrentUser();
+
+        if (user == null) {
+            return new PlantZombieGame(
+                    this.plantDefinitions,
+                    this.zombieDefinitions,
+                    this.zombieFactory,
+                    this.plantUpgradeService
+            );
+        }
+
+        user.initializeMissingFields();
+
+        GreenhouseBoostService boostService = new GreenhouseBoostService(user.getGreenhouse());
+        PlantUpgradeService userUpgradeService = user.getPlantUpgradeService();
+
+        PlantZombieGame game =
+                new PlantZombieGame(
+                        this.plantDefinitions,
+                        this.zombieDefinitions,
+                        this.zombieFactory,
+                        userUpgradeService,
+                        boostService
+                );
+
+        int storedPlantFood = Math.max(0, Math.min(3, user.getNextLevelPlantFood()));
+
+        int transferredPlantFood = 0;
+
+        for (int i = 0; i < storedPlantFood; i++) {
+
+            boolean added = game.getPlantFoodSystem().addPlantFood();
+
+            if (!added)
+                break;
+
+            transferredPlantFood++;
+        }
+
+        user.setNextLevelPlantFood(storedPlantFood - transferredPlantFood);
+
+        applicationController.save();
+
+        return game;
     }
 }

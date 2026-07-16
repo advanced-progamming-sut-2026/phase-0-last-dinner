@@ -7,6 +7,7 @@ import model.User.AccountService;
 import model.User.AccountStatus;
 import model.User.User;
 import model.User.UserRepository;
+import model.plant.PlantUpgradeService;
 import view.CommandHandler;
 import view.greenhouse.GreenhouseCommands;
 import view.greenhouse.GreenhouseView;
@@ -33,18 +34,35 @@ public class ApplicationController implements CommandHandler {
     // اینا برا گل خونن
     private GreenhouseView greenhouseView;
     private User greenhouseViewUser;
+    private final PlantUpgradeService plantUpgradeService;
 
     public ApplicationController() {
-        this(new UserRepository());
+        this(new UserRepository(), new PlantUpgradeService());
     }
 
     public ApplicationController(UserRepository repository) {
+        this(repository, new PlantUpgradeService());
+    }
+
+    public ApplicationController(UserRepository repository, PlantUpgradeService plantUpgradeService) {
+        if (plantUpgradeService == null)
+            throw new IllegalArgumentException("Plant upgrade service is required.");
+
+
         this.menuContext = new GameMenuContext();
+
         this.accountService = new AccountService(repository);
+
         this.signupController = new SignupController(this.accountService, this.menuContext);
+
         this.loginController = new LoginController(this.accountService, this.menuContext);
+
         this.mainController = new MainController(this.accountService, this.menuContext);
+
+        this.plantUpgradeService = plantUpgradeService;
+
         this.currentUser = this.loginController.restoreRememberedLogin();
+
         this.lastMessage = "";
     }
 
@@ -78,6 +96,14 @@ public class ApplicationController implements CommandHandler {
             if (this.menuContext.getCurrentMenu()
                     == MenuType.GAME_MENU
                     && isGreenhouseCommand(input)) {
+
+                return executeGreenhouseCommand(input);
+            }
+
+            if (this.menuContext.getCurrentMenu()
+                    == MenuType.GAME_MENU
+                    && (isGreenhouseCommand(input)
+                    || isShopCommand(input))) {
 
                 return executeGreenhouseCommand(input);
             }
@@ -454,7 +480,8 @@ public class ApplicationController implements CommandHandler {
 
         new GreenhouseController(
                 greenhouseView,
-                currentUser
+                currentUser,
+                plantUpgradeService
         );
 
         greenhouseViewUser = currentUser;
@@ -463,5 +490,18 @@ public class ApplicationController implements CommandHandler {
     private void clearGreenhouseConnection() {
         greenhouseView = null;
         greenhouseViewUser = null;
+    }
+
+    private boolean isShopCommand(String input) {
+        if (input == null)
+            return false;
+
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+
+        return normalized.equals("shop") || normalized.startsWith("shop ");
+    }
+
+    public void save() {
+        this.accountService.save();
     }
 }

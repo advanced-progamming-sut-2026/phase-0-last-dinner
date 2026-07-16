@@ -8,6 +8,7 @@ import model.Greenhouse.GreenhouseStateResult;
 import model.mechanism.Position;
 import view.CommandHandler;
 
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 
@@ -16,67 +17,66 @@ import java.util.regex.Matcher;
 public class GreenhouseView implements CommandHandler {
 
     private GreenhouseViewObserver observer;
+    private CommandHandler activeShopHandler;
 
     @Override
     public void handleCommand(String input) {
         if (observer == null) {
-            System.out.println(
-                    "Greenhouse controller is not connected."
-            );
+            System.out.println("Greenhouse controller is not connected.");
+            return;
+        }
+
+        if (activeShopHandler != null && isShopCommand(input)) {
+
+            activeShopHandler.handleCommand(input);
             return;
         }
 
         Matcher matcher;
 
-        matcher = GreenhouseCommands
-                .SHOW_GREENHOUSE
-                .getMatcher(input);
+        matcher = GreenhouseCommands.SHOW_GREENHOUSE.getMatcher(input);
 
         if (matcher != null) {
             showGreenhouse();
             return;
         }
 
-        matcher = GreenhouseCommands
-                .PLANT_POT
-                .getMatcher(input);
+        matcher = GreenhouseCommands.PLANT_POT.getMatcher(input);
 
         if (matcher != null) {
             handlePlant(matcher);
             return;
         }
 
-        matcher = GreenhouseCommands
-                .COLLECT
-                .getMatcher(input);
+        matcher = GreenhouseCommands.COLLECT.getMatcher(input);
 
         if (matcher != null) {
             handleCollect(matcher);
             return;
         }
 
-        matcher = GreenhouseCommands
-                .GROW
-                .getMatcher(input);
+        matcher = GreenhouseCommands.GROW.getMatcher(input);
 
         if (matcher != null) {
             handleGrow(matcher);
             return;
         }
 
-        System.out.println(
-                "Invalid greenhouse command."
-        );
+        matcher = GreenhouseCommands.ENTER_SHOP.getMatcher(input);
+
+        if (matcher != null) {
+            handleEnterShop();
+            return;
+        }
+
+        System.out.println("Invalid greenhouse command.");
     }
 
     public void showGreenhouse() {
-        GreenhouseStateResult state =
-                observer.onShowGreenhouseRequested();
+        GreenhouseStateResult state = observer.onShowGreenhouseRequested();
 
         if (state == null) {
-            System.out.println(
-                    "Greenhouse is not available."
-            );
+            System.out.println("Greenhouse is not available.");
             return;
         }
 
@@ -84,44 +84,30 @@ public class GreenhouseView implements CommandHandler {
     }
 
     private void handlePlant(Matcher matcher) {
-        Position position =
-                parsePosition(matcher);
+        Position position = parsePosition(matcher);
 
-        GreenhouseActionResult result =
-                observer.onPlantPotRequested(
-                        position
-                );
+        GreenhouseActionResult result = observer.onPlantPotRequested(position);
 
         printActionResult(result);
     }
 
     private void handleCollect(Matcher matcher) {
-        Position position =
-                parsePosition(matcher);
+        Position position = parsePosition(matcher);
 
-        GreenhouseActionResult result =
-                observer.onCollectRequested(
-                        position
-                );
+        GreenhouseActionResult result = observer.onCollectRequested(position);
 
         printActionResult(result);
     }
 
     private void handleGrow(Matcher matcher) {
-        Position position =
-                parsePosition(matcher);
+        Position position = parsePosition(matcher);
 
-        GreenhouseActionResult result =
-                observer.onGrowRequested(
-                        position
-                );
+        GreenhouseActionResult result = observer.onGrowRequested(position);
 
         printActionResult(result);
     }
 
-    private Position parsePosition(
-            Matcher matcher
-    ) {
+    private Position parsePosition(Matcher matcher) {
         try {
             int x = Integer.parseInt(
                     matcher.group("x")
@@ -137,42 +123,27 @@ public class GreenhouseView implements CommandHandler {
         }
     }
 
-    private void printActionResult(
-            GreenhouseActionResult result
-    ) {
+    private void printActionResult(GreenhouseActionResult result) {
         if (result == null) {
-            System.out.println(
-                    "Greenhouse action failed."
-            );
+            System.out.println("Greenhouse action failed.");
             return;
         }
 
         System.out.println(result.getMessage());
 
-        if (result.isSuccessful()) {
-            System.out.println(
-                    "Coins: "
-                            + result.getRemainingCoins()
-                            + " | Diamonds: "
-                            + result.getRemainingDiamonds()
-            );
-        }
+        if (result.isSuccessful())
+            System.out.println("Coins: " + result.getRemainingCoins() + " | Diamonds: " + result.getRemainingDiamonds());
+
     }
 
     private void printGreenhouse(
             GreenhouseStateResult state
     ) {
         System.out.println("Greenhouse");
-        System.out.println(
-                "Coins: "
-                        + state.getCoins()
-                        + " | Diamonds: "
-                        + state.getDiamonds()
-        );
 
-        System.out.println(
-                "--------------------------------------------------"
-        );
+        System.out.println("Coins: " + state.getCoins() + " | Diamonds: " + state.getDiamonds());
+
+        System.out.println("--------------------------------------------------");
 
         for (int y = 1; y <= 4; y++) {
             StringBuilder row =
@@ -198,9 +169,7 @@ public class GreenhouseView implements CommandHandler {
             System.out.println(row);
         }
 
-        System.out.println(
-                "--------------------------------------------------"
-        );
+        System.out.println("--------------------------------------------------");
 
         printStoredBoosts(
                 state.getStoredBoostPlantNames()
@@ -242,24 +211,38 @@ public class GreenhouseView implements CommandHandler {
                 + "h remaining";
     }
 
-    private void printStoredBoosts(
-            Set<String> storedBoosts
-    ) {
-        if (storedBoosts == null
-                || storedBoosts.isEmpty()) {
-
-            System.out.println(
-                    "Stored boosts: none"
-            );
+    private void printStoredBoosts(Set<String> storedBoosts) {
+        if (storedBoosts == null || storedBoosts.isEmpty()) {
+            System.out.println("Stored boosts: none");
             return;
         }
 
-        System.out.println(
-                "Stored boosts: "
-                        + String.join(
-                        ", ",
-                        storedBoosts
-                )
-        );
+        System.out.println("Stored boosts: " + String.join(", ", storedBoosts));
+    }
+
+    private void handleEnterShop() {
+        CommandHandler shopHandler =
+                observer.onEnterShopRequested();
+
+        if (shopHandler == null) {
+            System.out.println("Shop is not available.");
+            return;
+        }
+
+        activeShopHandler = shopHandler;
+
+        System.out.println("Shop opened.");
+
+        System.out.println("Use 'shop list' or 'shop daily'.");
+    }
+
+    private boolean isShopCommand(String input) {
+        if (input == null)
+            return false;
+
+
+        String normalized = input.trim().toLowerCase(Locale.ROOT);
+
+        return normalized.equals("shop") || normalized.startsWith("shop ");
     }
 }
