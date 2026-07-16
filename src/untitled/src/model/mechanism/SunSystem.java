@@ -169,6 +169,14 @@ public class SunSystem implements Tickable {
         this.automaticSunEnabled = automaticSunEnabled;
     }
 
+    public boolean isSkySunEnabled() {
+        return this.automaticSunEnabled;
+    }
+
+    public void setSkySunEnabled(boolean skySunEnabled) {
+        this.automaticSunEnabled = skySunEnabled;
+    }
+
     public List<Sun> getSuns() {
         return this.suns;
     }
