@@ -1,22 +1,83 @@
 package controller;
 
+import model.Menu.GameMenuContext;
 import model.Menu.MenuType;
+import model.User.AccountResult;
+import model.User.AccountService;
 import model.User.User;
+import model.User.UserRepository;
 
-public class LoginController implements MenuController{
-    private boolean passwordValidation(){return true;}
-    public User findByUsername(){return null;}
-    public String login(){return "";}
-    private String passwordRecovery(){return "";}
-    private boolean checkAnswer(){return true;}
+public class LoginController implements MenuController {
+    private final AccountService accountService;
+    private final GameMenuContext menuContext;
+    private User currentUser;
+
+    public LoginController() {
+        this(new AccountService(new UserRepository()), new GameMenuContext());
+    }
+
+    public LoginController(AccountService accountService, GameMenuContext menuContext) {
+        if (accountService == null || menuContext == null) {
+            throw new IllegalArgumentException("Account service and menu context are required");
+        }
+
+        this.accountService = accountService;
+        this.menuContext = menuContext;
+    }
+
+    public AccountResult login(String username, String password, boolean stayLoggedIn) {
+        AccountResult result = this.accountService.login(username, password, stayLoggedIn);
+
+        if (result.isSuccessful()) {
+            this.currentUser = result.getUser();
+            this.menuContext.login();
+        }
+
+        return result;
+    }
+
+    public AccountResult beginPasswordRecovery(String username, String email) {
+        return this.accountService.beginPasswordReset(username, email);
+    }
+
+    public AccountResult resetPassword(
+            String answer,
+            String newPassword,
+            String newPasswordConfirm
+    ) {
+        return this.accountService.completePasswordReset(answer, newPassword, newPasswordConfirm);
+    }
+
+    public AccountResult answerSecurityQuestion(String answer) {
+        return this.accountService.verifyPasswordResetAnswer(answer);
+    }
+
+    public AccountResult setNewPassword(String newPassword, String newPasswordConfirm) {
+        return this.accountService.completePasswordReset(newPassword, newPasswordConfirm);
+    }
+
+    public User restoreRememberedLogin() {
+        User user = this.accountService.getRememberedUser();
+
+        if (user != null && user.isStayLoggedIn()) {
+            this.currentUser = user;
+            this.menuContext.login();
+        }
+
+        return this.currentUser;
+    }
+
+    public User getCurrentUser() {
+        return this.currentUser;
+    }
 
     @Override
     public void changeMenu() {
-
+        this.menuContext.exitMenu();
     }
 
     @Override
     public MenuType getCurrentMenu() {
-        return null;
+        return this.menuContext.getCurrentMenu();
     }
 }

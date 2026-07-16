@@ -1,4 +1,5 @@
 import controller.CollectionController;
+import controller.ApplicationController;
 import model.plant.CsvPlantDefinitionRepository;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantUpgradeService;
@@ -6,6 +7,7 @@ import model.mechanism.PlantZombieGame;
 import model.zombie.JsonZombieDefinitionRepository;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
+import view.ConsoleApplication;
 
 import java.io.IOException;
 
@@ -20,6 +22,7 @@ public final class Main {
     // upgrade haye daemi plant ro beyn game haye jadid moshtarak negah midare
     private final PlantUpgradeService plantUpgradeService;
     private final CollectionController collectionController;
+    private final ApplicationController applicationController;
 
     private Main(
             PlantDefinitionRepository plantDefinitions,
@@ -35,10 +38,16 @@ public final class Main {
                 plantDefinitions,
                 plantUpgradeService
         );
+        this.applicationController = new ApplicationController();
     }
 
     public static void main(String[] args) {
-        loadApplication();
+        Main application = loadApplication();
+        new ConsoleApplication(
+                application.getApplicationController(),
+                System.in,
+                System.out
+        ).run();
     }
 
     public static Main loadApplication() {
@@ -79,6 +88,10 @@ public final class Main {
 
     public CollectionController getCollectionController() {
         return this.collectionController;
+    }
+
+    public ApplicationController getApplicationController() {
+        return this.applicationController;
     }
 
     public PlantZombieGame createGame() {

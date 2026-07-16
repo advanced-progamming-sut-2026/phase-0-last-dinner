@@ -1,6 +1,7 @@
 package model.User;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 import model.Plant;
 import model.chapters.Chapter;
@@ -13,6 +14,7 @@ import java.util.ArrayList;
 @Getter
 @Setter
 @AllArgsConstructor
+@NoArgsConstructor
 public class User {
     private String username;
     private String hashedPassword;
@@ -37,4 +39,27 @@ public class User {
     private ArrayList<Plant> unlockedPlants;
     private ArrayList<Zombie> zombies;
 
+    public User(
+            String username,
+            String hashedPassword,
+            String nickname,
+            String email,
+            int questionNum,
+            String securityAnswer,
+            UserGender gender
+    ) {
+        this.username = username;
+        this.hashedPassword = hashedPassword;
+        this.nickname = nickname;
+        this.email = email;
+        this.questionNum = questionNum;
+        this.securityAnswer = securityAnswer;
+        this.gender = gender;
+        this.level = 1;
+        this.difficultyLevel = 3;
+        this.unreadNews = new ArrayList<>();
+        this.allNews = new ArrayList<>();
+        this.unlockedPlants = new ArrayList<>();
+        this.zombies = new ArrayList<>();
+    }
 }
