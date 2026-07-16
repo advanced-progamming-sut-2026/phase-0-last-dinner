@@ -78,7 +78,7 @@ public class PlantZombieGame {
         this.lootSystem = new LootSystem();
         this.combatSystem = new CombatSystem(this.board, this.lootSystem);
         this.zombieSpawner = new ZombieSpawner(this.zombieFactory, this.zombieDefinitions, this.board);
-        this.waveManager = new WaveManager(null, this.zombieSpawner);
+        this.waveManager = new WaveManager(null, this.zombieSpawner, this.engine);
         this.gameStatusService = new GameStatusService(
                 this.board,
                 this.waveManager,

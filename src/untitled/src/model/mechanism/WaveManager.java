@@ -13,15 +13,21 @@ public class WaveManager implements Tickable {
     private List<Wave> waves;
     private int currentWaveIndex;
     private ZombieSpawner zombieSpawner;
+    private GameEngine gameEngine;
     private GameEventListener listener;
     private boolean started;
 
     public WaveManager() {
-        this(new ArrayList<Wave>(), null);
+        this(new ArrayList<Wave>(), null, null);
     }
 
     public WaveManager(List<Wave> waves, ZombieSpawner zombieSpawner) {
+        this(waves, zombieSpawner, null);
+    }
+
+    public WaveManager(List<Wave> waves, ZombieSpawner zombieSpawner, GameEngine gameEngine) {
         this.zombieSpawner = zombieSpawner;
+        this.gameEngine = gameEngine;
         this.configureWaves(waves);
     }
 
@@ -39,6 +45,15 @@ public class WaveManager implements Tickable {
 
         if (currentWave != null && currentWave.canStartNextWave() && this.hasNextWave()) {
             this.startNextWave();
+        }
+
+        if (currentWave != null
+                && !this.hasNextWave()
+                && currentWave.getRemainingHealthPercentage() <= 0
+                && this.gameEngine != null
+                && this.gameEngine.isGameRunning()) {
+            this.fireEvent("All waves completed.");
+            this.gameEngine.endGame();
         }
     }
 
