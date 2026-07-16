@@ -1,4 +1,4 @@
-package model.minigame;
+package model.minigame.wallnutbowlingminigame;
 
 public enum BowlingWallnutType {
     BOWLING_WALLNUT,

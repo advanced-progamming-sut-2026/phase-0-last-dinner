@@ -1,0 +1,26 @@
+package model.minigame.izombieminigame;
+
+public enum IZombieActionStatus {
+
+    SUCCESS,
+
+    INTEGRATION_NOT_READY,
+
+    ALREADY_STARTED,
+    NOT_STARTED,
+    GAME_ALREADY_COMPLETED,
+
+    INVALID_ZOMBIE,
+    ZOMBIE_NOT_AVAILABLE,
+
+    INVALID_POSITION,
+    POSITION_BEFORE_RED_LINE,
+    POSITION_BLOCKED,
+
+    NOT_ENOUGH_SUN,
+    ZOMBIE_PLACEMENT_FAILED,
+
+    STAGE_WON,
+    GAME_WON,
+    GAME_LOST
+}
