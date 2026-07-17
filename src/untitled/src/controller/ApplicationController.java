@@ -1,5 +1,6 @@
 package controller;
 
+import lombok.Getter;
 import model.Menu.GameMenuContext;
 import model.Menu.MenuType;
 import model.User.AccountResult;
@@ -7,8 +8,12 @@ import model.User.AccountService;
 import model.User.AccountStatus;
 import model.User.User;
 import model.User.UserRepository;
+import model.plant.PlantDefinitionRepository;
 import model.plant.PlantUpgradeService;
+import model.zombie.ZombieDefinitionRepository;
 import view.CommandHandler;
+import view.collection.CollectionView;
+import view.collection.CollectionCommands;
 import view.greenhouse.GreenhouseCommands;
 import view.greenhouse.GreenhouseView;
 
@@ -19,6 +24,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 // dastur haye matni ro be bakhshe marbut mifreste
+@Getter
 public class ApplicationController implements CommandHandler {
     // matne dakhele quote ro yek token hesab mikone
     private static final Pattern TOKEN_PATTERN = Pattern.compile("\"([^\"]*)\"|'([^']*)'|(\\S+)");
@@ -34,35 +40,34 @@ public class ApplicationController implements CommandHandler {
     // اینا برا گل خونن
     private GreenhouseView greenhouseView;
     private User greenhouseViewUser;
-    private final PlantUpgradeService plantUpgradeService;
+
+    // اینا هم برا کالکشن
+    private final PlantDefinitionRepository plantDefinitions;
+    private final ZombieDefinitionRepository zombieDefinitions;
+    private CollectionView collectionView;
+    private User collectionViewUser;
 
     public ApplicationController() {
-        this(new UserRepository(), new PlantUpgradeService());
+        this(new UserRepository(), null, null);
     }
 
     public ApplicationController(UserRepository repository) {
-        this(repository, new PlantUpgradeService());
+        this(repository, null, null);
     }
 
-    public ApplicationController(UserRepository repository, PlantUpgradeService plantUpgradeService) {
-        if (plantUpgradeService == null)
-            throw new IllegalArgumentException("Plant upgrade service is required.");
-
-
+    public ApplicationController(
+            UserRepository repository,
+            PlantDefinitionRepository plantDefinitions,
+            ZombieDefinitionRepository zombieDefinitions
+    ) {
         this.menuContext = new GameMenuContext();
-
         this.accountService = new AccountService(repository);
-
         this.signupController = new SignupController(this.accountService, this.menuContext);
-
         this.loginController = new LoginController(this.accountService, this.menuContext);
-
         this.mainController = new MainController(this.accountService, this.menuContext);
-
-        this.plantUpgradeService = plantUpgradeService;
-
+        this.plantDefinitions = plantDefinitions;
+        this.zombieDefinitions = zombieDefinitions;
         this.currentUser = this.loginController.restoreRememberedLogin();
-
         this.lastMessage = "";
     }
 
@@ -79,6 +84,10 @@ public class ApplicationController implements CommandHandler {
         }
 
         try {
+            if (this.isCollectionCommand(input)) {
+                return this.executeCollectionCommand(input);
+            }
+
             String menuResult = this.executeMenuCommand(tokens);
 
             if (menuResult != null) {
@@ -118,16 +127,8 @@ public class ApplicationController implements CommandHandler {
         return this.menuContext.getCurrentMenu();
     }
 
-    public User getCurrentUser() {
-        return this.currentUser;
-    }
-
     public boolean isApplicationRunning() {
         return this.menuContext.isApplicationRunning();
-    }
-
-    public String getLastMessage() {
-        return this.lastMessage;
     }
 
     public void close() {
@@ -159,6 +160,7 @@ public class ApplicationController implements CommandHandler {
 
             this.currentUser = null;
             clearGreenhouseConnection();
+            clearCollectionConnection();
 
             return this.mainController.logout();
         }
@@ -266,6 +268,7 @@ public class ApplicationController implements CommandHandler {
         if (result.isSuccessful()) {
             this.currentUser = result.getUser();
             clearGreenhouseConnection();
+            clearCollectionConnection();
         }
 
         return result.getMessage();
@@ -471,17 +474,17 @@ public class ApplicationController implements CommandHandler {
     }
 
     private void ensureGreenhouseConnected() {
-        if (greenhouseView != null
-                && greenhouseViewUser == currentUser) {
+        if (greenhouseView != null && greenhouseViewUser == currentUser) {
             return;
         }
 
+        currentUser.initializeMissingFields();
         greenhouseView = new GreenhouseView();
 
         new GreenhouseController(
                 greenhouseView,
                 currentUser,
-                plantUpgradeService
+                currentUser.getPlantUpgradeService()
         );
 
         greenhouseViewUser = currentUser;
@@ -503,5 +506,58 @@ public class ApplicationController implements CommandHandler {
 
     public void save() {
         this.accountService.save();
+    }
+
+    private boolean isCollectionCommand(String input) {
+        for (CollectionCommands command : CollectionCommands.values()) {
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeCollectionCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.COLLECTION_MENU) {
+            return "Collection commands are only available in collection menu.";
+        }
+
+        if (this.plantDefinitions == null || this.zombieDefinitions == null) {
+            return "Collection definitions are not available.";
+        }
+
+        this.ensureCollectionConnected();
+        this.collectionView.handleCommand(input);
+        this.accountService.save();
+
+        return "";
+    }
+
+    private void ensureCollectionConnected() {
+        if (this.collectionView != null && this.collectionViewUser == this.currentUser) {
+            return;
+        }
+
+        this.currentUser.initializeMissingFields();
+        this.collectionView = new CollectionView();
+
+        new CollectionController(
+                this.collectionView,
+                this.currentUser,
+                this.plantDefinitions,
+                this.zombieDefinitions
+        );
+
+        this.collectionViewUser = this.currentUser;
+    }
+
+    private void clearCollectionConnection() {
+        this.collectionView = null;
+        this.collectionViewUser = null;
     }
 }

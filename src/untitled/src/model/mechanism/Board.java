@@ -2,6 +2,7 @@ package model.mechanism;
 import lombok.Getter;
 import lombok.Setter;
 import model.Plant;
+import model.collection.ZombieEncounterListener;
 import model.plant.PlantCategory;
 import model.plant.Projectile;
 import model.zombie.Zombie;
@@ -32,6 +33,12 @@ public class Board {
     @Getter
     // cover haye plant ro markazi negah midare ta combat be an dastresi dashte bashe
     private final PlantCoverSystem plantCoverSystem = new PlantCoverSystem();
+
+    //برا اینکه کالکشن بتونه به زامبی های دیده شده دسترسی داشته باشه
+    @Setter
+    @Getter
+    private ZombieEncounterListener zombieEncounterListener;
+
     public Board() {
         this(createDefaultTiles());
     }
@@ -63,6 +70,9 @@ public class Board {
         zombie.setPosition(position);
         zombie.setBoard(this);
         tile.addZombie(zombie);
+
+        if (this.zombieEncounterListener != null && zombie.getDefinition() != null)
+            this.zombieEncounterListener.onZombieEncountered(zombie.getDefinition());
     }
 
     public boolean moveZombie(Zombie zombie, Position destination) {

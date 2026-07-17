@@ -1,16 +1,14 @@
-import controller.CollectionController;
 import controller.ApplicationController;
 import lombok.Getter;
 import model.GameMenuRelated.TravelLog;
-import model.Greenhouse.Greenhouse;
 import model.Greenhouse.GreenhouseBoostService;
 import model.User.User;
 import model.User.UserRepository;
+import model.mechanism.PlantZombieGame;
 import model.minigame.MiniGameFactory;
 import model.plant.CsvPlantDefinitionRepository;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantUpgradeService;
-import model.mechanism.PlantZombieGame;
 import model.zombie.JsonZombieDefinitionRepository;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
@@ -27,26 +25,21 @@ public final class Main {
     private final PlantDefinitionRepository plantDefinitions;
     private final ZombieDefinitionRepository zombieDefinitions;
     private final ZombieFactory zombieFactory;
-    // upgrade haye daemi plant ro beyn game haye jadid moshtarak negah midare
-    private final PlantUpgradeService plantUpgradeService;
-    private final CollectionController collectionController;
     private final ApplicationController applicationController;
 
     private Main(
             PlantDefinitionRepository plantDefinitions,
             ZombieDefinitionRepository zombieDefinitions,
-            ZombieFactory zombieFactory,
-            PlantUpgradeService plantUpgradeService
+            ZombieFactory zombieFactory
     ) {
         this.plantDefinitions = plantDefinitions;
         this.zombieDefinitions = zombieDefinitions;
         this.zombieFactory = zombieFactory;
-        this.plantUpgradeService = plantUpgradeService;
-        this.collectionController = new CollectionController(
-                plantDefinitions,
-                plantUpgradeService
+        this.applicationController = new ApplicationController(
+                new UserRepository(),
+                this.plantDefinitions,
+                this.zombieDefinitions
         );
-        this.applicationController = new ApplicationController(new UserRepository(), this.plantUpgradeService);
     }
 
     public MiniGameFactory createMiniGameFactory() {
@@ -79,13 +72,11 @@ public final class Main {
             JsonZombieDefinitionRepository zombieDefinitions =
                     JsonZombieDefinitionRepository.fromClasspath(ZOMBIES_RESOURCE, ARMOR_RESOURCE);
             ZombieFactory zombieFactory = new ZombieFactory(zombieDefinitions);
-            PlantUpgradeService plantUpgradeService = new PlantUpgradeService();
 
             return new Main(
                     plantDefinitions,
                     zombieDefinitions,
-                    zombieFactory,
-                    plantUpgradeService
+                    zombieFactory
             );
         } catch (IOException e) {
             throw new IllegalStateException("Could not load bundled plant and zombie definitions", e);
@@ -100,7 +91,7 @@ public final class Main {
                     this.plantDefinitions,
                     this.zombieDefinitions,
                     this.zombieFactory,
-                    this.plantUpgradeService
+                    new PlantUpgradeService()
             );
         }
 
@@ -118,12 +109,15 @@ public final class Main {
                         boostService
                 );
 
-        int storedPlantFood = Math.max(0, Math.min(3, user.getNextLevelPlantFood()));
+        game.getBoard().setZombieEncounterListener(definition -> {
+            if (definition != null && user.recordEncounteredZombie(definition.getAlias()))
+                applicationController.save();
+        });
 
+        int storedPlantFood = Math.max(0, Math.min(3, user.getNextLevelPlantFood()));
         int transferredPlantFood = 0;
 
         for (int i = 0; i < storedPlantFood; i++) {
-
             boolean added = game.getPlantFoodSystem().addPlantFood();
 
             if (!added)
@@ -133,7 +127,6 @@ public final class Main {
         }
 
         user.setNextLevelPlantFood(storedPlantFood - transferredPlantFood);
-
         applicationController.save();
 
         return game;

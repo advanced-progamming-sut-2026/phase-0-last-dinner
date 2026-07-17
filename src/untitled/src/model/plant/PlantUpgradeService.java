@@ -1,5 +1,7 @@
 package model.plant;
 
+import lombok.Getter;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -13,6 +15,7 @@ public class PlantUpgradeService {
 
     // key az nam normalize shode sakhte mishe ta progress joda nashe
     private final Map<String, PlantProgress> progressByPlant = new HashMap<>();
+    @Getter
     private int coins;
 
     public PlantUpgradeService() {
@@ -52,13 +55,17 @@ public class PlantUpgradeService {
         return PlantUpgradeResult.SUCCESS;
     }
 
+    public PlantUpgradeResult upgrade(PlantDefinition definition, int availableCoins) {
+        this.setCoins(availableCoins);
+        return this.upgrade(definition);
+    }
+
     public PlantUpgradeData createUpgradeData(
             PlantDefinition definition,
             List<PlantUpgradeEffect> effects
     ) {
-        if (definition == null) {
+        if (definition == null)
             return null;
-        }
 
         PlantProgress progress = this.progressFor(definition.getName());
         int maximumLevel = effects == null ? 1 : effects.size() + 1;
@@ -82,15 +89,15 @@ public class PlantUpgradeService {
         }
     }
 
+    public void setCoins(int amount) {
+        this.coins = Math.max(0, amount);
+    }
+
     public void addSeedPackets(String plantName, int amount) {
         if (amount > 0 && !this.normalize(plantName).isEmpty()) {
             PlantProgress progress = this.progressFor(plantName);
             progress.seedPackets = this.safeAdd(progress.seedPackets, amount);
         }
-    }
-
-    public int getCoins() {
-        return this.coins;
     }
 
     public int getLevel(String plantName) {
@@ -101,6 +108,20 @@ public class PlantUpgradeService {
     public int getSeedPackets(String plantName) {
         PlantProgress progress = this.findProgress(plantName);
         return progress == null ? 0 : progress.seedPackets;
+    }
+
+    public int getMaximumLevel(PlantDefinition definition) {
+        if (definition == null) {
+            return 1;
+        }
+        return this.maximumLevel(definition);
+    }
+
+    public boolean isAtMaximumLevel(PlantDefinition definition) {
+        if (definition == null) {
+            return false;
+        }
+        return this.getLevel(definition.getName()) >= this.maximumLevel(definition);
     }
 
     public int requiredSeedPackets(int currentLevel) {

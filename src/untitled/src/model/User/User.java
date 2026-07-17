@@ -39,6 +39,7 @@ public class User {
     private ArrayList<String> unreadNews;
     private ArrayList<String> allNews;
     private ArrayList<Plant> unlockedPlants;
+    private ArrayList<String> encounteredZombieAliases;
     private ArrayList<Zombie> zombies;
     //اینا برا شاپ و گرینهوس ان
     private Shop shop;
@@ -63,7 +64,6 @@ public class User {
         this.gender = gender;
         this.greenhouse = new Greenhouse();
         this.level = 1;
-        this.difficultyLevel = 3;
         this.unreadNews = new ArrayList<>();
         this.allNews = new ArrayList<>();
         this.unlockedPlants = new ArrayList<>();
@@ -71,6 +71,7 @@ public class User {
         this.shop = new Shop();
         this.nextLevelPlantFood = 0;
         this.plantUpgradeService = new PlantUpgradeService();
+        this.encounteredZombieAliases = new ArrayList<>();
     }
 
     public void increaseNextLevelPlantFood(){
@@ -106,5 +107,32 @@ public class User {
             this.nextLevelPlantFood = 3;
         if (this.plantUpgradeService == null)
             this.plantUpgradeService = new PlantUpgradeService();
+        if (this.encounteredZombieAliases == null)
+            this.encounteredZombieAliases = new ArrayList<>();
+    }
+
+    public boolean recordEncounteredZombie(String alias) {
+        if (alias == null || alias.trim().isEmpty())
+            return false;
+
+        for (String encounteredAlias : this.encounteredZombieAliases) {
+            if (encounteredAlias != null && encounteredAlias.equalsIgnoreCase(alias.trim()))
+                return false;
+        }
+
+        this.encounteredZombieAliases.add(alias.trim());
+        return true;
+    }
+
+    public boolean hasEncounteredZombie(String alias) {
+        if (alias == null || this.encounteredZombieAliases == null)
+            return false;
+
+        for (String encounteredAlias : this.encounteredZombieAliases) {
+            if (encounteredAlias != null && encounteredAlias.equalsIgnoreCase(alias.trim()))
+                return true;
+        }
+
+        return false;
     }
 }

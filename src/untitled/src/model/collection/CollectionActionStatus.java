@@ -1,0 +1,14 @@
+package model.collection;
+
+public enum CollectionActionStatus {
+    SUCCESS,
+    USER_NOT_AVAILABLE,
+    PLANT_NOT_FOUND,
+    ZOMBIE_NOT_FOUND,
+    PLANT_NOT_UNLOCKED,
+    PLANT_ALREADY_UNLOCKED,
+    NOT_ENOUGH_COINS,
+    NOT_ENOUGH_SEED_PACKETS,
+    MAXIMUM_LEVEL_REACHED,
+    INVALID
+}
