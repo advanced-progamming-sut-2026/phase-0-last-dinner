@@ -348,6 +348,17 @@ public class CombatSystem implements Tickable {
         if (projectile == null || plant == null || plant.isDead()) {
             return;
         }
+        if (plant.isFrozen()) {
+            if (projectile.getType() == ProjectileType.FIRE) {
+                plant.meltIceInstantly();
+            } else if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
+                plant.damageIce(Integer.MAX_VALUE);
+            } else {
+                int iceDamage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
+                plant.damageIce(iceDamage);
+            }
+            return;
+        }
 
         if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
             this.destroyPlant(plant);
