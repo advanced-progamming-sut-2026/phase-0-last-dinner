@@ -1,9 +1,361 @@
 package controller;
 
-public class GreenhouseController {
-    public void showGreenhouse(){}
-    public void plantPot(){}
-    public void collect(){}
-    public void grow(){}
-    public void enterShop(){}
+import lombok.Getter;
+import model.Greenhouse.Greenhouse;
+import model.Greenhouse.GreenhouseActionResult;
+import model.Greenhouse.GreenhouseActionStatus;
+import model.Greenhouse.GreenhouseStateResult;
+import model.Greenhouse.Pot;
+import model.User.User;
+import model.mechanism.Position;
+import model.plant.PlantUpgradeService;
+import view.CommandHandler;
+import view.greenhouse.GreenhouseView;
+import view.greenhouse.GreenhouseViewObserver;
+import view.shop.ShopView;
+
+@Getter
+public class GreenhouseController implements GreenhouseViewObserver {
+
+    private final User user;
+    private final PlantUpgradeService plantUpgradeService;
+
+    public GreenhouseController(
+            GreenhouseView view,
+            User user
+    ) {
+        this(
+                view,
+                user,
+                null
+        );
+    }
+
+    public GreenhouseController(
+            GreenhouseView view,
+            User user,
+            PlantUpgradeService plantUpgradeService
+    ) {
+        if (view == null) {
+            throw new IllegalArgumentException(
+                    "Greenhouse view cannot be null."
+            );
+        }
+
+        if (user == null) {
+            throw new IllegalArgumentException(
+                    "User cannot be null."
+            );
+        }
+
+        this.user = user;
+        this.plantUpgradeService =
+                plantUpgradeService;
+
+        user.initializeMissingFields();
+
+        view.setObserver(this);
+    }
+
+    @Override
+    public GreenhouseStateResult onShowGreenhouseRequested() {
+
+        return GreenhouseStateResult.from(
+                getGreenhouse(),
+                user.getGold(),
+                user.getDiamond()
+        );
+    }
+
+    @Override
+    public GreenhouseActionResult onPlantPotRequested(Position position) {
+
+        Pot pot = getPot(position);
+
+        if (pot == null) {
+            return failure(
+                    GreenhouseActionStatus.INVALID_POSITION,
+                    "Invalid greenhouse position. "
+                            + "X must be from 1 to 5 "
+                            + "and Y must be from 1 to 4.",
+                    position
+            );
+        }
+
+        if (!pot.isUnlocked()) {
+            return failure(
+                    GreenhouseActionStatus.POT_LOCKED,
+                    "This pot is locked.",
+                    position
+            );
+        }
+
+        if (!pot.isEmpty()) {
+            return failure(
+                    GreenhouseActionStatus.POT_OCCUPIED,
+                    "This pot is already occupied.",
+                    position
+            );
+        }
+
+        String plantedPlantName =
+                getGreenhouse().plantRandom(
+                        position,
+                        user.getUnlockedPlants()
+                );
+
+        if (plantedPlantName == null) {
+            return failure(
+                    GreenhouseActionStatus.PLANTING_FAILED,
+                    "Could not plant in this pot.",
+                    position
+            );
+        }
+
+        return GreenhouseActionResult.planted(
+                position,
+                plantedPlantName,
+                user.getGold(),
+                user.getDiamond()
+        );
+    }
+
+    @Override
+    public GreenhouseActionResult onCollectRequested(Position position) {
+
+        Pot pot = getPot(position);
+
+        if (pot == null) {
+            return failure(
+                    GreenhouseActionStatus.INVALID_POSITION,
+                    "Invalid greenhouse position.",
+                    position
+            );
+        }
+
+        if (!pot.isUnlocked()) {
+            return failure(
+                    GreenhouseActionStatus.POT_LOCKED,
+                    "This pot is locked.",
+                    position
+            );
+        }
+
+        if (pot.isEmpty()) {
+            return failure(
+                    GreenhouseActionStatus.POT_EMPTY,
+                    "This pot is empty.",
+                    position
+            );
+        }
+
+        if (!pot.isReady()) {
+            return failure(
+                    GreenhouseActionStatus.PLANT_NOT_READY,
+                    "This plant is not ready. "
+                            + pot.getRemainingGrowthHours(
+                            System.currentTimeMillis()
+                    )
+                            + " hour(s) remaining.",
+                    position
+            );
+        }
+
+        String plantName = pot.getPlantName();
+
+        boolean boostAlreadyStored =
+                getGreenhouse().hasStoredBoost(plantName);
+
+        String harvestedPlantName =
+                getGreenhouse().harvest(position);
+
+        if (harvestedPlantName == null) {
+            return failure(
+                    GreenhouseActionStatus.HARVEST_FAILED,
+                    "Could not collect this plant.",
+                    position
+            );
+        }
+
+        int coinsEarned = 0;
+        boolean boostStored = false;
+
+        if (isMarigold(harvestedPlantName)) {
+            coinsEarned =
+                    Greenhouse.MARIGOLD_REWARD_COINS;
+
+            user.setGold(
+                    user.getGold() + coinsEarned
+            );
+        } else {
+            boostStored =
+                    !boostAlreadyStored
+                            && getGreenhouse()
+                            .hasStoredBoost(
+                                    harvestedPlantName
+                            );
+        }
+
+        return GreenhouseActionResult.harvested(
+                position,
+                harvestedPlantName,
+                coinsEarned,
+                boostStored,
+                user.getGold(),
+                user.getDiamond()
+        );
+    }
+
+    @Override
+    public GreenhouseActionResult onGrowRequested(Position position) {
+
+        Pot pot = getPot(position);
+
+        if (pot == null) {
+            return failure(
+                    GreenhouseActionStatus.INVALID_POSITION,
+                    "Invalid greenhouse position.",
+                    position
+            );
+        }
+
+        if (!pot.isUnlocked()) {
+            return failure(
+                    GreenhouseActionStatus.POT_LOCKED,
+                    "This pot is locked.",
+                    position
+            );
+        }
+
+        if (pot.isEmpty()) {
+            return failure(
+                    GreenhouseActionStatus.POT_EMPTY,
+                    "This pot is empty.",
+                    position
+            );
+        }
+
+        if (pot.isReady()) {
+            return failure(
+                    GreenhouseActionStatus.PLANT_ALREADY_READY,
+                    "This plant is already ready to collect.",
+                    position
+            );
+        }
+
+        int diamondCost =
+                getGreenhouse().getSpeedUpCost(
+                        position
+                );
+
+        if (diamondCost <= 0) {
+            return failure(
+                    GreenhouseActionStatus.PLANT_ALREADY_READY,
+                    "This plant is already ready to collect.",
+                    position
+            );
+        }
+
+        if (user.getDiamond() < diamondCost) {
+            return failure(
+                    GreenhouseActionStatus.NOT_ENOUGH_DIAMONDS,
+                    "Not enough diamonds. Required: "
+                            + diamondCost
+                            + ", available: "
+                            + user.getDiamond(),
+                    position
+            );
+        }
+
+        String plantName = pot.getPlantName();
+
+        boolean accelerated =
+                getGreenhouse().speedUpGrowth(
+                        position
+                );
+
+        if (!accelerated) {
+            return failure(
+                    GreenhouseActionStatus.INVALID_ACTION,
+                    "Could not accelerate this plant.",
+                    position
+            );
+        }
+
+        user.setDiamond(
+                user.getDiamond() - diamondCost
+        );
+
+        return GreenhouseActionResult
+                .growthAccelerated(
+                        position,
+                        plantName,
+                        diamondCost,
+                        user.getGold(),
+                        user.getDiamond()
+                );
+    }
+
+    @Override
+    public CommandHandler onEnterShopRequested() {
+        user.initializeMissingFields();
+
+        ShopView shopView = new ShopView();
+
+        new ShopController(
+                shopView,
+                user,
+                user.getPlantUpgradeService()
+        );
+
+        return shopView;
+    }
+
+    public Greenhouse getGreenhouse() {
+        return user.getGreenhouse();
+    }
+
+    private Pot getPot(Position position) {
+        if (position == null) {
+            return null;
+        }
+
+        Greenhouse greenhouse = getGreenhouse();
+
+        if (!greenhouse
+                .getBoard()
+                .isValidPosition(
+                        position.getX(),
+                        position.getY()
+                )) {
+
+            return null;
+        }
+
+        return greenhouse
+                .getBoard()
+                .getPot(position);
+    }
+
+    private boolean isMarigold(
+            String plantName
+    ) {
+        return plantName != null
+                && Greenhouse.MARIGOLD_NAME
+                .equalsIgnoreCase(plantName);
+    }
+
+    private GreenhouseActionResult failure(
+            GreenhouseActionStatus status,
+            String message,
+            Position position
+    ) {
+        return GreenhouseActionResult.failure(
+                status,
+                message,
+                position,
+                user.getGold(),
+                user.getDiamond()
+        );
+    }
 }

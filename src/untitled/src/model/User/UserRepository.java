@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -38,7 +39,13 @@ public class UserRepository {
         }
 
         this.storagePath = storagePath;
-        this.gson = new GsonBuilder().setPrettyPrinting().create();
+        this.gson = new GsonBuilder()
+                .registerTypeAdapter(
+                        LocalDate.class,
+                        new LocalDateAdapter()
+                )
+                .setPrettyPrinting()
+                .create();
         this.users = new ArrayList<>();
         this.load();
     }
@@ -108,6 +115,10 @@ public class UserRepository {
             if (stored != null && stored.users != null) {
                 this.users = stored.users;
                 this.rememberedUsername = stored.rememberedUsername;
+                for(User user : this.users) {
+                    if(user != null && user.getUsername() != null)
+                        user.initializeMissingFields();
+                }
             }
         } catch (IOException | JsonParseException e) {
             throw new IllegalStateException("Could not load users", e);
