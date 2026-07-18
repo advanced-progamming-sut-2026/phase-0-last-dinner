@@ -130,6 +130,15 @@ public class ZombieSpawner {
 
         return this.chooseZombieDefinition(remainingCost, definitions, reachableCosts);
     }
+    public ZombieDefinition chooseRandomSpawnableDefinition() {
+        List<ZombieDefinition> definitions = this.getEligibleDefinitions(Integer.MAX_VALUE);
+
+        if (definitions.isEmpty()) {
+            return null;
+        }
+
+        return definitions.get(this.random.nextInt(definitions.size()));
+    }
 
     public void setActiveChapter(ZombieChapter activeChapter) {
         this.activeChapter = activeChapter == null

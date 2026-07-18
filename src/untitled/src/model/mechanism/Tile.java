@@ -24,6 +24,7 @@ public class Tile {
     private List<Plant> plants;
     private List<Zombie> zombies;
     private int environmentTicks;
+    private GraveLootType graveLoot = GraveLootType.NONE;
 
     public Tile() {
         this(null, TerrainType.CLASSIC);
@@ -138,6 +139,15 @@ public class Tile {
 
         this.environmentTicks = 0;
         this.updateOccupantState();
+    }
+    public void setGraveLoot(GraveLootType graveLoot) {
+        this.graveLoot = graveLoot == null ? GraveLootType.NONE : graveLoot;
+    }
+
+    public GraveLootType collectGraveLoot() {
+        GraveLootType loot = this.graveLoot;
+        this.graveLoot = GraveLootType.NONE;
+        return loot;
     }
 
     // terrain masir projectile mostaghim ro ghabl az target migire
