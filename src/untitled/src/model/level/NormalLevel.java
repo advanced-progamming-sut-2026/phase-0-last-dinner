@@ -2,6 +2,7 @@ package model.level;
 
 import lombok.Getter;import lombok.Setter;import model.Plant;
 import model.chapters.Chapter;import model.mechanism.Board;
+import model.mechanism.LawnMower;
 import model.mechanism.Tile;import model.mechanism.Wave;
 
 import java.util.ArrayList;import java.util.List;
@@ -28,7 +29,12 @@ public class NormalLevel extends Level {
     }
     @Override
     public void start() {
+        setStarted(true);
 
+        List<Wave> waves = getWaves();
+        if (waves != null && !waves.isEmpty()) {
+            waves.get(0).start();
+        }
     }
 
     @Override
@@ -42,6 +48,12 @@ public class NormalLevel extends Level {
 
     @Override
     public boolean isLoseConditionMet() {
-        return false;
+        Board board = getBoard();
+
+        if (board == null) {
+            return false;
+        }
+
+        return board.isBrainEaten();
     }
 }
