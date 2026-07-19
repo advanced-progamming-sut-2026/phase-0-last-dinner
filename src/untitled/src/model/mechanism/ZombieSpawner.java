@@ -1,6 +1,7 @@
 package model.mechanism;
 
 import lombok.Getter;
+import model.chapters.Chapter;
 import model.zombie.Zombie;
 import model.zombie.ZombieChapter;
 import model.zombie.ZombieDefinition;
@@ -21,6 +22,7 @@ public class ZombieSpawner {
     private GameEventListener listener;
     private Random random;
     private ZombieChapter activeChapter;
+    private Chapter chapter;
 
     public ZombieSpawner() {
         this(null, null, null);
@@ -37,11 +39,6 @@ public class ZombieSpawner {
         this.random = new Random();
         this.activeChapter = ZombieChapter.ALL_CHAPTERS;
     }
-
-    public void setListener(GameEventListener listener) {
-        this.listener = listener;
-    }
-
     public List<Zombie> spawnWave(Wave wave) {
         List<Zombie> spawnedZombies = new ArrayList<>();
 
@@ -89,12 +86,23 @@ public class ZombieSpawner {
             ZombieBehavior behavior,
             int row
     ) {
+        return this.spawnZombie(definition, behavior, row, false);
+        // این تیکه رو برای طوفان عوض کردم اما دوتا سیگنچر رو نگه داشتم بقیه جاها بهم نریزه
+    }
+    public Zombie spawnZombie(
+            ZombieDefinition definition,
+            ZombieBehavior behavior,
+            int row,
+            boolean isFinalWave
+    ) {
         if (definition == null || this.board == null) {
             return null;
         }
 
         int safeRow = Math.max(0, Math.min(4, row));
-        Position spawnPosition = new Position(8, safeRow);
+        Position spawnPosition = this.chapter != null
+                ? this.chapter.resolveZombieSpawnPosition(safeRow, isFinalWave)
+                : new Position(8, safeRow);
         Zombie zombie = this.zombieFactory.create(definition, spawnPosition);
 
         if (zombie != null) {
@@ -121,6 +129,15 @@ public class ZombieSpawner {
         }
 
         return this.chooseZombieDefinition(remainingCost, definitions, reachableCosts);
+    }
+    public ZombieDefinition chooseRandomSpawnableDefinition() {
+        List<ZombieDefinition> definitions = this.getEligibleDefinitions(Integer.MAX_VALUE);
+
+        if (definitions.isEmpty()) {
+            return null;
+        }
+
+        return definitions.get(this.random.nextInt(definitions.size()));
     }
 
     public void setActiveChapter(ZombieChapter activeChapter) {

@@ -18,6 +18,10 @@ import java.util.Set;
 // state va behavior yek giah sakhte shode dar board ro negah midare
 @Getter
 public class Plant implements Tickable {
+    private static final int MAX_FREEZE_LEVEL = 3;
+    private static final int FULL_ICE_HEALTH = 600;
+    private static final int FIRE_THAW_DAMAGE_PER_SECOND = 60;
+    private static final int TICKS_PER_SECOND = 10;
     private String name;
     private int health;
     private int maximumHealth;
@@ -45,6 +49,9 @@ public class Plant implements Tickable {
     private boolean upgradeDeathEffectUsed;
     @Setter
     private Board board;
+    private int freezeLevel;
+    private int iceHealth;
+    private int iceThawTicks;
 
     public Plant(
             String name,
@@ -107,6 +114,7 @@ public class Plant implements Tickable {
 
     @Override
     public void onTick() {
+        if (this.isFrozen()) this.tickIceThaw();
         if (!this.isDisabled() && this.behavior != null) {
             this.behavior.onTick(this, this.board);
         }
@@ -289,6 +297,84 @@ public class Plant implements Tickable {
                 board.getCombatSystem().applyDamageToZombie(zombie, 300);
             }
         }
+    }
+    public void addFreezeLevel() {
+        if (this.tags != null && this.tags.contains(PlantTag.FIRE)) {
+            return;
+        }
+
+        if (this.freezeLevel >= MAX_FREEZE_LEVEL) {
+            return;
+        }
+
+        this.freezeLevel++;
+
+        if (this.freezeLevel == MAX_FREEZE_LEVEL) {
+            this.iceHealth = FULL_ICE_HEALTH;
+            this.iceThawTicks = 0;
+        }
+    }
+
+    public boolean isFrozen() {
+        return this.freezeLevel >= MAX_FREEZE_LEVEL;
+    }
+    public void damageIce(int amount) {
+        if (!this.isFrozen() || amount <= 0) {
+            return;
+        }
+
+        this.iceHealth -= amount;
+
+        if (this.iceHealth <= 0) {
+            this.meltIce();
+        }
+    }
+
+    public void meltIceInstantly() {
+        if (!this.isFrozen()) {
+            return;
+        }
+
+        this.meltIce();
+    }
+
+    private void meltIce() {
+        this.freezeLevel = 0;
+        this.iceHealth = 0;
+        this.iceThawTicks = 0;
+    }
+    private void tickIceThaw() {
+        if (this.board == null || this.position == null) {
+            return;
+        }
+
+        if (1 + this.iceThawTicks < TICKS_PER_SECOND) {
+            return;
+        }
+
+        this.iceThawTicks = 0;
+
+        if (this.hasAdjacentFirePlant()) {
+            this.damageIce(FIRE_THAW_DAMAGE_PER_SECOND);
+        }
+    }
+
+    private boolean hasAdjacentFirePlant() {
+        for (Plant plant : this.board.getPlantsInRadius(this.position, 1)) {
+            if (plant == null || plant == this || plant.isDead() || plant.getPosition() == null
+                    || plant.getTags() == null || !plant.getTags().contains(PlantTag.FIRE)) {
+                continue;
+            }
+
+            int deltaX = Math.abs(plant.getPosition().getX() - this.position.getX());
+            int deltaY = Math.abs(plant.getPosition().getY() - this.position.getY());
+
+            if (deltaX <= 1 && deltaY <= 1 && deltaX + deltaY > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void applyUpgradeEffect(PlantUpgradeEffect effect) {

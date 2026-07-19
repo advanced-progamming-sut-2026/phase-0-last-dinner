@@ -1,5 +1,7 @@
 package model.mechanism;
 
+import lombok.Getter;
+import lombok.Setter;
 import model.Plant;
 import model.plant.DamageExpressionParser;
 import model.plant.Projectile;
@@ -13,12 +15,18 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
-
+@Getter
+@Setter
 public class CombatSystem implements Tickable {
     private Board board;
     private GameEventListener listener;
     private Random random;
     private LootSystem lootSystem;
+
+    // این سه تارو برای محاسبه امتیاز میوپوینت اضافه میکنم
+    private GameClock gameClock;
+    private ZombieKillObserver killObserver;
+    private Projectile currentKillProjectile;
 
     public CombatSystem() {
         this(null, new LootSystem());
@@ -346,6 +354,17 @@ public class CombatSystem implements Tickable {
 
     private void applyReflectedProjectileHit(Projectile projectile, Plant plant) {
         if (projectile == null || plant == null || plant.isDead()) {
+            return;
+        }
+        if (plant.isFrozen()) {
+            if (projectile.getType() == ProjectileType.FIRE) {
+                plant.meltIceInstantly();
+            } else if (DamageExpressionParser.isInstantKill(projectile.getDamageExpression())) {
+                plant.damageIce(Integer.MAX_VALUE);
+            } else {
+                int iceDamage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
+                plant.damageIce(iceDamage);
+            }
             return;
         }
 

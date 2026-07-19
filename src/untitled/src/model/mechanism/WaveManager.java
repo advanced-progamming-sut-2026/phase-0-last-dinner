@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import lombok.Setter;
+import model.chapters.Chapter;
 import view.GameEventListener;
 
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ public class WaveManager implements Tickable {
     private GameEngine gameEngine;
     private GameEventListener listener;
     private boolean started;
+    private Chapter chapter;
 
     public WaveManager() {
         this(new ArrayList<Wave>(), null, null);
@@ -70,6 +72,11 @@ public class WaveManager implements Tickable {
         }
 
         wave.start();
+
+        if (this.chapter != null) {
+            Board board = this.zombieSpawner != null ? this.zombieSpawner.getBoard() : null;
+            this.chapter.onWaveStart(board, wave);
+        }
 
         if (this.zombieSpawner != null) {
             this.zombieSpawner.spawnWave(wave);
