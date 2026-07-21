@@ -4,6 +4,7 @@ import lombok.Getter;
 import model.Greenhouse.Greenhouse;
 import model.Greenhouse.GreenhouseBoostService;
 import model.Plant;
+import model.User.User;
 import model.minigame.beghouledminigame.BeghouledMiniGame;
 import model.minigame.beghouledminigame.PlantZombieBeghouledIntegration;
 import model.minigame.izombieminigame.IZombieMiniGame;
@@ -55,6 +56,9 @@ public class PlantZombieGame {
 
     //برا غذای گیاهان تو گلخونه
     private final GreenhouseBoostService greenhouseBoostService;
+
+    private DifficultyConfig difficultyConfig;
+
 
     public PlantZombieGame(
             PlantDefinitionRepository plantDefinitions,
@@ -109,12 +113,25 @@ public class PlantZombieGame {
         );
         this.greenhouseBoostService = greenhouseBoostService;
         this.boostedPlantNames = new LinkedHashSet<>();
-
+        this.difficultyConfig = new DifficultyConfig(null);
         this.engine.register(this.sunSystem);
         this.engine.register(this.cooldownManager);
         this.engine.register(this.combatSystem);
         this.engine.register(this.waveManager);
     }
+    public PlantZombieGame(
+            PlantDefinitionRepository plantDefinitions,
+            ZombieDefinitionRepository zombieDefinitions,
+            ZombieFactory zombieFactory,
+            PlantUpgradeService plantUpgradeService,
+            GreenhouseBoostService greenhouseBoostService,
+            User user
+    ) {
+        this(plantDefinitions, zombieDefinitions, zombieFactory,
+                plantUpgradeService, greenhouseBoostService);
+        this.difficultyConfig = new DifficultyConfig(user);
+    }
+
 
     public boolean plant(String plantName, Position position) {
         if (!this.isPlantSelected(plantName)) {

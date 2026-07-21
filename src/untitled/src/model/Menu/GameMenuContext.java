@@ -122,7 +122,10 @@ public class GameMenuContext extends MenuContext {
                 MenuType.GAME_MENU,
                 list(
                         MenuType.COLLECTION_MENU,
-                        MenuType.PLANT_PICK_MENU
+                        MenuType.GREENHOUSE_MENU,
+                        MenuType.TRAVEL_LOG_MENU,
+                        MenuType.LEADERBOARD_MENU,
+                        MenuType.CHAPTER_MENU
                 ),
                 MenuType.MAIN_MENU
         ));
@@ -131,15 +134,18 @@ public class GameMenuContext extends MenuContext {
                 Collections.<MenuType>emptyList(),
                 MenuType.GAME_MENU
         ));
-        result.put(MenuType.PLANT_PICK_MENU, new State(
-                MenuType.PLANT_PICK_MENU,
-                list(MenuType.MID_GAME_MENU),
+        result.put(MenuType.GREENHOUSE_MENU, this.gameMenuChild(MenuType.GREENHOUSE_MENU));
+        result.put(MenuType.TRAVEL_LOG_MENU, this.gameMenuChild(MenuType.TRAVEL_LOG_MENU));
+        result.put(MenuType.LEADERBOARD_MENU, this.gameMenuChild(MenuType.LEADERBOARD_MENU));
+        result.put(MenuType.CHAPTER_MENU, new State(
+                MenuType.CHAPTER_MENU,
+                list(MenuType.PLANT_PICK_MENU),
                 MenuType.GAME_MENU
         ));
-        result.put(MenuType.MID_GAME_MENU, new State(
-                MenuType.MID_GAME_MENU,
+        result.put(MenuType.PLANT_PICK_MENU, new State(
+                MenuType.PLANT_PICK_MENU,
                 Collections.<MenuType>emptyList(),
-                MenuType.GAME_MENU
+                MenuType.CHAPTER_MENU
         ));
         result.put(MenuType.SETTINGS_MENU, leaf(MenuType.SETTINGS_MENU));
         result.put(MenuType.NETWORK_MENU, leaf(MenuType.NETWORK_MENU));
@@ -149,8 +155,14 @@ public class GameMenuContext extends MenuContext {
     }
 
     private State leaf(MenuType type) {
-        // menu haye bedune zir menu ro misaze
+        // menu haye bedune zir menu ke zire MAIN_MENU hastan ro misaze
         return new State(type, Collections.<MenuType>emptyList(), MenuType.MAIN_MENU);
+    }
+
+    private State gameMenuChild(MenuType type) {
+        // menu haye bedune zir menu ke zire GAME_MENU hastan ro misaze
+        // (Greenhouse, TravelLog, Leaderboard, Chapter)
+        return new State(type, Collections.<MenuType>emptyList(), MenuType.GAME_MENU);
     }
 
     private static List<MenuType> list(MenuType... menuTypes) {
