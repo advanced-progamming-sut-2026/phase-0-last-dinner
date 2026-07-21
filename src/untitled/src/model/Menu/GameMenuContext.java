@@ -125,7 +125,8 @@ public class GameMenuContext extends MenuContext {
                         MenuType.GREENHOUSE_MENU,
                         MenuType.TRAVEL_LOG_MENU,
                         MenuType.LEADERBOARD_MENU,
-                        MenuType.CHAPTER_MENU
+                        MenuType.CHAPTER_MENU,
+                        MenuType.PLANT_PICK_MENU
                 ),
                 MenuType.MAIN_MENU
         ));
@@ -144,8 +145,13 @@ public class GameMenuContext extends MenuContext {
         ));
         result.put(MenuType.PLANT_PICK_MENU, new State(
                 MenuType.PLANT_PICK_MENU,
-                Collections.<MenuType>emptyList(),
+                list(MenuType.MID_GAME_MENU),
                 MenuType.CHAPTER_MENU
+        ));
+        result.put(MenuType.MID_GAME_MENU, new State(
+                MenuType.MID_GAME_MENU,
+                Collections.<MenuType>emptyList(),
+                MenuType.GAME_MENU
         ));
         result.put(MenuType.SETTINGS_MENU, leaf(MenuType.SETTINGS_MENU));
         result.put(MenuType.NETWORK_MENU, leaf(MenuType.NETWORK_MENU));

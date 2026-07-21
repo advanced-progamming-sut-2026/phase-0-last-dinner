@@ -54,7 +54,7 @@ public class WaveManager implements Tickable {
                 && currentWave.getRemainingHealthPercentage() <= 0
                 && this.gameEngine != null
                 && this.gameEngine.isGameRunning()) {
-            this.fireEvent("All waves completed.");
+            this.fireEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.");
             this.gameEngine.endGame();
         }
     }

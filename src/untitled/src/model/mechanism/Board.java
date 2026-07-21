@@ -6,6 +6,7 @@ import model.collection.ZombieEncounterListener;
 import model.plant.PlantCategory;
 import model.plant.Projectile;
 import model.zombie.Zombie;
+import view.GameEventListener;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,8 @@ public class Board {
     @Getter
     // cover haye plant ro markazi negah midare ta combat be an dastresi dashte bashe
     private final PlantCoverSystem plantCoverSystem = new PlantCoverSystem();
+    @Setter
+    private GameEventListener listener;
 
     //برا اینکه کالکشن بتونه به زامبی های دیده شده دسترسی داشته باشه
     @Setter
@@ -112,6 +115,8 @@ public class Board {
         if (lawnMower != null && lawnMower.canTrigger()) {
             List<Zombie> killedZombies = lawnMower.trigger(this.getZombiesInLane(zombie.getPosition()));
 
+            this.fireLawnMowerEvent(lawnMower.getRow(), killedZombies);
+
             for (Zombie killedZombie : killedZombies) {
                 if (this.combatSystem != null) {
                     this.combatSystem.killZombieIgnoringAllegiance(killedZombie);
@@ -126,6 +131,7 @@ public class Board {
         }
 
         this.brainEaten = true;
+        this.fireEvent("The zombie ate your brain; LOSER!!!");
         return false;
     }
 
@@ -145,6 +151,34 @@ public class Board {
                 && position.getX() < this.columnCount
                 && position.getY() >= 0
                 && position.getY() < this.rowCount;
+    }
+
+    private void fireLawnMowerEvent(int row, List<Zombie> killedZombies) {
+        StringBuilder message = new StringBuilder(
+                "The lawn mower in the row " + (row + 1) + " is triggered and killed these zombies:"
+        );
+
+        if (killedZombies != null) {
+            for (Zombie killedZombie : killedZombies) {
+                if (killedZombie == null || killedZombie.getDefinition() == null) {
+                    continue;
+                }
+
+                String name = killedZombie.getDefinition().getDisplayName();
+                if (name == null || name.trim().isEmpty()) {
+                    name = killedZombie.getDefinition().getAlias();
+                }
+                message.append(" ").append(name);
+            }
+        }
+
+        this.fireEvent(message.toString());
+    }
+
+    private void fireEvent(String message) {
+        if (this.listener != null) {
+            this.listener.onGameEvent(message);
+        }
     }
 
     public boolean removeZombie(Zombie zombie) {

@@ -20,6 +20,9 @@ public interface ZombieBehavior {
     default void applyPlantUpgrade(PlantUpgradeEffect effect) {
     }
 
+    default void multiplyDamage(double multiplier) {
+    }
+
     default void onDeath(Zombie zombie, Board board) {
     }
 

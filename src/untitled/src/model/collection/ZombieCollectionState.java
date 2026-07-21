@@ -58,10 +58,14 @@ public class ZombieCollectionState {
         this.canSpawnPlantFood = canSpawnPlantFood;
         this.armorDefinitions = armorDefinitions == null
                 ? Collections.emptyList()
-                : List.copyOf(armorDefinitions);
+                : Collections.unmodifiableList(
+                        new ArrayList<>(armorDefinitions)
+                );
         this.conditionResistances = conditionResistances == null
                 ? Collections.emptyList()
-                : List.copyOf(conditionResistances);
+                : Collections.unmodifiableList(
+                        new ArrayList<>(conditionResistances)
+                );
     }
 
     public static ZombieCollectionState from(

@@ -32,24 +32,31 @@ public class ZombotanyStageConfig {
         this.waveDifficulties =
                 waveDifficulties == null
                         ? Collections.emptyList()
-                        : List.copyOf(waveDifficulties);
+                        : Collections.unmodifiableList(
+                                new ArrayList<>(waveDifficulties)
+                        );
 
         this.availableTraits =
                 availableTraits == null
                         ? Collections.emptyList()
-                        : List.copyOf(availableTraits);
+                        : Collections.unmodifiableList(
+                                new ArrayList<>(availableTraits)
+                        );
 
         this.availablePlantNames =
                 availablePlantNames == null
                         ? Collections.emptyList()
-                        : List.copyOf(availablePlantNames);
+                        : Collections.unmodifiableList(
+                                new ArrayList<>(availablePlantNames)
+                        );
     }
 
     public static ZombotanyStageConfig forStage(
             int stageNumber
     ) {
-        return switch (stageNumber) {
-            case 1 -> new ZombotanyStageConfig(
+        switch (stageNumber) {
+            case 1:
+                return new ZombotanyStageConfig(
                     1,
                     Arrays.asList(
                             4,
@@ -69,7 +76,8 @@ public class ZombotanyStageConfig {
                             "Cherry Bomb"
                     )
             );
-            case 2 -> new ZombotanyStageConfig(
+            case 2:
+                return new ZombotanyStageConfig(
                     2,
                     Arrays.asList(
                             6,
@@ -92,7 +100,8 @@ public class ZombotanyStageConfig {
                             "Cherry Bomb"
                     )
             );
-            case 3 -> new ZombotanyStageConfig(
+            case 3:
+                return new ZombotanyStageConfig(
                     3,
                     Arrays.asList(
                             8,
@@ -118,10 +127,11 @@ public class ZombotanyStageConfig {
                             "Jalapeno"
                     )
             );
-            default -> throw new IllegalArgumentException(
-                    "Zombotany stage must be between 1 and 3."
-            );
-        };
+            default:
+                throw new IllegalArgumentException(
+                        "Zombotany stage must be between 1 and 3."
+                );
+        }
     }
 
     public int getWaveCount() {

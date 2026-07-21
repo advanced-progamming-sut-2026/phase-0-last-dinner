@@ -23,6 +23,7 @@ import model.zombie.Zombie;
 import model.zombie.ZombieDefinition;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
+import view.GameEventListener;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,6 +59,7 @@ public class PlantZombieGame {
     private final GreenhouseBoostService greenhouseBoostService;
 
     private DifficultyConfig difficultyConfig;
+    private double pendingDifficultyTicks;
 
 
     public PlantZombieGame(
@@ -114,6 +116,7 @@ public class PlantZombieGame {
         this.greenhouseBoostService = greenhouseBoostService;
         this.boostedPlantNames = new LinkedHashSet<>();
         this.difficultyConfig = new DifficultyConfig(null);
+        this.pendingDifficultyTicks = 0;
         this.engine.register(this.sunSystem);
         this.engine.register(this.cooldownManager);
         this.engine.register(this.combatSystem);
@@ -130,6 +133,8 @@ public class PlantZombieGame {
         this(plantDefinitions, zombieDefinitions, zombieFactory,
                 plantUpgradeService, greenhouseBoostService);
         this.difficultyConfig = new DifficultyConfig(user);
+        this.zombieSpawner.setDifficultyConfig(this.difficultyConfig);
+        this.sunSystem.setSpawnRateMultiplier(this.difficultyConfig.getInverseMultiplier());
     }
 
 
@@ -167,20 +172,46 @@ public class PlantZombieGame {
             return null;
         }
 
+        return this.spawnZombie(alias, new Position(8, row));
+    }
+
+    public Zombie spawnZombie(String alias, Position position) {
+        if (position == null || !this.board.isInsideBoard(position)) {
+            return null;
+        }
+
         ZombieDefinition definition = this.zombieDefinitions.findByAlias(alias);
 
         if (definition == null) {
             return null;
         }
 
-        Position position = new Position(8, row);
         Zombie zombie = this.zombieFactory.create(definition, position);
+        zombie.applyDifficulty(this.difficultyConfig.getMultiplier());
         this.board.addZombie(zombie, position);
         return zombie;
     }
 
+    public void setEventListener(GameEventListener listener) {
+        this.engine.setListener(listener);
+        this.sunSystem.setListener(listener);
+        this.plantFoodSystem.setListener(listener);
+        this.lootSystem.setListener(listener);
+        this.combatSystem.setListener(listener);
+        this.zombieSpawner.setListener(listener);
+        this.waveManager.setListener(listener);
+        this.board.setListener(listener);
+    }
+
     public void advanceTime(int tickCount) {
-        this.engine.advanceTime(tickCount);
+        if (tickCount <= 0) {
+            return;
+        }
+
+        this.pendingDifficultyTicks += tickCount * this.difficultyConfig.getMultiplier();
+        int adjustedTickCount = (int) this.pendingDifficultyTicks;
+        this.pendingDifficultyTicks -= adjustedTickCount;
+        this.engine.advanceTime(adjustedTickCount);
     }
 
     public void configureWaves(List<Wave> waves) {

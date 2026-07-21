@@ -23,6 +23,7 @@ public class ZombieSpawner {
     private Random random;
     private ZombieChapter activeChapter;
     private Chapter chapter;
+    private DifficultyConfig difficultyConfig;
 
     public ZombieSpawner() {
         this(null, null, null);
@@ -38,6 +39,7 @@ public class ZombieSpawner {
         this.board = board;
         this.random = new Random();
         this.activeChapter = ZombieChapter.ALL_CHAPTERS;
+        this.difficultyConfig = new DifficultyConfig(null);
     }
     public List<Zombie> spawnWave(Wave wave) {
         List<Zombie> spawnedZombies = new ArrayList<>();
@@ -71,11 +73,11 @@ public class ZombieSpawner {
 
             wave.addZombie(zombie);
             spawnedZombies.add(zombie);
-            remainingCost -= Math.max(1, definition.getWavePointCost());
+            remainingCost -= this.getAdjustedWavePointCost(definition);
             this.fireEvent("Zombie " + this.getDefinitionName(definition)
                     + " spawned at wave " + wave.getNumber()
                     + " in lane " + (row + 1)
-                    + " which costed " + definition.getWavePointCost() + ".");
+                    + " which costed " + this.getAdjustedWavePointCost(definition) + ".");
         }
 
         return spawnedZombies;
@@ -106,6 +108,7 @@ public class ZombieSpawner {
         Zombie zombie = this.zombieFactory.create(definition, spawnPosition);
 
         if (zombie != null) {
+            zombie.applyDifficulty(this.difficultyConfig.getMultiplier());
             this.board.addZombie(zombie, spawnPosition);
         }
 
@@ -150,6 +153,16 @@ public class ZombieSpawner {
         this.random = random == null ? new Random() : random;
     }
 
+    public void setListener(GameEventListener listener) {
+        this.listener = listener;
+    }
+
+    public void setDifficultyConfig(DifficultyConfig difficultyConfig) {
+        this.difficultyConfig = difficultyConfig == null
+                ? new DifficultyConfig(null)
+                : difficultyConfig;
+    }
+
     private ZombieDefinition chooseZombieDefinition(
             int remainingCost,
             List<ZombieDefinition> definitions,
@@ -158,7 +171,7 @@ public class ZombieSpawner {
         List<ZombieDefinition> validChoices = new ArrayList<>();
 
         for (ZombieDefinition definition : definitions) {
-            int cost = definition.getWavePointCost();
+            int cost = this.getAdjustedWavePointCost(definition);
 
             if (cost <= remainingCost && reachableCosts[remainingCost - cost]) {
                 validChoices.add(definition);
@@ -204,7 +217,7 @@ public class ZombieSpawner {
 
         for (ZombieDefinition definition : allDefinitions) {
             if (definition == null || definition.getWavePointCost() <= 0
-                    || definition.getWavePointCost() > maximumCost
+                    || this.getAdjustedWavePointCost(definition) > maximumCost
                     || !this.isAvailableInActiveChapter(definition)) {
                 continue;
             }
@@ -233,7 +246,7 @@ public class ZombieSpawner {
 
         for (int cost = 1; cost <= maximumCost; cost++) {
             for (ZombieDefinition definition : definitions) {
-                int zombieCost = definition.getWavePointCost();
+                int zombieCost = this.getAdjustedWavePointCost(definition);
 
                 if (zombieCost <= cost && reachable[cost - zombieCost]) {
                     reachable[cost] = true;
@@ -243,6 +256,16 @@ public class ZombieSpawner {
         }
 
         return reachable;
+    }
+
+    private int getAdjustedWavePointCost(ZombieDefinition definition) {
+        if (definition == null) {
+            return 0;
+        }
+
+        return Math.max(1, (int) Math.round(
+                definition.getWavePointCost() * this.difficultyConfig.getInverseMultiplier()
+        ));
     }
 
     private int findLargestReachableCost(int requestedCost, boolean[] reachableCosts) {

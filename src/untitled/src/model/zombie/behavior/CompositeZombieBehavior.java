@@ -86,6 +86,13 @@ public class CompositeZombieBehavior implements ZombieBehavior {
     }
 
     @Override
+    public void multiplyDamage(double multiplier) {
+        for (ZombieBehavior behavior : this.behaviors) {
+            behavior.multiplyDamage(multiplier);
+        }
+    }
+
+    @Override
     public void onDeath(Zombie zombie, Board board) {
         for (ZombieBehavior behavior : this.behaviors) {
             behavior.onDeath(zombie, board);

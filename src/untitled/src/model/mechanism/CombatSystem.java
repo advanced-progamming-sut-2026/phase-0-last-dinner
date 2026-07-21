@@ -575,7 +575,10 @@ public class CombatSystem implements Tickable {
 
     private void firePlantDestroyedEvent(Plant plant) {
         if (plant != null) {
-            this.fireEvent("Plant " + plant.getName() + " was destroyed.");
+            Position position = plant.getPosition();
+            int x = position == null ? 0 : position.getX() + 1;
+            int y = position == null ? 0 : position.getY() + 1;
+            this.fireEvent("Plant " + plant.getName() + " at (" + x + ", " + y + ") is destroyed.");
         }
     }
 

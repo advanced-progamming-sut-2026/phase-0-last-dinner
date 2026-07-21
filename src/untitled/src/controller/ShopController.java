@@ -182,32 +182,38 @@ public class ShopController
             );
         }
 
-        return switch (item) {
-            case POT -> buyPots(item, count);
-            case NEXT_LEVEL_PLANT_FOOD -> buyPlantFood(
+        switch (item) {
+            case POT:
+                return buyPots(item, count);
+            case NEXT_LEVEL_PLANT_FOOD:
+                return buyPlantFood(
                     item,
                     count
-            );
-            case RANDOM_SEED_PACKET -> buyRandomSeedPackets(
+                );
+            case RANDOM_SEED_PACKET:
+                return buyRandomSeedPackets(
                     item,
                     count
-            );
-            case SELECTED_SEED_PACKET -> buySelectedSeedPackets(
+                );
+            case SELECTED_SEED_PACKET:
+                return buySelectedSeedPackets(
                     item,
                     count,
                     plantType
-            );
-            case CURRENCY_EXCHANGE -> exchangeCurrency(
+                );
+            case CURRENCY_EXCHANGE:
+                return exchangeCurrency(
                     item,
                     count
-            );
-            default -> failure(
+                );
+            default:
+                return failure(
                     ShopActionStatus.PURCHASE_FAILED,
                     "This item cannot be purchased.",
                     itemId,
                     count
-            );
-        };
+                );
+        }
     }
 
     private ShopActionResult buyPots(

@@ -11,7 +11,10 @@ public class DifficultyConfig {
     }
 
     public int getLevel() {
-        return user == null ? DEFAULT : user.getDifficultyLevel();
+        if (user == null || user.getDifficultyLevel() < 1 || user.getDifficultyLevel() > 5) {
+            return DEFAULT;
+        }
+        return user.getDifficultyLevel();
     }
 
     public void setLevel(int level) {

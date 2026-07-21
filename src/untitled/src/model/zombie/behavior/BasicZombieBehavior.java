@@ -103,6 +103,7 @@ public class BasicZombieBehavior implements ZombieBehavior {
         }
     }
 
+    @Override
     public void multiplyDamage(double multiplier) {
         if (multiplier > 0) {
             this.eatDamagePerSecond = Math.max(0, (int) Math.round(this.eatDamagePerSecond * multiplier));

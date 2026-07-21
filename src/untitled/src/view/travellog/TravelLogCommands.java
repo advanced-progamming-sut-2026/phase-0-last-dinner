@@ -15,6 +15,12 @@ public enum TravelLogCommands {
             "^\\s*travel\\s+log\\s+show\\s*$"
     ),
 
+    CLAIM_QUEST(
+            "^\\s*quest\\s+claim"
+                    + "\\s+(?<quest>.+?)"
+                    + "\\s*$"
+    ),
+
     PLAY_MINIGAME(
             "^\\s*minigame\\s+play"
                     + "\\s+(?<game>.+?)"

@@ -13,6 +13,8 @@ public interface TravelLogViewObserver {
             PageName pageName
     );
 
+    String onClaimQuestRequested(String questName);
+
     CommandHandler onOpenMiniGameRequested(
             MiniGameType miniGameType
     );

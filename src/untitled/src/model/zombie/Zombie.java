@@ -175,6 +175,17 @@ public class Zombie implements Tickable {
         }
     }
 
+    public void applyDifficulty(double multiplier) {
+        if (multiplier <= 0) {
+            return;
+        }
+
+        this.health = Math.max(1, (int) Math.round(this.health * multiplier));
+        if (this.behavior != null) {
+            this.behavior.multiplyDamage(multiplier);
+        }
+    }
+
     public void addPoisonDamagePerTick(int amount) {
         if (amount > 0 && !this.dead) {
             this.poisonDamagePerTick = Math.max(this.poisonDamagePerTick, amount);

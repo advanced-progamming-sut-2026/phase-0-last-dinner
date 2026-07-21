@@ -6,6 +6,7 @@ import model.mechanism.*;
 import model.zombie.Zombie;
 
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 
 public class MidGameView implements CommandHandler, GameEventListener {
@@ -238,10 +239,28 @@ public class MidGameView implements CommandHandler, GameEventListener {
         }
         for (ZombieStatus status : statuses) {
             System.out.println(status.getZombieType() + ":");
-            System.out.println("  position: " + status.getExactX()
-                    + ", " + status.getPosition().getY());
+            System.out.println("  position: " + this.formatNumber(status.getExactX() + 1)
+                    + ", " + (status.getPosition().getY() + 1));
             System.out.println("  health: " + status.getHealth());
+            System.out.println("  armor:");
+            for (Map.Entry<String, Integer> armor : status.getArmorHealth().entrySet()) {
+                System.out.println("    " + armor.getKey() + ": " + armor.getValue());
+            }
+            System.out.println("  effects:");
+            for (Map.Entry<String, Long> effect : status.getEffectRemainingTicks().entrySet()) {
+                String remaining = effect.getValue() == null
+                        ? ""
+                        : ": " + this.formatNumber(effect.getValue() / 10.0) + "s";
+                System.out.println("    " + effect.getKey() + remaining);
+            }
         }
+    }
+
+    private String formatNumber(double value) {
+        if (value == Math.rint(value)) {
+            return String.valueOf((long) value);
+        }
+        return java.math.BigDecimal.valueOf(value).stripTrailingZeros().toPlainString();
     }
 
     @Override

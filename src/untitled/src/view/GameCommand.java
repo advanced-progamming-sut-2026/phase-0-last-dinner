@@ -4,7 +4,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public enum GameCommand {
-    ENTER_CHAPTER("menu\\s+enter\\s+chapter\\s+-c\\s+(?<name>\\S+)"),
+    ENTER_CHAPTER("menu\\s+enter\\s+chapter\\s+-c\\s+(?<name>\"[^\"]+\"|'[^']+'|.+?)"),
     GREENHOUSE("menu\\s+greenhouse"),
     TRAVEL_LOG("menu\\s+travel-log"),
     LEADERBOARD("menu\\s+leaderboard"),

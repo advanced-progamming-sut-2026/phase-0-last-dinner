@@ -17,6 +17,7 @@ public class SunSystem implements Tickable {
     private GameEventListener listener;
     private GameClock clock;
     private boolean automaticSunEnabled;
+    private double spawnRateMultiplier;
 
     public SunSystem(Board board, GameClock clock) {
         this.board = board;
@@ -26,6 +27,7 @@ public class SunSystem implements Tickable {
         this.lastSunSpawnTick = 0;
         this.random = new Random();
         this.automaticSunEnabled = true;
+        this.spawnRateMultiplier = 1.0;
 
         if (board != null) {
             board.setSunSystem(this);
@@ -44,7 +46,8 @@ public class SunSystem implements Tickable {
 
         long currentTick = this.clock.getCurrentTick();
         double elapsedSeconds = this.clock.getElapsedSeconds();
-        double intervalSeconds = Math.max(6 + 0.05 * elapsedSeconds, 12);
+        double intervalSeconds = Math.max(6 + 0.05 * elapsedSeconds, 12)
+                / this.spawnRateMultiplier;
         long intervalTicks = (long) (intervalSeconds * this.clock.getTicksPerSecond());
 
         if (this.automaticSunEnabled && currentTick - this.lastSunSpawnTick >= intervalTicks) {
@@ -55,8 +58,8 @@ public class SunSystem implements Tickable {
         for (Sun sun : this.suns) {
             if (sun.isFalling() && currentTick >= sun.getLandingTick()) {
                 sun.reachGround();
-                this.fireEvent("Sun reached ground at (" + sun.getPosition().getX()
-                        + ", " + sun.getPosition().getY() + ").");
+                this.fireEvent("Sun reached the ground at position (" + (sun.getPosition().getX() + 1)
+                        + ", " + (sun.getPosition().getY() + 1) + ").");
             }
         }
     }
@@ -72,7 +75,8 @@ public class SunSystem implements Tickable {
         SunType type = this.chooseSunType();
         Sun sun = new Sun(type, position, this.clock.getCurrentTick());
         this.suns.add(sun);
-        this.fireEvent("New " + type + " sun is dropping at (" + x + ", " + y + ").");
+        this.fireEvent("New " + type + " sun is dropping at position ("
+                + (x + 1) + ", " + (y + 1) + ").");
         return sun;
     }
 
@@ -175,6 +179,10 @@ public class SunSystem implements Tickable {
 
     public void setSkySunEnabled(boolean skySunEnabled) {
         this.automaticSunEnabled = skySunEnabled;
+    }
+
+    public void setSpawnRateMultiplier(double spawnRateMultiplier) {
+        this.spawnRateMultiplier = spawnRateMultiplier > 0 ? spawnRateMultiplier : 1.0;
     }
 
     public List<Sun> getSuns() {

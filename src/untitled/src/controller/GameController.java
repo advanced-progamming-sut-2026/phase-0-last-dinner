@@ -24,7 +24,7 @@ public class GameController implements GameViewObserver {
     }
 
     public void enterChapter(String chapterName) {
-        this.chapterController.enterChapterMenu(ChapterType.valueOf(chapterName.trim().toUpperCase()));
+        this.chapterController.enterChapterMenu(this.parseChapter(chapterName));
     }
 
     public void enterGreenhouse() {
@@ -81,7 +81,7 @@ public class GameController implements GameViewObserver {
         ChapterType requestedChapter;
 
         try {
-            requestedChapter = ChapterType.valueOf(chapterName.trim().toUpperCase());
+            requestedChapter = this.parseChapter(chapterName);
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -90,8 +90,9 @@ public class GameController implements GameViewObserver {
                 ? null
                 : user.getChapter().getChapter();
 
-        boolean isUnlocked = currentChapterType != null
-                && requestedChapter.ordinal() <= currentChapterType.ordinal();
+        boolean isUnlocked = currentChapterType == null
+                ? requestedChapter == ChapterType.ANCIENT_EGYPT
+                : requestedChapter.ordinal() <= currentChapterType.ordinal();
 
         if (!isUnlocked) {
             return false;
@@ -134,5 +135,20 @@ public class GameController implements GameViewObserver {
     @Override
     public void onCheatAddRequested(int count, String currencyType) {
         this.cheatCode(count, currencyType);
+    }
+
+    private ChapterType parseChapter(String chapterName) {
+        if (chapterName == null) {
+            throw new IllegalArgumentException("Chapter name is required");
+        }
+
+        String normalized = chapterName.trim()
+                .replace("\"", "")
+                .replace("'", "")
+                .replace('-', '_')
+                .replace(' ', '_')
+                .toUpperCase();
+
+        return ChapterType.valueOf(normalized);
     }
 }

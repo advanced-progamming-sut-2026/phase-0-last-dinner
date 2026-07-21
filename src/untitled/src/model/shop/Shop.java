@@ -19,7 +19,9 @@ public class Shop {
     private DailyOfferState dailyOfferState;
 
     public List<PermanentStuff> getPermanentItems() {
-        return List.of(PermanentStuff.values());
+        return Collections.unmodifiableList(
+                Arrays.asList(PermanentStuff.values())
+        );
     }
 
     public PermanentStuff findPermanentItemById(String itemId) {

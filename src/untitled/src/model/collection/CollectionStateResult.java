@@ -27,10 +27,14 @@ public class CollectionStateResult {
         this.message = message == null ? "" : message;
         this.plants = plants == null
                 ? Collections.emptyList()
-                : List.copyOf(plants);
+                : Collections.unmodifiableList(
+                        new ArrayList<>(plants)
+                );
         this.zombies = zombies == null
                 ? Collections.emptyList()
-                : List.copyOf(zombies);
+                : Collections.unmodifiableList(
+                        new ArrayList<>(zombies)
+                );
         this.gold = Math.max(0, gold);
     }
 

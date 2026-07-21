@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 import model.GameMenuRelated.Page;
 import model.GameMenuRelated.PageName;
+import model.GameMenuRelated.QuestObj;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
 import view.CommandHandler;
@@ -66,6 +67,19 @@ public class TravelLogView
 
         if (matcher != null) {
             handleOpenMiniGame(matcher);
+            return;
+        }
+
+        matcher = TravelLogCommands
+                .CLAIM_QUEST
+                .getMatcher(input);
+
+        if (matcher != null) {
+            System.out.println(
+                    observer.onClaimQuestRequested(
+                            clean(matcher.group("quest"))
+                    )
+            );
             return;
         }
 
@@ -254,10 +268,26 @@ public class TravelLogView
             return;
         }
 
-        System.out.println(
-                "Quests on this page: "
-                        + page.getQuestObjects().size()
-        );
+        System.out.println("Quests:");
+
+        for (QuestObj questObject : page.getQuestObjects()) {
+            if (questObject == null || questObject.getQuest() == null) {
+                continue;
+            }
+
+            String rewardState = questObject.isRewardClaimed()
+                    ? "claimed"
+                    : questObject.isCompleted() ? "ready" : "locked";
+
+            System.out.println(
+                    "- " + questObject.getQuest().getDisplayName()
+                            + " | " + questObject.getQuest().getPriority()
+                            + " | " + questObject.getCompletionPercentage() + "%"
+                            + " | reward " + rewardState
+            );
+            System.out.println("  condition: " + questObject.getCompletionCondition());
+            System.out.println("  reward: " + questObject.getReward());
+        }
     }
 
     private void showMiniGames(Page page) {
@@ -399,6 +429,10 @@ public class TravelLogView
         );
 
         System.out.println(
+                "- quest claim <quest_name>"
+        );
+
+        System.out.println(
                 "- Back to game menu"
         );
 
@@ -407,6 +441,21 @@ public class TravelLogView
                         + "MINIGAMES, COMMUNITY, "
                         + "CHALLENGES, MYSTERY"
         );
+    }
+
+    private String clean(String value) {
+        if (value == null) {
+            return "";
+        }
+
+        String cleaned = value.trim();
+        if (cleaned.length() >= 2
+                && ((cleaned.startsWith("\"") && cleaned.endsWith("\""))
+                || (cleaned.startsWith("'") && cleaned.endsWith("'")))) {
+            return cleaned.substring(1, cleaned.length() - 1).trim();
+        }
+
+        return cleaned;
     }
 
     public boolean isMiniGameOpen() {

@@ -15,6 +15,8 @@ import model.plant.PlantUpgradeService;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
 import view.CommandHandler;
+import view.GameCommand;
+import view.GameView;
 import view.LeaderBoardCommand;
 import view.LeaderBoardView;
 import view.MidGameView;
@@ -24,10 +26,14 @@ import view.PlantPickCommand;
 import view.PlantPickView;
 import view.ProfileCommand;
 import view.ProfileView;
+import view.SettingCommand;
+import view.SettingView;
 import view.collection.CollectionView;
 import view.collection.CollectionCommands;
 import view.greenhouse.GreenhouseCommands;
 import view.greenhouse.GreenhouseView;
+import view.travellog.TravelLogCommands;
+import view.travellog.TravelLogView;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,12 +52,15 @@ public class ApplicationController implements CommandHandler {
     private final SignupController signupController;
     private final LoginController loginController;
     private final MainController mainController;
+    private final GameView gameView;
     private User currentUser;
     private String lastMessage;
 
     // اینا برا گل خونن
     private GreenhouseView greenhouseView;
     private User greenhouseViewUser;
+    private TravelLogView travelLogView;
+    private User travelLogViewUser;
 
     // اینا هم برا کالکشن
     private final PlantDefinitionRepository plantDefinitions;
@@ -62,6 +71,8 @@ public class ApplicationController implements CommandHandler {
     private User newsViewUser;
     private ProfileView profileView;
     private User profileViewUser;
+    private SettingView settingView;
+    private User settingViewUser;
     private PlantPickView plantPickView;
     private PlantPickController plantPickController;
     private User plantPickViewUser;
@@ -86,6 +97,12 @@ public class ApplicationController implements CommandHandler {
         this.signupController = new SignupController(this.accountService, this.menuContext);
         this.loginController = new LoginController(this.accountService, this.menuContext);
         this.mainController = new MainController(this.accountService, this.menuContext);
+        this.gameView = new GameView();
+        this.gameView.setObserver(new GameController(
+                this.loginController,
+                repository,
+                new ChapterController(this.loginController)
+        ));
         this.plantDefinitions = plantDefinitions;
         this.zombieDefinitions = zombieDefinitions;
         this.currentUser = this.loginController.restoreRememberedLogin();
@@ -117,8 +134,20 @@ public class ApplicationController implements CommandHandler {
                 return this.executeLeaderboardCommand(input);
             }
 
+            if (this.isSettingCommand(input)) {
+                return this.executeSettingCommand(input);
+            }
+
+            if (this.isGameCommand(input)) {
+                return this.executeGameCommand(input);
+            }
+
             if (this.isCollectionCommand(input)) {
                 return this.executeCollectionCommand(input);
+            }
+
+            if (this.isTravelLogCommand(input)) {
+                return this.executeTravelLogCommand(input);
             }
 
             String menuResult = this.executeMenuCommand(tokens);
@@ -144,14 +173,14 @@ public class ApplicationController implements CommandHandler {
             }
 
             if (this.menuContext.getCurrentMenu()
-                    == MenuType.GAME_MENU
+                    == MenuType.GREENHOUSE_MENU
                     && isGreenhouseCommand(input)) {
 
                 return executeGreenhouseCommand(input);
             }
 
             if (this.menuContext.getCurrentMenu()
-                    == MenuType.GAME_MENU
+                    == MenuType.GREENHOUSE_MENU
                     && (isGreenhouseCommand(input)
                     || isShopCommand(input))) {
 
@@ -211,6 +240,8 @@ public class ApplicationController implements CommandHandler {
             clearCollectionConnection();
             clearNewsConnection();
             clearProfileConnection();
+            clearSettingConnection();
+            clearTravelLogConnection();
             clearGameConnections();
 
             return this.mainController.logout();
@@ -327,6 +358,8 @@ public class ApplicationController implements CommandHandler {
             clearCollectionConnection();
             clearNewsConnection();
             clearProfileConnection();
+            clearSettingConnection();
+            clearTravelLogConnection();
             clearGameConnections();
         }
 
@@ -412,6 +445,9 @@ public class ApplicationController implements CommandHandler {
         }
         if ("collection".equals(normalized)) {
             return MenuType.COLLECTION_MENU;
+        }
+        if ("travellog".equals(normalized)) {
+            return MenuType.TRAVEL_LOG_MENU;
         }
         if ("plantpick".equals(normalized)
                 || "plantselection".equals(normalized)) {
@@ -560,6 +596,51 @@ public class ApplicationController implements CommandHandler {
     private void clearGreenhouseConnection() {
         greenhouseView = null;
         greenhouseViewUser = null;
+    }
+
+    private boolean isTravelLogCommand(String input) {
+        for (TravelLogCommands command : TravelLogCommands.values()) {
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeTravelLogCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+        if (this.menuContext.getCurrentMenu() != MenuType.TRAVEL_LOG_MENU) {
+            return "Travel Log commands are only available in Travel Log menu.";
+        }
+
+        this.ensureTravelLogConnected();
+        this.travelLogView.handleCommand(input);
+        this.accountService.save();
+        return "";
+    }
+
+    private void ensureTravelLogConnected() {
+        if (this.travelLogView != null && this.travelLogViewUser == this.currentUser) {
+            return;
+        }
+
+        this.currentUser.initializeMissingFields();
+        this.travelLogView = new TravelLogView();
+        new TravelLogController(
+                this.travelLogView,
+                this.currentUser.getTravelLog(),
+                this.currentUser,
+                this.plantDefinitions
+        );
+        this.travelLogViewUser = this.currentUser;
+    }
+
+    private void clearTravelLogConnection() {
+        this.travelLogView = null;
+        this.travelLogViewUser = null;
     }
 
     private boolean isShopCommand(String input) {
@@ -711,6 +792,64 @@ public class ApplicationController implements CommandHandler {
         return LeaderBoardCommand.SHOW.getMatcher(input) != null;
     }
 
+    private boolean isGameCommand(String input) {
+        for (GameCommand command : GameCommand.values()) {
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeGameCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.GAME_MENU) {
+            return "Game menu command is only available in game menu.";
+        }
+
+        this.gameView.handleCommand(input);
+        this.accountService.save();
+        return "";
+    }
+
+    private boolean isSettingCommand(String input) {
+        return SettingCommand.CHANGE_DIFFICULTY.getMatcher(input) != null;
+    }
+
+    private String executeSettingCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.SETTINGS_MENU) {
+            return "Settings commands are only available in settings menu.";
+        }
+
+        this.ensureSettingConnected();
+        this.settingView.handleCommand(input);
+        this.accountService.save();
+        return "";
+    }
+
+    private void ensureSettingConnected() {
+        if (this.settingView != null && this.settingViewUser == this.currentUser) {
+            return;
+        }
+
+        this.settingView = new SettingView();
+        this.settingView.setObserver(new SettingController(this.currentUser));
+        this.settingViewUser = this.currentUser;
+    }
+
+    private void clearSettingConnection() {
+        this.settingView = null;
+        this.settingViewUser = null;
+    }
+
     private String executeLeaderboardCommand(String input) {
         if (this.currentUser == null) {
             return "Login is required.";
@@ -772,7 +911,8 @@ public class ApplicationController implements CommandHandler {
                 this.zombieDefinitions,
                 new ZombieFactory(this.zombieDefinitions),
                 this.currentUser.getPlantUpgradeService(),
-                new GreenhouseBoostService(this.currentUser.getGreenhouse())
+                new GreenhouseBoostService(this.currentUser.getGreenhouse()),
+                this.currentUser
         );
         this.currentGame.configurePlantSelection(
                 this.plantPickController.getSelectedPlants(),
@@ -786,6 +926,7 @@ public class ApplicationController implements CommandHandler {
         });
         this.transferStoredPlantFood();
         this.midGameView = new MidGameView();
+        this.currentGame.setEventListener(this.midGameView);
         this.midGameView.setObserver(new MidGameController(this.currentGame));
         this.menuContext.enterMenu(MenuType.MID_GAME_MENU);
     }

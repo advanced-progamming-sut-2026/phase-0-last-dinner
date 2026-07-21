@@ -1,4 +1,5 @@
 import controller.ApplicationController;
+import controller.CollectionController;
 import lombok.Getter;
 import model.GameMenuRelated.TravelLog;
 import model.Greenhouse.GreenhouseBoostService;
@@ -26,6 +27,8 @@ public final class Main {
     private final ZombieDefinitionRepository zombieDefinitions;
     private final ZombieFactory zombieFactory;
     private final ApplicationController applicationController;
+    private final PlantUpgradeService plantUpgradeService;
+    private final CollectionController collectionController;
 
     private Main(
             PlantDefinitionRepository plantDefinitions,
@@ -35,6 +38,11 @@ public final class Main {
         this.plantDefinitions = plantDefinitions;
         this.zombieDefinitions = zombieDefinitions;
         this.zombieFactory = zombieFactory;
+        this.plantUpgradeService = new PlantUpgradeService();
+        this.collectionController = new CollectionController(
+                this.plantDefinitions,
+                this.plantUpgradeService
+        );
         this.applicationController = new ApplicationController(
                 new UserRepository(),
                 this.plantDefinitions,
@@ -91,7 +99,7 @@ public final class Main {
                     this.plantDefinitions,
                     this.zombieDefinitions,
                     this.zombieFactory,
-                    new PlantUpgradeService()
+                    this.plantUpgradeService
             );
         }
 
@@ -107,7 +115,8 @@ public final class Main {
                         this.zombieDefinitions,
                         this.zombieFactory,
                         userUpgradeService,
-                        boostService
+                        boostService,
+                        user
                 );
 
         game.getBoard().setZombieEncounterListener(definition -> {

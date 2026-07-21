@@ -27,7 +27,8 @@ public class User {
     private UserGender gender;
     private boolean stayLoggedIn=false;
     private Greenhouse greenhouse;
-    private TravelLog travelLog;
+    // travel log graph runtime dare va dakhele json zakhire nemishe
+    private transient TravelLog travelLog;
     private int diamond;
     private int gold;
     private Chapter chapter;
@@ -88,6 +89,8 @@ public class User {
     }
 
     public void initializeMissingFields(){
+        if(this.difficultyLevel < 1 || this.difficultyLevel > 5)
+            this.difficultyLevel = 3;
         if(this.greenhouse == null)
             this.greenhouse = new Greenhouse();
         if(this.travelLog == null)

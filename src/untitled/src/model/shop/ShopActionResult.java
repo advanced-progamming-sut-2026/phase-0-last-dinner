@@ -3,6 +3,7 @@ package model.shop;
 import lombok.Getter;
 import model.mechanism.Position;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -240,6 +241,8 @@ public class ShopActionResult {
             return Collections.emptyList();
         }
 
-        return List.copyOf(positions);
+        return Collections.unmodifiableList(
+                new ArrayList<>(positions)
+        );
     }
 }

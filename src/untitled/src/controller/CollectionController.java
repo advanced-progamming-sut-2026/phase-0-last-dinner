@@ -559,26 +559,26 @@ public class CollectionController implements MenuController, CollectionViewObser
         String message;
 
         switch (upgradeResult) {
-            case PLANT_NOT_FOUND -> {
+            case PLANT_NOT_FOUND:
                 status = CollectionActionStatus.PLANT_NOT_FOUND;
                 message = "Plant was not found.";
-            }
-            case MAXIMUM_LEVEL_REACHED -> {
+                break;
+            case MAXIMUM_LEVEL_REACHED:
                 status = CollectionActionStatus.MAXIMUM_LEVEL_REACHED;
                 message = "Plant has reached its maximum level.";
-            }
-            case NOT_ENOUGH_SEED_PACKETS -> {
+                break;
+            case NOT_ENOUGH_SEED_PACKETS:
                 status = CollectionActionStatus.NOT_ENOUGH_SEED_PACKETS;
                 message = "Not enough seed packets.";
-            }
-            case NOT_ENOUGH_COINS -> {
+                break;
+            case NOT_ENOUGH_COINS:
                 status = CollectionActionStatus.NOT_ENOUGH_COINS;
                 message = "Not enough coins.";
-            }
-            default -> {
+                break;
+            default:
                 status = CollectionActionStatus.INVALID;
                 message = "Plant upgrade failed.";
-            }
+                break;
         }
 
         return this.actionFailure(
