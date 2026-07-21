@@ -120,11 +120,24 @@ public class GameMenuContext extends MenuContext {
         ));
         result.put(MenuType.GAME_MENU, new State(
                 MenuType.GAME_MENU,
-                list(MenuType.COLLECTION_MENU),
+                list(
+                        MenuType.COLLECTION_MENU,
+                        MenuType.PLANT_PICK_MENU
+                ),
                 MenuType.MAIN_MENU
         ));
         result.put(MenuType.COLLECTION_MENU, new State(
                 MenuType.COLLECTION_MENU,
+                Collections.<MenuType>emptyList(),
+                MenuType.GAME_MENU
+        ));
+        result.put(MenuType.PLANT_PICK_MENU, new State(
+                MenuType.PLANT_PICK_MENU,
+                list(MenuType.MID_GAME_MENU),
+                MenuType.GAME_MENU
+        ));
+        result.put(MenuType.MID_GAME_MENU, new State(
+                MenuType.MID_GAME_MENU,
                 Collections.<MenuType>emptyList(),
                 MenuType.GAME_MENU
         ));

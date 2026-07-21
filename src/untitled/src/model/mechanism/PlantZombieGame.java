@@ -23,7 +23,10 @@ import model.zombie.ZombieDefinition;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Getter
 
@@ -46,6 +49,9 @@ public class PlantZombieGame {
     private final ZombieSpawner zombieSpawner;
     private final WaveManager waveManager;
     private final GameStatusService gameStatusService;
+    // null yani bazi mahdudiate entekhabe giah nadare
+    private Set<String> selectedPlantNames;
+    private final Set<String> boostedPlantNames;
 
     //برا غذای گیاهان تو گلخونه
     private final GreenhouseBoostService greenhouseBoostService;
@@ -102,6 +108,7 @@ public class PlantZombieGame {
                 this.cooldownManager
         );
         this.greenhouseBoostService = greenhouseBoostService;
+        this.boostedPlantNames = new LinkedHashSet<>();
 
         this.engine.register(this.sunSystem);
         this.engine.register(this.cooldownManager);
@@ -110,6 +117,10 @@ public class PlantZombieGame {
     }
 
     public boolean plant(String plantName, Position position) {
+        if (!this.isPlantSelected(plantName)) {
+            return false;
+        }
+
         PlantDefinition definition = this.plantDefinitions.findByName(plantName);
 
         if (definition == null) {
@@ -120,6 +131,10 @@ public class PlantZombieGame {
     }
 
     public boolean plantImitater(String copiedPlantName, Position position) {
+        if (!this.isPlantSelected("Imitater")) {
+            return false;
+        }
+
         PlantDefinition imitater = this.plantDefinitions.findByName("Imitater");
         PlantDefinition copiedDefinition = this.plantDefinitions.findByName(copiedPlantName);
 
@@ -153,6 +168,30 @@ public class PlantZombieGame {
 
     public void configureWaves(List<Wave> waves) {
         this.waveManager.configureWaves(waves);
+    }
+
+    public void configurePlantSelection(
+            List<PlantDefinition> selectedPlants,
+            Set<String> boostedPlants
+    ) {
+        this.selectedPlantNames = new LinkedHashSet<>();
+        this.boostedPlantNames.clear();
+
+        if (selectedPlants != null) {
+            for (PlantDefinition definition : selectedPlants) {
+                if (definition != null && definition.getName() != null) {
+                    this.selectedPlantNames.add(this.normalizePlantName(definition.getName()));
+                }
+            }
+        }
+
+        if (boostedPlants != null) {
+            for (String plantName : boostedPlants) {
+                if (plantName != null) {
+                    this.boostedPlantNames.add(this.normalizePlantName(plantName));
+                }
+            }
+        }
     }
 
     // minigame ro ba hamin data va factory haye bazi misaze
@@ -210,8 +249,23 @@ public class PlantZombieGame {
             return false;
         this.plantingSystem.plant(plant, position);
 
+        if (this.boostedPlantNames.contains(this.normalizePlantName(plant.getName()))) {
+            plant.receivePlantFood();
+        }
+
         if(greenhouseBoostService != null)
             greenhouseBoostService.castBoost(plant);
         return true;
+    }
+
+    private boolean isPlantSelected(String plantName) {
+        return this.selectedPlantNames == null
+                || this.selectedPlantNames.contains(this.normalizePlantName(plantName));
+    }
+
+    private String normalizePlantName(String plantName) {
+        return plantName == null
+                ? ""
+                : plantName.trim().toLowerCase(Locale.ROOT);
     }
 }

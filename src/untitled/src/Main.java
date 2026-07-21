@@ -96,6 +96,7 @@ public final class Main {
         }
 
         user.initializeMissingFields();
+        user.setGamesPlayed(user.getGamesPlayed() + 1);
 
         GreenhouseBoostService boostService = new GreenhouseBoostService(user.getGreenhouse());
         PlantUpgradeService userUpgradeService = user.getPlantUpgradeService();

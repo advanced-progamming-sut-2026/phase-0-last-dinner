@@ -174,6 +174,118 @@ public class AccountService {
         return AccountResult.success("Login successful", user);
     }
 
+    public List<User> getUsers() {
+        return this.repository.getUsers();
+    }
+
+    public AccountResult changeUsername(User user, String username) {
+        if (user == null) {
+            return AccountResult.failure(AccountStatus.USER_NOT_FOUND, "User is not available");
+        }
+
+        if (user.getUsername() != null && user.getUsername().equalsIgnoreCase(username)) {
+            return AccountResult.failure(
+                    AccountStatus.USERNAME_UNCHANGED,
+                    "New username must be different from the current username"
+            );
+        }
+
+        if (!this.isValidUsername(username)) {
+            return AccountResult.failure(
+                    AccountStatus.USERNAME_INVALID,
+                    "Username may only contain letters numbers and hyphens"
+            );
+        }
+
+        if (this.repository.findByUsername(username) != null) {
+            return AccountResult.failure(AccountStatus.USERNAME_TAKEN, "Username already exists");
+        }
+
+        user.setUsername(username);
+        this.saveProfileChange(user);
+        return AccountResult.success("Username changed", user);
+    }
+
+    public AccountResult changeNickname(User user, String nickname) {
+        if (user == null) {
+            return AccountResult.failure(AccountStatus.USER_NOT_FOUND, "User is not available");
+        }
+
+        if (user.getNickname() != null && user.getNickname().equals(nickname)) {
+            return AccountResult.failure(
+                    AccountStatus.NICKNAME_UNCHANGED,
+                    "New nickname must be different from the current nickname"
+            );
+        }
+
+        if (nickname == null || nickname.length() < 3 || nickname.length() > 30) {
+            return AccountResult.failure(
+                    AccountStatus.NICKNAME_INVALID,
+                    "Nickname must be between 3 and 30 characters"
+            );
+        }
+
+        user.setNickname(nickname);
+        this.repository.save();
+        return AccountResult.success("Nickname changed", user);
+    }
+
+    public AccountResult changeEmail(User user, String email) {
+        if (user == null) {
+            return AccountResult.failure(AccountStatus.USER_NOT_FOUND, "User is not available");
+        }
+
+        if (user.getEmail() != null && user.getEmail().equalsIgnoreCase(email)) {
+            return AccountResult.failure(
+                    AccountStatus.EMAIL_UNCHANGED,
+                    "New email must be different from the current email"
+            );
+        }
+
+        if (!this.isValidEmail(email)) {
+            return AccountResult.failure(AccountStatus.EMAIL_INVALID, "Email format is invalid");
+        }
+
+        user.setEmail(email);
+        this.repository.save();
+        return AccountResult.success("Email changed", user);
+    }
+
+    public AccountResult changePassword(User user, String newPassword, String oldPassword) {
+        if (user == null) {
+            return AccountResult.failure(AccountStatus.USER_NOT_FOUND, "User is not available");
+        }
+
+        String oldPasswordHash = oldPassword == null ? "" : PasswordHasher.hash(oldPassword);
+
+        if (user.getHashedPassword() == null
+                || !user.getHashedPassword().equals(oldPasswordHash)) {
+            return AccountResult.failure(
+                    AccountStatus.OLD_PASSWORD_INCORRECT,
+                    "Old password is incorrect"
+            );
+        }
+
+        String newPasswordHash = newPassword == null ? "" : PasswordHasher.hash(newPassword);
+
+        if (user.getHashedPassword().equals(newPasswordHash)) {
+            return AccountResult.failure(
+                    AccountStatus.PASSWORD_UNCHANGED,
+                    "New password must be different from the current password"
+            );
+        }
+
+        String passwordError = this.getPasswordError(newPassword);
+
+        if (passwordError != null) {
+            return AccountResult.failure(AccountStatus.PASSWORD_INVALID, passwordError);
+        }
+
+        user.setHashedPassword(newPasswordHash);
+        this.repository.save();
+        return AccountResult.success("Password changed", user);
+    }
+
     public AccountResult beginPasswordReset(String username, String email) {
         User user = this.repository.findByUsername(username);
 
@@ -270,6 +382,14 @@ public class AccountService {
 
     public void save() {
         this.repository.save();
+    }
+
+    private void saveProfileChange(User user) {
+        if (user.isStayLoggedIn()) {
+            this.repository.remember(user);
+        } else {
+            this.repository.save();
+        }
     }
 
     private boolean isValidUsername(String username) {

@@ -9,5 +9,7 @@ public enum MenuType {
     NETWORK_MENU,
     NEWS_MENU,
     PROFILE_MENU,
-    COLLECTION_MENU
+    COLLECTION_MENU,
+    PLANT_PICK_MENU,
+    MID_GAME_MENU
 }

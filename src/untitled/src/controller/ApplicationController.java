@@ -1,6 +1,7 @@
 package controller;
 
 import lombok.Getter;
+import model.Greenhouse.GreenhouseBoostService;
 import model.Menu.GameMenuContext;
 import model.Menu.MenuType;
 import model.User.AccountResult;
@@ -8,10 +9,21 @@ import model.User.AccountService;
 import model.User.AccountStatus;
 import model.User.User;
 import model.User.UserRepository;
+import model.mechanism.PlantZombieGame;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantUpgradeService;
 import model.zombie.ZombieDefinitionRepository;
+import model.zombie.ZombieFactory;
 import view.CommandHandler;
+import view.LeaderBoardCommand;
+import view.LeaderBoardView;
+import view.MidGameView;
+import view.NewsCommand;
+import view.NewsView;
+import view.PlantPickCommand;
+import view.PlantPickView;
+import view.ProfileCommand;
+import view.ProfileView;
 import view.collection.CollectionView;
 import view.collection.CollectionCommands;
 import view.greenhouse.GreenhouseCommands;
@@ -46,6 +58,15 @@ public class ApplicationController implements CommandHandler {
     private final ZombieDefinitionRepository zombieDefinitions;
     private CollectionView collectionView;
     private User collectionViewUser;
+    private NewsView newsView;
+    private User newsViewUser;
+    private ProfileView profileView;
+    private User profileViewUser;
+    private PlantPickView plantPickView;
+    private PlantPickController plantPickController;
+    private User plantPickViewUser;
+    private PlantZombieGame currentGame;
+    private MidGameView midGameView;
 
     public ApplicationController() {
         this(new UserRepository(), null, null);
@@ -84,6 +105,18 @@ public class ApplicationController implements CommandHandler {
         }
 
         try {
+            if (this.isNewsCommand(input)) {
+                return this.executeNewsCommand(input);
+            }
+
+            if (this.isProfileCommand(input)) {
+                return this.executeProfileCommand(input);
+            }
+
+            if (this.isLeaderboardCommand(input)) {
+                return this.executeLeaderboardCommand(input);
+            }
+
             if (this.isCollectionCommand(input)) {
                 return this.executeCollectionCommand(input);
             }
@@ -100,6 +133,14 @@ public class ApplicationController implements CommandHandler {
 
             if (this.menuContext.getCurrentMenu() == MenuType.LOGIN_MENU) {
                 return this.executeLoginCommand(tokens);
+            }
+
+            if (this.menuContext.getCurrentMenu() == MenuType.PLANT_PICK_MENU) {
+                return this.executePlantPickCommand(input);
+            }
+
+            if (this.menuContext.getCurrentMenu() == MenuType.MID_GAME_MENU) {
+                return this.executeMidGameCommand(input);
             }
 
             if (this.menuContext.getCurrentMenu()
@@ -145,7 +186,14 @@ public class ApplicationController implements CommandHandler {
         }
 
         if (this.matches(tokens, "menu", "exit")) {
+            MenuType previousMenu = this.menuContext.getCurrentMenu();
             this.menuContext.exitMenu();
+
+            if (previousMenu == MenuType.PLANT_PICK_MENU
+                    || previousMenu == MenuType.MID_GAME_MENU) {
+                this.clearGameConnections();
+            }
+
             return this.menuContext.isApplicationRunning()
                     ? this.menuContext.getCurrentMenu().name()
                     : "Application closed";
@@ -161,12 +209,20 @@ public class ApplicationController implements CommandHandler {
             this.currentUser = null;
             clearGreenhouseConnection();
             clearCollectionConnection();
+            clearNewsConnection();
+            clearProfileConnection();
+            clearGameConnections();
 
             return this.mainController.logout();
         }
 
         if (tokens.size() >= 3 && "enter".equalsIgnoreCase(tokens.get(1))) {
             MenuType destination = this.parseMenuType(this.join(tokens, 2));
+
+            if (destination == MenuType.MID_GAME_MENU) {
+                return "Use start game from plant pick menu";
+            }
+
             this.menuContext.enterMenu(destination);
             return this.menuContext.getCurrentMenu().name();
         }
@@ -269,6 +325,9 @@ public class ApplicationController implements CommandHandler {
             this.currentUser = result.getUser();
             clearGreenhouseConnection();
             clearCollectionConnection();
+            clearNewsConnection();
+            clearProfileConnection();
+            clearGameConnections();
         }
 
         return result.getMessage();
@@ -353,6 +412,14 @@ public class ApplicationController implements CommandHandler {
         }
         if ("collection".equals(normalized)) {
             return MenuType.COLLECTION_MENU;
+        }
+        if ("plantpick".equals(normalized)
+                || "plantselection".equals(normalized)) {
+            return MenuType.PLANT_PICK_MENU;
+        }
+        if ("midgame".equals(normalized)
+                || "gameplay".equals(normalized)) {
+            return MenuType.MID_GAME_MENU;
         }
 
         throw new IllegalArgumentException("Menu name is invalid");
@@ -559,5 +626,203 @@ public class ApplicationController implements CommandHandler {
     private void clearCollectionConnection() {
         this.collectionView = null;
         this.collectionViewUser = null;
+    }
+
+    private boolean isNewsCommand(String input) {
+        for (NewsCommand command : NewsCommand.values()) {
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeNewsCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.NEWS_MENU) {
+            return "News commands are only available in news menu.";
+        }
+
+        this.ensureNewsConnected();
+        this.newsView.handleCommand(input);
+        this.accountService.save();
+        return "";
+    }
+
+    private void ensureNewsConnected() {
+        if (this.newsView != null && this.newsViewUser == this.currentUser) {
+            return;
+        }
+
+        this.newsView = new NewsView();
+        new NewsController(this.newsView, this.currentUser);
+        this.newsViewUser = this.currentUser;
+    }
+
+    private void clearNewsConnection() {
+        this.newsView = null;
+        this.newsViewUser = null;
+    }
+
+    private boolean isProfileCommand(String input) {
+        for (ProfileCommand command : ProfileCommand.values()) {
+            if (command.getMatcher(input) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String executeProfileCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.PROFILE_MENU) {
+            return "Profile commands are only available in profile menu.";
+        }
+
+        this.ensureProfileConnected();
+        this.profileView.handleCommand(input);
+        return "";
+    }
+
+    private void ensureProfileConnected() {
+        if (this.profileView != null && this.profileViewUser == this.currentUser) {
+            return;
+        }
+
+        this.profileView = new ProfileView();
+        new ProfileController(this.profileView, this.accountService, this.currentUser);
+        this.profileViewUser = this.currentUser;
+    }
+
+    private void clearProfileConnection() {
+        this.profileView = null;
+        this.profileViewUser = null;
+    }
+
+    private boolean isLeaderboardCommand(String input) {
+        return LeaderBoardCommand.SHOW.getMatcher(input) != null;
+    }
+
+    private String executeLeaderboardCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+
+        if (this.menuContext.getCurrentMenu() != MenuType.GAME_MENU) {
+            return "Leaderboard is only available in game menu.";
+        }
+
+        LeaderBoardView view = new LeaderBoardView();
+        new LeaderBoardController(view, this.accountService);
+        view.handleCommand(input);
+        return "";
+    }
+
+    private String executePlantPickCommand(String input) {
+        if (this.currentUser == null) {
+            return "Login is required.";
+        }
+        if (this.plantDefinitions == null || this.zombieDefinitions == null) {
+            return "Plant and zombie definitions are not available.";
+        }
+
+        this.ensurePlantPickConnected();
+        boolean startCommand = PlantPickCommand.START_GAME.getMatcher(input) != null;
+        this.plantPickView.handleCommand(input);
+
+        if (startCommand && this.plantPickController.isStarted()) {
+            this.startSelectedGame();
+        }
+
+        this.accountService.save();
+        return "";
+    }
+
+    private void ensurePlantPickConnected() {
+        if (this.plantPickView != null
+                && this.plantPickViewUser == this.currentUser) {
+            return;
+        }
+
+        this.currentUser.initializeMissingFields();
+        this.plantPickView = new PlantPickView();
+        this.plantPickController = new PlantPickController(
+                this.plantPickView,
+                this.currentUser,
+                this.plantDefinitions,
+                null,
+                PlantPickController.DEFAULT_SLOT_COUNT
+        );
+        this.plantPickViewUser = this.currentUser;
+    }
+
+    private void startSelectedGame() {
+        this.currentUser.initializeMissingFields();
+        this.currentUser.setGamesPlayed(this.currentUser.getGamesPlayed() + 1);
+        this.currentGame = new PlantZombieGame(
+                this.plantDefinitions,
+                this.zombieDefinitions,
+                new ZombieFactory(this.zombieDefinitions),
+                this.currentUser.getPlantUpgradeService(),
+                new GreenhouseBoostService(this.currentUser.getGreenhouse())
+        );
+        this.currentGame.configurePlantSelection(
+                this.plantPickController.getSelectedPlants(),
+                this.plantPickController.getBoostedPlantNames()
+        );
+        this.currentGame.getBoard().setZombieEncounterListener(definition -> {
+            if (definition != null
+                    && this.currentUser.recordEncounteredZombie(definition.getAlias())) {
+                this.accountService.save();
+            }
+        });
+        this.transferStoredPlantFood();
+        this.midGameView = new MidGameView();
+        this.midGameView.setObserver(new MidGameController(this.currentGame));
+        this.menuContext.enterMenu(MenuType.MID_GAME_MENU);
+    }
+
+    private void transferStoredPlantFood() {
+        int storedPlantFood = Math.max(
+                0,
+                Math.min(3, this.currentUser.getNextLevelPlantFood())
+        );
+        int transferredPlantFood = 0;
+
+        for (int i = 0; i < storedPlantFood; i++) {
+            if (!this.currentGame.getPlantFoodSystem().addPlantFood()) {
+                break;
+            }
+            transferredPlantFood++;
+        }
+
+        this.currentUser.setNextLevelPlantFood(
+                storedPlantFood - transferredPlantFood
+        );
+    }
+
+    private String executeMidGameCommand(String input) {
+        if (this.currentGame == null || this.midGameView == null) {
+            return "Game is not available.";
+        }
+
+        this.midGameView.handleCommand(input);
+        return "";
+    }
+
+    private void clearGameConnections() {
+        this.plantPickView = null;
+        this.plantPickController = null;
+        this.plantPickViewUser = null;
+        this.currentGame = null;
+        this.midGameView = null;
     }
 }

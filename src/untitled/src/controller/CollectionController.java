@@ -476,6 +476,7 @@ public class CollectionController implements MenuController, CollectionViewObser
                     definition.getName());
 
         this.user.getUnlockedPlants().add(plant);
+        this.user.addNews("New plant unlocked: " + definition.getName());
 
         this.user.setGold(this.user.getGold() - PLANT_PURCHASE_COST);
 

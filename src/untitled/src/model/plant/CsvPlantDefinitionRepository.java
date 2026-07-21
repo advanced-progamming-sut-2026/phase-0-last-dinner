@@ -138,17 +138,35 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
         String normalized = normalize(value);
 
         switch (normalized) {
-            case "sunproducer" -> categories.add(PlantCategory.SUN_PRODUCER);
-            case "shooter" -> categories.add(PlantCategory.SHOOTER);
-            case "homing" -> categories.add(PlantCategory.HOMING);
-            case "strikethrough" -> categories.add(PlantCategory.STRIKE_THROUGH);
-            case "lobber" -> categories.add(PlantCategory.LOBBER);
-            case "explosive" -> categories.add(PlantCategory.EXPLOSIVE);
-            case "melee" -> categories.add(PlantCategory.MELEE_ATTACKER);
-            case "wallnut" -> categories.add(PlantCategory.DEFENDER);
-            case "modifier" -> categories.add(PlantCategory.MODIFIER);
-            default ->
-                    throw new IllegalArgumentException("Unknown plant category '" + value + "' at CSV line " + lineNumber);
+            case "sunproducer":
+                categories.add(PlantCategory.SUN_PRODUCER);
+                break;
+            case "shooter":
+                categories.add(PlantCategory.SHOOTER);
+                break;
+            case "homing":
+                categories.add(PlantCategory.HOMING);
+                break;
+            case "strikethrough":
+                categories.add(PlantCategory.STRIKE_THROUGH);
+                break;
+            case "lobber":
+                categories.add(PlantCategory.LOBBER);
+                break;
+            case "explosive":
+                categories.add(PlantCategory.EXPLOSIVE);
+                break;
+            case "melee":
+                categories.add(PlantCategory.MELEE_ATTACKER);
+                break;
+            case "wallnut":
+                categories.add(PlantCategory.DEFENDER);
+                break;
+            case "modifier":
+                categories.add(PlantCategory.MODIFIER);
+                break;
+            default:
+                throw new IllegalArgumentException("Unknown plant category '" + value + "' at CSV line " + lineNumber);
         }
 
         if (plantName != null && plantName.toLowerCase(Locale.ROOT).contains("mint")) {
@@ -183,28 +201,45 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
     private static PlantTag parseTag(String value, int lineNumber) {
         String normalized = normalize(value);
 
-        return switch (normalized) {
-            case "day" -> PlantTag.DAY;
-            case "night" -> PlantTag.NIGHT;
-            case "shroom" -> PlantTag.SHROOM;
-            case "wrampup", "warmup" -> PlantTag.WARM_UP;
-            case "pea" -> PlantTag.PEA;
-            case "ice" -> PlantTag.ICE;
-            case "fire" -> PlantTag.FIRE;
-            case "stack" -> PlantTag.STACK;
-            case "charge" -> PlantTag.CHARGE;
-            case "magic" -> PlantTag.MAGIC;
-            case "poison" -> PlantTag.POISON;
-            case "water" -> PlantTag.WATER;
-            case "aoe" -> PlantTag.AOE;
-            case "trap" -> PlantTag.TRAP;
-            case "movezombies" -> PlantTag.MOVE_ZOMBIES;
-            case "sun" -> PlantTag.SUN;
-            case "explosive" -> PlantTag.EXPLOSIVE;
-            default ->
-                    throw new IllegalArgumentException("Unknown plant tag '" + value + "' at CSV line " + lineNumber);
-        };
-
+        switch (normalized) {
+            case "day":
+                return PlantTag.DAY;
+            case "night":
+                return PlantTag.NIGHT;
+            case "shroom":
+                return PlantTag.SHROOM;
+            case "wrampup":
+            case "warmup":
+                return PlantTag.WARM_UP;
+            case "pea":
+                return PlantTag.PEA;
+            case "ice":
+                return PlantTag.ICE;
+            case "fire":
+                return PlantTag.FIRE;
+            case "stack":
+                return PlantTag.STACK;
+            case "charge":
+                return PlantTag.CHARGE;
+            case "magic":
+                return PlantTag.MAGIC;
+            case "poison":
+                return PlantTag.POISON;
+            case "water":
+                return PlantTag.WATER;
+            case "aoe":
+                return PlantTag.AOE;
+            case "trap":
+                return PlantTag.TRAP;
+            case "movezombies":
+                return PlantTag.MOVE_ZOMBIES;
+            case "sun":
+                return PlantTag.SUN;
+            case "explosive":
+                return PlantTag.EXPLOSIVE;
+            default:
+                throw new IllegalArgumentException("Unknown plant tag '" + value + "' at CSV line " + lineNumber);
+        }
     }
 
     private static List<String> parseCsvLine(String line) {

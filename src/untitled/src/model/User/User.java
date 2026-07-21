@@ -35,6 +35,7 @@ public class User {
     private int difficultyLevel=3;
     private int completedMinigames;
     private int completedQuests;
+    private int gamesPlayed;
     private int maxObtainedMeowPoints;
     private ArrayList<String> unreadNews;
     private ArrayList<String> allNews;
@@ -115,13 +116,29 @@ public class User {
         if (alias == null || alias.trim().isEmpty())
             return false;
 
+        this.initializeMissingFields();
+
         for (String encounteredAlias : this.encounteredZombieAliases) {
             if (encounteredAlias != null && encounteredAlias.equalsIgnoreCase(alias.trim()))
                 return false;
         }
 
         this.encounteredZombieAliases.add(alias.trim());
+        this.addNews("New zombie unlocked: " + alias.trim());
         return true;
+    }
+
+    public void addNews(String news) {
+        if (news == null || news.trim().isEmpty())
+            return;
+
+        this.initializeMissingFields();
+        this.allNews.add(news.trim());
+        this.unreadNews.add(news.trim());
+    }
+
+    public boolean hasUnreadNews() {
+        return this.unreadNews != null && !this.unreadNews.isEmpty();
     }
 
     public boolean hasEncounteredZombie(String alias) {
