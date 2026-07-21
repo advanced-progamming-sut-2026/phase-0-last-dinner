@@ -16,11 +16,19 @@ public interface MidGameViewObserver {
 
     List<PlantStatus> onShowPlantsStatusRequested();
 
+    default List<String> onShowConveyorPlantsRequested() {
+        return java.util.Collections.emptyList();
+    }
+
     Tile onShowTileStatusRequested(int x, int y);
 
     boolean onCollectSunRequested(int x, int y);
 
     boolean onPlantPlantRequested(String type, int x, int y);
+
+    default boolean onPlantImitaterRequested(String type, int x, int y) {
+        return false;
+    }
 
     boolean onPluckPlantRequested(int x, int y);
 

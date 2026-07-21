@@ -73,22 +73,7 @@ public class Greenhouse {
                         unlockedPlants
                 );
 
-        String selectedPlantName;
-
-        if (random.nextBoolean()
-                || eligiblePlants.isEmpty()) {
-
-            selectedPlantName = MARIGOLD_NAME;
-        } else {
-            Plant selectedPlant = eligiblePlants.get(
-                    random.nextInt(
-                            eligiblePlants.size()
-                    )
-            );
-
-            selectedPlantName =
-                    selectedPlant.getName();
-        }
+        String selectedPlantName = this.selectPlantName(eligiblePlants, random);
 
         long growthDurationMillis =
                 this.isMarigold(selectedPlantName)
@@ -104,6 +89,15 @@ public class Greenhouse {
         return planted
                 ? selectedPlantName
                 : null;
+    }
+
+    private String selectPlantName(List<Plant> eligiblePlants, Random random) {
+        if (random.nextBoolean() || eligiblePlants.isEmpty()) {
+            return MARIGOLD_NAME;
+        }
+
+        Plant selectedPlant = eligiblePlants.get(random.nextInt(eligiblePlants.size()));
+        return selectedPlant.getName();
     }
 
     public String harvest(Position position) {
@@ -286,7 +280,7 @@ public class Greenhouse {
             if (plant == null
                     || plant.getName() == null
                     || plant.getName().trim().isEmpty()
-                    || plant.getPlantFoodBehavior() == null) {
+                    || !plant.supportsPlantFood()) {
 
                 continue;
             }

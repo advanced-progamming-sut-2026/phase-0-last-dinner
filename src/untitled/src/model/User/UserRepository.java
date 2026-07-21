@@ -90,6 +90,12 @@ public class UserRepository {
 
     public void save() {
         try {
+            for (User user : this.users) {
+                if (user != null) {
+                    user.prepareForSave();
+                }
+            }
+
             Path parent = this.storagePath.getParent();
 
             if (parent != null) {

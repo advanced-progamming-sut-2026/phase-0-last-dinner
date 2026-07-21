@@ -33,26 +33,17 @@ public class PlantUpgradeEffectParser {
         String normalized = text.toLowerCase(Locale.ROOT);
         int amount = this.firstInteger(normalized);
         PlantUpgradeEffect.Builder builder = PlantUpgradeEffect.builder(text);
+        this.addNumericEffect(normalized, amount, builder);
+        this.addSpecialEffects(normalized, amount, builder);
+        return builder.build();
+    }
 
-        if (normalized.startsWith("hp +")) {
-            builder.addHealthBonus(amount);
-        } else if (normalized.startsWith("cost -")) {
-            builder.addSunCostReduction(amount);
-        } else if (normalized.startsWith("cooldown -")) {
-            builder.addCooldownReductionTicks(this.secondsToTicks(amount));
-        } else if (normalized.startsWith("prod. time -")
-                || normalized.startsWith("grow time -")
-                || normalized.startsWith("charge time -")
-                || normalized.startsWith("regen -")
-                || normalized.startsWith("eat time -")) {
-            builder.addActionIntervalReductionTicks(this.secondsToTicks(amount));
-        } else if (normalized.startsWith("atk speed +")) {
-            builder.addAttackSpeedBonusPercent(amount);
-        } else if (normalized.startsWith("arm time -")) {
-            builder.addArmDelayReductionTicks(this.secondsToTicks(amount));
-        } else if (normalized.startsWith("digest -")) {
-            builder.addDigestReductionTicks(this.secondsToTicks(amount));
-        } else if (normalized.startsWith("range +")) {
+    private void addNumericEffect(String normalized, int amount, PlantUpgradeEffect.Builder builder) {
+        if (this.addTimingOrCostEffect(normalized, amount, builder)) {
+            return;
+        }
+
+        if (normalized.startsWith("range +")) {
             builder.addRangeBonus(amount);
         } else if (normalized.startsWith("lifespan +")) {
             builder.addLifespanBonusTicks(this.secondsToTicks(amount));
@@ -77,9 +68,35 @@ public class PlantUpgradeEffectParser {
         } else if (normalized.contains("dmg")) {
             builder.addDamageBonus(amount);
         }
+    }
 
-        this.addSpecialEffects(normalized, amount, builder);
-        return builder.build();
+    private boolean addTimingOrCostEffect(
+            String normalized,
+            int amount,
+            PlantUpgradeEffect.Builder builder
+    ) {
+        if (normalized.startsWith("hp +")) {
+            builder.addHealthBonus(amount);
+        } else if (normalized.startsWith("cost -")) {
+            builder.addSunCostReduction(amount);
+        } else if (normalized.startsWith("cooldown -")) {
+            builder.addCooldownReductionTicks(this.secondsToTicks(amount));
+        } else if (normalized.startsWith("prod. time -")
+                || normalized.startsWith("grow time -")
+                || normalized.startsWith("charge time -")
+                || normalized.startsWith("regen -")
+                || normalized.startsWith("eat time -")) {
+            builder.addActionIntervalReductionTicks(this.secondsToTicks(amount));
+        } else if (normalized.startsWith("atk speed +")) {
+            builder.addAttackSpeedBonusPercent(amount);
+        } else if (normalized.startsWith("arm time -")) {
+            builder.addArmDelayReductionTicks(this.secondsToTicks(amount));
+        } else if (normalized.startsWith("digest -")) {
+            builder.addDigestReductionTicks(this.secondsToTicks(amount));
+        } else {
+            return false;
+        }
+        return true;
     }
 
     private void addSpecialEffects(String normalized, int amount, PlantUpgradeEffect.Builder builder) {
@@ -110,6 +127,10 @@ public class PlantUpgradeEffectParser {
             builder.addSpecialEffect(PlantUpgradeSpecialEffect.WARMTH_RADIUS_UP);
         }
 
+        this.addRemainingSpecialEffects(normalized, builder);
+    }
+
+    private void addRemainingSpecialEffects(String normalized, PlantUpgradeEffect.Builder builder) {
         if (normalized.contains("melt area")) {
             builder.addRangeBonus(1);
             builder.addSpecialEffect(PlantUpgradeSpecialEffect.MELT_AREA);

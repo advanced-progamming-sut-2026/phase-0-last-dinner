@@ -25,21 +25,28 @@ public class IZombieView implements CommandHandler {
             return;
         }
 
-        Matcher matcher;
+        if (handleGameCommand(input) || handleNavigationCommand(input)) {
+            return;
+        }
 
-        matcher = IZombieCommands.START.getMatcher(input);
+        System.out.println("Invalid I, Zombie command.");
+        showCommandHelp();
+    }
+
+    private boolean handleGameCommand(String input) {
+        Matcher matcher = IZombieCommands.START.getMatcher(input);
         if (matcher != null) {
             IZombieActionResult result =
                     observer.onStartIZombieRequested();
 
             showActionResult(result);
-            return;
+            return true;
         }
 
         matcher = IZombieCommands.PLACE_ZOMBIE.getMatcher(input);
         if (matcher != null) {
             handlePlaceZombieCommand(matcher);
-            return;
+            return true;
         }
 
         matcher = IZombieCommands.SHOW.getMatcher(input);
@@ -48,27 +55,30 @@ public class IZombieView implements CommandHandler {
                     observer.onShowIZombieRequested();
 
             showState(state);
-            return;
+            return true;
         }
 
         matcher = IZombieCommands.ADVANCE_TIME.getMatcher(input);
         if (matcher != null) {
             handleAdvanceTimeCommand(matcher);
-            return;
+            return true;
         }
 
-        matcher = IZombieCommands.BACK.getMatcher(input);
+        return false;
+    }
+
+    private boolean handleNavigationCommand(String input) {
+        Matcher matcher = IZombieCommands.BACK.getMatcher(input);
         if (matcher != null) {
             // TODO Menu router:
             // Connect this command to the minigame menu router.
             System.out.println(
                     "Returning to minigame menu."
             );
-            return;
+            return true;
         }
 
-        System.out.println("Invalid I, Zombie command.");
-        showCommandHelp();
+        return false;
     }
 
     private void handlePlaceZombieCommand(Matcher matcher) {
@@ -142,27 +152,7 @@ public class IZombieView implements CommandHandler {
         }
 
         if (result.hasPlacementInformation()) {
-            ZombieDefinition definition =
-                    result.getZombieDefinition();
-
-            String zombieName =
-                    getZombieDisplayName(definition);
-
-            System.out.println(
-                    "Zombie: " + zombieName
-            );
-
-            System.out.println(
-                    "Position: "
-                            + formatPosition(
-                            result.getPosition()
-                    )
-            );
-
-            System.out.println(
-                    "Sun spent: "
-                            + result.getSunSpent()
-            );
+            showPlacementInformation(result);
         }
 
         System.out.println(
@@ -170,6 +160,24 @@ public class IZombieView implements CommandHandler {
                         + result.getRemainingSun()
         );
 
+        showActionStatus(result);
+    }
+
+    private void showPlacementInformation(IZombieActionResult result) {
+        ZombieDefinition definition = result.getZombieDefinition();
+        String zombieName = getZombieDisplayName(definition);
+        System.out.println(
+                "Zombie: " + zombieName
+        );
+        System.out.println(
+                "Position: " + formatPosition(result.getPosition())
+        );
+        System.out.println(
+                "Sun spent: " + result.getSunSpent()
+        );
+    }
+
+    private void showActionStatus(IZombieActionResult result) {
         if (result.getStatus()
                 == IZombieActionStatus.STAGE_WON) {
             System.out.println(

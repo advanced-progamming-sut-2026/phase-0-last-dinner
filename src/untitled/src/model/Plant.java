@@ -30,11 +30,12 @@ public class Plant implements Tickable {
     private long cooldownTicks;
     private double actionIntervalSeconds;
     @Setter
-    private Position position;
+    private transient Position position;
     private Set<PlantCategory> categories;
     private Set<PlantTag> tags;
-    private PlantBehavior behavior;
-    private PlantFoodBehavior plantFoodBehavior;
+    private transient PlantBehavior behavior;
+    private transient PlantFoodBehavior plantFoodBehavior;
+    private boolean plantFoodCapable;
     private PlantUpgradeData upgradeData;
     // in flag ha dalil haye joda baraye gheire faal shodan giah hastan
     private boolean disabled;
@@ -48,7 +49,7 @@ public class Plant implements Tickable {
     private long fullLifespanTicks;
     private boolean upgradeDeathEffectUsed;
     @Setter
-    private Board board;
+    private transient Board board;
     private int freezeLevel;
     private int iceHealth;
     private int iceThawTicks;
@@ -107,6 +108,7 @@ public class Plant implements Tickable {
         this.tags = tags;
         this.behavior = behavior;
         this.plantFoodBehavior = plantFoodBehavior;
+        this.plantFoodCapable = plantFoodBehavior != null && plantFoodBehavior.canActivate();
         this.upgradeData = upgradeData;
         this.lifespanTicks = Math.max(0, lifespanTicks);
         this.fullLifespanTicks = this.lifespanTicks;
@@ -144,6 +146,10 @@ public class Plant implements Tickable {
         return !this.isDisabled()
                 && this.plantFoodBehavior != null
                 && this.plantFoodBehavior.canActivate();
+    }
+
+    public boolean supportsPlantFood() {
+        return this.plantFoodCapable;
     }
 
     // ertegha dar collection sabt mishe va rooye yek instance anjam nemishe
@@ -273,7 +279,7 @@ public class Plant implements Tickable {
     }
 
     public boolean isDisabled() {
-        return this.disabled || this.transformed || this.covered || this.terrainDisabled;
+        return this.disabled || this.transformed || this.covered || this.terrainDisabled || this.isFrozen();
     }
 
     public boolean isDead() {
@@ -348,7 +354,7 @@ public class Plant implements Tickable {
             return;
         }
 
-        if (1 + this.iceThawTicks < TICKS_PER_SECOND) {
+        if (++this.iceThawTicks < TICKS_PER_SECOND) {
             return;
         }
 

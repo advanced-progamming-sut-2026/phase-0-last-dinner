@@ -57,6 +57,7 @@ public class LobberBehavior implements PlantBehavior {
 
         if (target != null) {
             Projectile projectile = this.projectileTemplate.copyAtTarget(plant.getPosition(), target);
+            projectile.setSourcePlant(plant);
 
             if (this.randomButter) {
                 boolean butter = this.random.nextInt(4) == 0;

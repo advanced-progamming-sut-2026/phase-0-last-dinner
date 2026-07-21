@@ -34,6 +34,25 @@ public abstract class Level {
         return new ArrayList<>();
     }
 
+    protected boolean areAllWavesDefeated() {
+        if (this.waves == null || this.waves.isEmpty()) {
+            return false;
+        }
+
+        Wave lastWave = this.waves.get(this.waves.size() - 1);
+        if (lastWave == null || !lastWave.isFinalWave() || !lastWave.isStarted()) {
+            return false;
+        }
+
+        for (Wave wave : this.waves) {
+            if (wave != null && wave.getRemainingHealthPercentage() > 0) {
+                return false;
+            }
+        }
+
+        return this.board == null || !this.board.hasLivingZombies();
+    }
+
     public abstract void start();
 
     public abstract boolean isWinConditionMet();

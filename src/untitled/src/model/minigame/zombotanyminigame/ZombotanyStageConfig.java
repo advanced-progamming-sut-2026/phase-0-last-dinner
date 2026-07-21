@@ -56,82 +56,61 @@ public class ZombotanyStageConfig {
     ) {
         switch (stageNumber) {
             case 1:
-                return new ZombotanyStageConfig(
-                    1,
-                    Arrays.asList(
-                            4,
-                            6,
-                            8
-                    ),
-                    Arrays.asList(
-                            ZombotanyTrait.PEASHOOTER,
-                            ZombotanyTrait.WALLNUT
-                    ),
-                    Arrays.asList(
-                            "Sunflower",
-                            "Peashooter",
-                            "Wall-nut",
-                            "Potato Mine",
-                            "Cabbage-pult",
-                            "Cherry Bomb"
-                    )
-            );
+                return stageOne();
             case 2:
-                return new ZombotanyStageConfig(
-                    2,
-                    Arrays.asList(
-                            6,
-                            8,
-                            10,
-                            12
-                    ),
-                    Arrays.asList(
-                            ZombotanyTrait.PEASHOOTER,
-                            ZombotanyTrait.WALLNUT,
-                            ZombotanyTrait.JALAPENO
-                    ),
-                    Arrays.asList(
-                            "Sunflower",
-                            "Repeater",
-                            "Snow Pea",
-                            "Wall-nut",
-                            "Bonk Choy",
-                            "Kernel-pult",
-                            "Cherry Bomb"
-                    )
-            );
+                return stageTwo();
             case 3:
-                return new ZombotanyStageConfig(
-                    3,
-                    Arrays.asList(
-                            8,
-                            11,
-                            14,
-                            17,
-                            20
-                    ),
-                    Arrays.asList(
-                            ZombotanyTrait.PEASHOOTER,
-                            ZombotanyTrait.WALLNUT,
-                            ZombotanyTrait.JALAPENO,
-                            ZombotanyTrait.SQUASH
-                    ),
-                    Arrays.asList(
-                            "Twin Sunflower",
-                            "Repeater",
-                            "Snow Pea",
-                            "Tall-nut",
-                            "Bonk Choy",
-                            "Melon-pult",
-                            "Cherry Bomb",
-                            "Jalapeno"
-                    )
-            );
+                return stageThree();
             default:
                 throw new IllegalArgumentException(
                         "Zombotany stage must be between 1 and 3."
                 );
         }
+    }
+
+    private static ZombotanyStageConfig stageOne() {
+        return new ZombotanyStageConfig(
+                1,
+                Arrays.asList(4, 6, 8),
+                Arrays.asList(ZombotanyTrait.PEASHOOTER, ZombotanyTrait.WALLNUT),
+                Arrays.asList(
+                        "Sunflower", "Peashooter", "Wall-nut",
+                        "Potato Mine", "Cabbage-pult", "Cherry Bomb"
+                )
+        );
+    }
+
+    private static ZombotanyStageConfig stageTwo() {
+        return new ZombotanyStageConfig(
+                2,
+                Arrays.asList(6, 8, 10, 12),
+                Arrays.asList(
+                        ZombotanyTrait.PEASHOOTER,
+                        ZombotanyTrait.WALLNUT,
+                        ZombotanyTrait.JALAPENO
+                ),
+                Arrays.asList(
+                        "Sunflower", "Repeater", "Snow Pea", "Wall-nut",
+                        "Bonk Choy", "Kernel-pult", "Cherry Bomb"
+                )
+        );
+    }
+
+    private static ZombotanyStageConfig stageThree() {
+        return new ZombotanyStageConfig(
+                3,
+                Arrays.asList(8, 11, 14, 17, 20),
+                Arrays.asList(
+                        ZombotanyTrait.PEASHOOTER,
+                        ZombotanyTrait.WALLNUT,
+                        ZombotanyTrait.JALAPENO,
+                        ZombotanyTrait.SQUASH
+                ),
+                Arrays.asList(
+                        "Twin Sunflower", "Repeater", "Snow Pea", "Tall-nut",
+                        "Bonk Choy", "Melon-pult", "Cherry Bomb", "Jalapeno"
+                )
+        );
     }
 
     public int getWaveCount() {

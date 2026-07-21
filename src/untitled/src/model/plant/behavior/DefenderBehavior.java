@@ -77,7 +77,7 @@ public class DefenderBehavior implements PlantBehavior {
         int damage = Math.max(1, (int) Math.round(baseDamage * this.reflectionDamageMultiplier));
 
         for (Zombie zombie : this.getContactZombies(plant, board)) {
-            board.getCombatSystem().applyDamageToZombie(zombie, damage);
+            board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
         }
     }
 
@@ -198,10 +198,10 @@ public class DefenderBehavior implements PlantBehavior {
             }
 
             if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
-                board.getCombatSystem().killZombie(zombie);
+                board.getCombatSystem().killZombie(zombie, plant);
             } else {
                 int damage = Math.max(180, DamageExpressionParser.parseTotalDamage(this.damageExpression));
-                board.getCombatSystem().applyDamageToZombie(zombie, damage);
+                board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
             }
         }
     }

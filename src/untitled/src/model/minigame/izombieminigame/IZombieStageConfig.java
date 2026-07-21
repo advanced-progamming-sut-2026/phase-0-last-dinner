@@ -23,65 +23,61 @@ public class IZombieStageConfig {
             long minimumSunProductionIntervalTicks,
             long sunProductionIntervalDecreaseTicks
     ) {
-        if (stageNumber < 1 || stageNumber > 3) {
-            throw new IllegalArgumentException(
-                    "Stage number must be between 1 and 3."
-            );
-        }
-
-        if (startingSun < 0) {
-            throw new IllegalArgumentException(
-                    "Starting sun cannot be negative."
-            );
-        }
-
-        if (redLineColumn < 1 || redLineColumn > 9) {
-            throw new IllegalArgumentException(
-                    "Red line column must be between 1 and 9."
-            );
-        }
-
-        if (sunProductionAmount <= 0) {
-            throw new IllegalArgumentException(
-                    "Sun production amount must be positive."
-            );
-        }
-
-        if (initialSunProductionIntervalTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "Initial sun production interval must be positive."
-            );
-        }
-
-        if (minimumSunProductionIntervalTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "Minimum sun production interval must be positive."
-            );
-        }
-
-        if (minimumSunProductionIntervalTicks
-                > initialSunProductionIntervalTicks) {
-            throw new IllegalArgumentException(
-                    "Minimum interval cannot be greater than initial interval."
-            );
-        }
-
-        if (sunProductionIntervalDecreaseTicks < 0) {
-            throw new IllegalArgumentException(
-                    "Interval decrease cannot be negative."
-            );
-        }
+        validateStageSettings(stageNumber, startingSun, redLineColumn, sunProductionAmount);
+        validateProductionIntervals(
+                initialSunProductionIntervalTicks,
+                minimumSunProductionIntervalTicks,
+                sunProductionIntervalDecreaseTicks
+        );
 
         this.stageNumber = stageNumber;
         this.startingSun = startingSun;
         this.redLineColumn = redLineColumn;
         this.sunProductionAmount = sunProductionAmount;
-        this.initialSunProductionIntervalTicks =
-                initialSunProductionIntervalTicks;
-        this.minimumSunProductionIntervalTicks =
-                minimumSunProductionIntervalTicks;
-        this.sunProductionIntervalDecreaseTicks =
-                sunProductionIntervalDecreaseTicks;
+        this.initialSunProductionIntervalTicks = initialSunProductionIntervalTicks;
+        this.minimumSunProductionIntervalTicks = minimumSunProductionIntervalTicks;
+        this.sunProductionIntervalDecreaseTicks = sunProductionIntervalDecreaseTicks;
+    }
+
+    private static void validateStageSettings(
+            int stageNumber,
+            int startingSun,
+            int redLineColumn,
+            int sunProductionAmount
+    ) {
+        if (stageNumber < 1 || stageNumber > 3) {
+            throw new IllegalArgumentException("Stage number must be between 1 and 3.");
+        }
+        if (startingSun < 0) {
+            throw new IllegalArgumentException("Starting sun cannot be negative.");
+        }
+        if (redLineColumn < 1 || redLineColumn > 9) {
+            throw new IllegalArgumentException("Red line column must be between 1 and 9.");
+        }
+        if (sunProductionAmount <= 0) {
+            throw new IllegalArgumentException("Sun production amount must be positive.");
+        }
+    }
+
+    private static void validateProductionIntervals(
+            long initialInterval,
+            long minimumInterval,
+            long intervalDecrease
+    ) {
+        if (initialInterval <= 0) {
+            throw new IllegalArgumentException("Initial sun production interval must be positive.");
+        }
+        if (minimumInterval <= 0) {
+            throw new IllegalArgumentException("Minimum sun production interval must be positive.");
+        }
+        if (minimumInterval > initialInterval) {
+            throw new IllegalArgumentException(
+                    "Minimum interval cannot be greater than initial interval."
+            );
+        }
+        if (intervalDecrease < 0) {
+            throw new IllegalArgumentException("Interval decrease cannot be negative.");
+        }
     }
 
     public boolean isZombiePlacementColumn(int column) {

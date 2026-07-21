@@ -49,6 +49,7 @@ public class GiantPeaPlantFoodBehavior implements PlantFoodBehavior {
                     null
             );
             giantPea.setPeaBased(true);
+            giantPea.setSourcePlant(plant);
             board.addProjectile(giantPea);
         }
     }

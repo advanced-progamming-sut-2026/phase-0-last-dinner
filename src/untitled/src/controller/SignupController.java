@@ -36,6 +36,7 @@ public class SignupController implements MenuController {
             String email,
             String gender
     ) {
+        this.accountService.clearPendingRegistration();
         UserGender parsedGender = this.parseGender(gender);
 
         if (parsedGender == null) {
@@ -68,6 +69,10 @@ public class SignupController implements MenuController {
 
     public List<String> getSecurityQuestions() {
         return this.accountService.getSecurityQuestions();
+    }
+
+    public void cancelPendingRegistration() {
+        this.accountService.clearPendingRegistration();
     }
 
     @Override

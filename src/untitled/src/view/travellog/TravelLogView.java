@@ -38,15 +38,25 @@ public class TravelLogView
             return;
         }
 
-        Matcher matcher;
+        if (handlePageCommand(input) || handleOtherCommand(input)) {
+            return;
+        }
 
-        matcher = TravelLogCommands
+        System.out.println(
+                "Invalid Travel Log command."
+        );
+
+        showHelp();
+    }
+
+    private boolean handlePageCommand(String input) {
+        Matcher matcher = TravelLogCommands
                 .CHANGE_PAGE
                 .getMatcher(input);
 
         if (matcher != null) {
             handleChangePage(matcher);
-            return;
+            return true;
         }
 
         matcher = TravelLogCommands
@@ -58,7 +68,7 @@ public class TravelLogView
                     observer
                             .onShowCurrentPageRequested()
             );
-            return;
+            return true;
         }
 
         matcher = TravelLogCommands
@@ -67,10 +77,14 @@ public class TravelLogView
 
         if (matcher != null) {
             handleOpenMiniGame(matcher);
-            return;
+            return true;
         }
 
-        matcher = TravelLogCommands
+        return false;
+    }
+
+    private boolean handleOtherCommand(String input) {
+        Matcher matcher = TravelLogCommands
                 .CLAIM_QUEST
                 .getMatcher(input);
 
@@ -80,7 +94,7 @@ public class TravelLogView
                             clean(matcher.group("quest"))
                     )
             );
-            return;
+            return true;
         }
 
         matcher = TravelLogCommands
@@ -89,7 +103,7 @@ public class TravelLogView
 
         if (matcher != null) {
             showHelp();
-            return;
+            return true;
         }
 
         matcher = TravelLogCommands
@@ -100,14 +114,10 @@ public class TravelLogView
             System.out.println(
                     "Returning to game menu."
             );
-            return;
+            return true;
         }
 
-        System.out.println(
-                "Invalid Travel Log command."
-        );
-
-        showHelp();
+        return false;
     }
 
     public void showCurrentPage() {
@@ -212,6 +222,10 @@ public class TravelLogView
             return;
         }
 
+        openMiniGame(miniGameType);
+    }
+
+    private void openMiniGame(MiniGameType miniGameType) {
         CommandHandler handler =
                 observer.onOpenMiniGameRequested(
                         miniGameType
@@ -311,7 +325,7 @@ public class TravelLogView
 
             String state;
 
-            if (miniGame.isCompleted()) {
+            if (miniGame.isAllStagesCompleted()) {
                 state = "completed";
             } else if (miniGame.isStarted()) {
                 state = "started";

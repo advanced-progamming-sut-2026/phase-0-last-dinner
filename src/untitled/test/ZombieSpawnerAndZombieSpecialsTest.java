@@ -124,7 +124,7 @@ public class ZombieSpawnerAndZombieSpecialsTest {
     }
 
     @Test
-    public void spawnerUsesTheLargestReachableBudgetWhenExactFillIsImpossible() {
+    public void spawnerRejectsAWaveWhenExactFillIsImpossible() {
         ZombieDefinition costFour = this.definition(
                 "Four",
                 "Four",
@@ -146,21 +146,20 @@ public class ZombieSpawnerAndZombieSpecialsTest {
                 new Board()
         );
 
-        assertEquals(6, this.totalWaveCost(spawner.spawnWave(new Wave(1, 7, false))));
+        assertTrue(spawner.spawnWave(new Wave(1, 7, false)).isEmpty());
 
         spawner.setActiveChapter(ZombieChapter.MEDIEVAL);
         assertTrue(spawner.spawnWave(new Wave(2, 8, false)).isEmpty());
     }
 
     @Test
-    public void dataLikeWaveBudgetOf125FallsBackTo100() {
+    public void dataLikeWaveBudgetOf125DoesNotSpawnAPartialWave() {
         PlantZombieGame game = Main.loadApplication().createGame();
         game.getZombieSpawner().setRandom(new ZeroRandom());
 
         List<Zombie> spawned = game.getZombieSpawner().spawnWave(new Wave(2, 125, false));
 
-        assertFalse(spawned.isEmpty());
-        assertEquals(100, this.totalWaveCost(spawned));
+        assertTrue(spawned.isEmpty());
     }
 
     @Test

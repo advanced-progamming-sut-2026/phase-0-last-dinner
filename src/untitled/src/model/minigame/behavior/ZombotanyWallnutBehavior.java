@@ -52,15 +52,7 @@ public class ZombotanyWallnutBehavior implements ZombieBehavior {
             return;
         }
 
-        int currentHealth =
-                Math.max(1, zombie.getHealth());
-
-        int bonusHealth = (int) Math.round(
-                currentHealth
-                        * (healthMultiplier - 1.0)
-        );
-
-        zombie.addHealth(bonusHealth);
+        zombie.multiplyHealth(this.healthMultiplier);
 
         zombie.setCurrentSpeed(
                 zombie.getCurrentSpeed()

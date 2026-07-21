@@ -16,6 +16,7 @@ public abstract class MiniGame {
     private Board board;
     private boolean started;
     private boolean completed;
+    private boolean allStagesCompleted;
 
     protected MiniGame(MiniGameType type) {
         this.type = type;
@@ -27,6 +28,7 @@ public abstract class MiniGame {
         this.currentStage = this.stages.get(0);
         this.started = false;
         this.completed = false;
+        this.allStagesCompleted = false;
     }
 
     protected void markStarted() {
@@ -35,6 +37,11 @@ public abstract class MiniGame {
 
     protected void markCompleted() {
         this.completed = true;
+    }
+
+    protected void markAllStagesCompleted() {
+        this.completed = true;
+        this.allStagesCompleted = true;
     }
 
     public abstract void start();

@@ -49,6 +49,10 @@ public class GameEngine {
                 this.endGame();
                 break;
             }
+
+            if (!this.gameRunning) {
+                break;
+            }
         }
     }
 

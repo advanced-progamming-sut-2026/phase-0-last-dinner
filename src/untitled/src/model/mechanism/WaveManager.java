@@ -47,11 +47,12 @@ public class WaveManager implements Tickable {
 
         if (currentWave != null && currentWave.canStartNextWave() && this.hasNextWave()) {
             this.startNextWave();
+            currentWave = this.getCurrentWave();
         }
 
         if (currentWave != null
                 && !this.hasNextWave()
-                && currentWave.getRemainingHealthPercentage() <= 0
+                && this.areAllWavesDefeated()
                 && this.gameEngine != null
                 && this.gameEngine.isGameRunning()) {
             this.fireEvent("Dear humanz, zis is not done yet; we will come back to eat your brainz, humanz.");
@@ -72,6 +73,9 @@ public class WaveManager implements Tickable {
         }
 
         wave.start();
+        this.fireEvent(wave.isFinalWave()
+                ? "The final wave has come."
+                : "Wave " + wave.getNumber() + " started.");
 
         if (this.chapter != null) {
             Board board = this.zombieSpawner != null ? this.zombieSpawner.getBoard() : null;
@@ -81,10 +85,6 @@ public class WaveManager implements Tickable {
         if (this.zombieSpawner != null) {
             this.zombieSpawner.spawnWave(wave);
         }
-
-        this.fireEvent(wave.isFinalWave()
-                ? "The final wave has come."
-                : "Wave " + wave.getNumber() + " started.");
     }
 
     public Wave getCurrentWave() {
@@ -118,5 +118,25 @@ public class WaveManager implements Tickable {
         if (this.listener != null) {
             this.listener.onGameEvent(message);
         }
+    }
+
+    private boolean areAllWavesDefeated() {
+        if (this.waves == null || this.waves.isEmpty()) {
+            return false;
+        }
+
+        Wave lastWave = this.waves.get(this.waves.size() - 1);
+        if (lastWave == null || !lastWave.isFinalWave() || !lastWave.isStarted()) {
+            return false;
+        }
+
+        for (Wave wave : this.waves) {
+            if (wave != null && wave.getRemainingHealthPercentage() > 0) {
+                return false;
+            }
+        }
+
+        Board board = this.zombieSpawner == null ? null : this.zombieSpawner.getBoard();
+        return board == null || !board.hasLivingZombies();
     }
 }

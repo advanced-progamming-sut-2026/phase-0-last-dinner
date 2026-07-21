@@ -92,7 +92,9 @@ public class HomingBehavior implements PlantBehavior {
         Zombie target = this.selectTarget(plant, board);
 
         if (target != null) {
-            board.addProjectile(this.projectileTemplate.copyAtTarget(plant.getPosition(), target));
+            Projectile projectile = this.projectileTemplate.copyAtTarget(plant.getPosition(), target);
+            projectile.setSourcePlant(plant);
+            board.addProjectile(projectile);
         }
     }
 

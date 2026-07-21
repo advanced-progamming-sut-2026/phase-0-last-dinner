@@ -138,6 +138,10 @@ public class BeghouledController
             );
         }
 
+        return upgradePlants(option);
+    }
+
+    private BeghouledActionResult upgradePlants(PlantUpgradeOption option) {
         if (!option.canUpgrade(game.getSunAmount())) {
             return result(
                     BeghouledActionStatus.NOT_ENOUGH_SUN,
@@ -217,6 +221,33 @@ public class BeghouledController
 
     @Override
     public BeghouledStateResult onShowBeghouledRequested() {
+        List<List<String>> grid = createGrid();
+        boolean won = game.isCompleted()
+                && !game.isLost();
+        boolean possibleMove = game.isStarted()
+                && !game.isCompleted()
+                && game.hasPossibleMove();
+
+        return new BeghouledStateResult(
+                game.getCurrentStageNumber(),
+                game.getHighestUnlockedStage(),
+                game.getSunAmount(),
+                game.getCompletedMatchCount(),
+                game.getTargetMatchCount(),
+                game.getAvailablePlantTypes(),
+                game.getUpgradeOptions(),
+                grid,
+                game.getCraters(),
+                possibleMove,
+                game.isEndlessZombieWaves(),
+                game.isStarted(),
+                game.isCompleted(),
+                won,
+                game.isLost()
+        );
+    }
+
+    private List<List<String>> createGrid() {
         List<List<String>> grid = new ArrayList<>();
 
         for (int y = 1;
@@ -249,30 +280,7 @@ public class BeghouledController
             grid.add(row);
         }
 
-        boolean won = game.isCompleted()
-                && !game.isLost();
-
-        boolean possibleMove = game.isStarted()
-                && !game.isCompleted()
-                && game.hasPossibleMove();
-
-        return new BeghouledStateResult(
-                game.getCurrentStageNumber(),
-                game.getHighestUnlockedStage(),
-                game.getSunAmount(),
-                game.getCompletedMatchCount(),
-                game.getTargetMatchCount(),
-                game.getAvailablePlantTypes(),
-                game.getUpgradeOptions(),
-                grid,
-                game.getCraters(),
-                possibleMove,
-                game.isEndlessZombieWaves(),
-                game.isStarted(),
-                game.isCompleted(),
-                won,
-                game.isLost()
-        );
+        return grid;
     }
 
     private BeghouledActionResult validateRunningGame() {

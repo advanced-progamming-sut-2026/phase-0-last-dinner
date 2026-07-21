@@ -10,7 +10,10 @@ public enum MidGameCommand {
     SHOW_PLANTS_STATUS("show\\s+plants\\s+status"),
     SHOW_TILE_STATUS("show\\s+tile\\s+status\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
     COLLECT_SUN("collect\\s+sun\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
-    PLANT_PLANT("plant\\s+plant\\s+-t\\s+(?<type>\\\"[^\\\"]+\\\"|\\S+)\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
+    PLANT_PLANT("plant\\s+plant\\s+-t\\s+(?<type>\\\"[^\\\"]+\\\"|\\S+)\\s+-l\\s+"
+            + "(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
+    PLANT_IMITATER("plant\\s+imitater\\s+-t\\s+(?<type>\\\"[^\\\"]+\\\"|\\S+)\\s+-l\\s+"
+            + "(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
     PLUCK_PLANT("pluck\\s+plant\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
     FEED_PLANT("feed\\s+plant\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?"),
     CHEAT_ADD_SUNS("cheat\\s+add\\s+-n\\s+(?<count>\\d+)\\s+suns"),
@@ -18,7 +21,8 @@ public enum MidGameCommand {
     CHEAT_ADD_PLANT_FOOD("cheat\\s+add-plant-food"),
     RELEASE_THE_NUKE("release\\s+the\\s+nuke"),
     ZOMBIES_INFO("zombies\\s+info"),
-    SPAWN_ZOMBIE("cheat\\s+spawn-zombie\\s+-t\\s+(?<type>\\\"[^\\\"]+\\\"|\\S+)\\s+-l\\s+(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?");
+    SPAWN_ZOMBIE("cheat\\s+spawn-zombie\\s+-t\\s+(?<type>\\\"[^\\\"]+\\\"|\\S+)\\s+-l\\s+"
+            + "(?:\\(|<)?\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*(?:\\)|>)?");
 
     private final Pattern pattern;
 

@@ -2,6 +2,7 @@ package controller;
 
 import model.Menu.GameMenuContext;
 import model.Menu.MenuType;
+import model.User.User;
 import model.chapters.ChapterType;
 import model.level.LevelType;
 
@@ -69,11 +70,18 @@ public class ChapterController implements MenuController {
             return false;
         }
 
-        if (!this.getAvailableLevels().contains(levelType)) {
+        User user = this.loginController.getCurrentUser();
+        if (!this.getAvailableLevels().contains(levelType)
+                || user == null
+                || !user.isAdventureLevelUnlocked(this.selectedChapter, levelType)) {
             return false;
         }
 
         this.selectedLevel = levelType;
+
+        if (levelType == LevelType.CONVEYOR_BELT) {
+            return true;
+        }
 
         try {
             this.getMenuContext().enterMenu(MenuType.PLANT_PICK_MENU);

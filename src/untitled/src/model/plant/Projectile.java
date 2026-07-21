@@ -1,6 +1,7 @@
 package model.plant;
 
 import lombok.Getter;
+import model.Plant;
 import model.mechanism.Position;
 import model.mechanism.Tickable;
 import model.zombie.Zombie;
@@ -17,6 +18,7 @@ public class Projectile implements Tickable {
     private double speed;
     private ProjectileType type;
     private Zombie target;
+    private Plant sourcePlant;
     private int pierceCount;
     private int bounceCount;
     private int plantFoodChancePercent;
@@ -114,6 +116,7 @@ public class Projectile implements Tickable {
         copy.lobbed = this.lobbed;
         copy.peaBased = this.peaBased;
         copy.hostileToPlants = this.hostileToPlants;
+        copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
         return copy;
     }
@@ -141,6 +144,7 @@ public class Projectile implements Tickable {
         copy.lobbed = this.lobbed;
         copy.peaBased = this.peaBased;
         copy.hostileToPlants = this.hostileToPlants;
+        copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
         return copy;
     }
@@ -282,6 +286,10 @@ public class Projectile implements Tickable {
 
     public void setTarget(Zombie target) {
         this.target = target;
+    }
+
+    public void setSourcePlant(Plant sourcePlant) {
+        this.sourcePlant = sourcePlant;
     }
 
     public void setType(ProjectileType type) {

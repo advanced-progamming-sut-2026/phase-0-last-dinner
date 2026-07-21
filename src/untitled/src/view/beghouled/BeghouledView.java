@@ -26,24 +26,31 @@ public class BeghouledView implements CommandHandler {
             return;
         }
 
-        Matcher matcher;
+        if (handleActionCommand(input) || handleUtilityCommand(input)) {
+            return;
+        }
 
-        matcher = BeghouledCommands.START.getMatcher(input);
+        System.out.println("Invalid Beghouled command.");
+        showCommandHelp();
+    }
+
+    private boolean handleActionCommand(String input) {
+        Matcher matcher = BeghouledCommands.START.getMatcher(input);
         if (matcher != null) {
             handleStartCommand(matcher);
-            return;
+            return true;
         }
 
         matcher = BeghouledCommands.SWAP.getMatcher(input);
         if (matcher != null) {
             handleSwapCommand(matcher);
-            return;
+            return true;
         }
 
         matcher = BeghouledCommands.UPGRADE.getMatcher(input);
         if (matcher != null) {
             handleUpgradeCommand(matcher);
-            return;
+            return true;
         }
 
         matcher = BeghouledCommands.SHOW.getMatcher(input);
@@ -51,19 +58,23 @@ public class BeghouledView implements CommandHandler {
             showState(
                     observer.onShowBeghouledRequested()
             );
-            return;
+            return true;
         }
 
-        matcher = BeghouledCommands.ADVANCE_TIME.getMatcher(input);
+        return false;
+    }
+
+    private boolean handleUtilityCommand(String input) {
+        Matcher matcher = BeghouledCommands.ADVANCE_TIME.getMatcher(input);
         if (matcher != null) {
             handleAdvanceCommand(matcher);
-            return;
+            return true;
         }
 
         matcher = BeghouledCommands.HELP.getMatcher(input);
         if (matcher != null) {
             showCommandHelp();
-            return;
+            return true;
         }
 
         matcher = BeghouledCommands.BACK.getMatcher(input);
@@ -71,11 +82,10 @@ public class BeghouledView implements CommandHandler {
             System.out.println(
                     "Returning to minigame menu."
             );
-            return;
+            return true;
         }
 
-        System.out.println("Invalid Beghouled command.");
-        showCommandHelp();
+        return false;
     }
 
     private void handleStartCommand(Matcher matcher) {
@@ -194,6 +204,10 @@ public class BeghouledView implements CommandHandler {
                         + result.getTargetMatchCount()
         );
 
+        showActionStatus(result);
+    }
+
+    private void showActionStatus(BeghouledActionResult result) {
         if (result.getStatus()
                 == BeghouledActionStatus.STAGE_WON) {
             System.out.println(
@@ -226,6 +240,16 @@ public class BeghouledView implements CommandHandler {
 
         System.out.println("Beghouled state:");
 
+        showStateSummary(state);
+        showBoard(state);
+        showUpgrades(state);
+
+        System.out.println(
+                "State: " + getStateText(state)
+        );
+    }
+
+    private void showStateSummary(BeghouledStateResult state) {
         System.out.println(
                 "Stage: "
                         + state.getStageNumber()
@@ -265,13 +289,6 @@ public class BeghouledView implements CommandHandler {
                         + (state.isEndlessZombieWaves()
                         ? "endless"
                         : "disabled")
-        );
-
-        showBoard(state);
-        showUpgrades(state);
-
-        System.out.println(
-                "State: " + getStateText(state)
         );
     }
 

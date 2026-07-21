@@ -9,6 +9,8 @@ import model.Plant;
 import model.User.User;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
+import model.minigame.StageProgressMiniGame;
+import model.mechanism.Board;
 import model.minigame.beghouledminigame.BeghouledMiniGame;
 import model.minigame.izombieminigame.IZombieMiniGame;
 import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
@@ -108,7 +110,7 @@ public class TravelLogController
         }
 
         questObject.claimReward();
-        this.user.setCompletedQuests(safeAdd(this.user.getCompletedQuests(), 1));
+        this.user.recordQuestCompletion(questObject.getQuest());
         this.user.addNews("Quest completed: " + questObject.getQuest().getDisplayName());
         return "Quest reward claimed: " + questObject.getReward();
     }
@@ -154,7 +156,31 @@ public class TravelLogController
             return null;
         }
 
-        return createMiniGameHandler(miniGame);
+        CommandHandler handler = createMiniGameHandler(miniGame);
+        if (handler == null) {
+            return null;
+        }
+
+        return input -> {
+            boolean wasCompleted = miniGame.isAllStagesCompleted();
+            int previousUnlockedStage = this.highestUnlockedStage(miniGame);
+            this.connectMiniGameEncounters(miniGame);
+            handler.handleCommand(input);
+            this.connectMiniGameEncounters(miniGame);
+            this.recordVisibleMiniGameZombies(miniGame);
+
+            if (this.user != null) {
+                int unlockedStage = this.highestUnlockedStage(miniGame);
+                if (unlockedStage > previousUnlockedStage) {
+                    this.user.recordMiniGameStageProgress(miniGame.getType(), unlockedStage);
+                }
+                if (!wasCompleted && miniGame.isAllStagesCompleted()
+                        && miniGame.isWinConditionMet()
+                        && this.user.recordMiniGameCompletion(miniGame.getType())) {
+                    this.user.addNews("Minigame completed: " + miniGame.getType().name());
+                }
+            }
+        };
     }
 
     public PageName getCurrentPageName() {
@@ -274,6 +300,37 @@ public class TravelLogController
         return view;
     }
 
+    private int highestUnlockedStage(MiniGame miniGame) {
+        return miniGame instanceof StageProgressMiniGame
+                ? ((StageProgressMiniGame) miniGame).getHighestUnlockedStage()
+                : 1;
+    }
+
+    private void connectMiniGameEncounters(MiniGame miniGame) {
+        if (this.user == null || miniGame == null || miniGame.getBoard() == null) {
+            return;
+        }
+
+        miniGame.getBoard().setZombieEncounterListener(definition -> {
+            if (definition != null) {
+                this.user.recordEncounteredZombie(definition.getAlias());
+            }
+        });
+    }
+
+    private void recordVisibleMiniGameZombies(MiniGame miniGame) {
+        Board board = miniGame == null ? null : miniGame.getBoard();
+        if (this.user == null || board == null) {
+            return;
+        }
+
+        board.getAllZombies().forEach(zombie -> {
+            if (zombie != null && zombie.getDefinition() != null) {
+                this.user.recordEncounteredZombie(zombie.getDefinition().getAlias());
+            }
+        });
+    }
+
     private boolean applyReward(QuestObj questObject) {
         Quest quest = questObject.getQuest();
 
@@ -285,13 +342,20 @@ public class TravelLogController
                 return this.addRandomSeedPackets(10);
             case PROFESSIONAL_PLANT_PLAYER:
                 return this.unlockRandomPlant();
-            case ONLY_CACTUS:
-                this.addDiamonds(20);
-                return true;
             case ECONOMICAL_GARDENER:
                 return this.addRandomSeedPackets(
                         Math.max(0, 20 - parseNumber(questObject.getVariableValue(), 0))
                 );
+            default:
+                return this.applyCurrencyReward(quest, questObject.getVariableValue());
+        }
+    }
+
+    private boolean applyCurrencyReward(Quest quest, String variableValue) {
+        switch (quest) {
+            case ONLY_CACTUS:
+                this.addDiamonds(20);
+                return true;
             case DEFENSE_MASTER:
                 this.addDiamonds(200);
                 return true;
@@ -310,6 +374,13 @@ public class TravelLogController
             case BLOOMING_WITH_LIMITS:
                 this.addDiamonds(100);
                 return true;
+            default:
+                return this.applyRemainingCurrencyReward(quest, variableValue);
+        }
+    }
+
+    private boolean applyRemainingCurrencyReward(Quest quest, String variableValue) {
+        switch (quest) {
             case NIGHT_OR_MORNING:
                 this.addDiamonds(20);
                 return true;
@@ -335,7 +406,7 @@ public class TravelLogController
                 this.addDiamonds(25);
                 return true;
             case MOWING_TIME:
-                this.addDiamonds(parseNumber(questObject.getVariableValue(), 10));
+                this.addDiamonds(parseNumber(variableValue, 10));
                 return true;
             default:
                 return false;
@@ -386,6 +457,7 @@ public class TravelLogController
         PlantDefinition selected = lockedPlants.get(this.random.nextInt(lockedPlants.size()));
         Plant plant = new PlantFactory(this.user.getPlantUpgradeService()).create(selected);
         this.user.getUnlockedPlants().add(plant);
+        this.user.addNews("New plant unlocked: " + selected.getName());
         return true;
     }
 

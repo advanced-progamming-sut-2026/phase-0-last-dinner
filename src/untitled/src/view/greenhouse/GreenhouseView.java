@@ -33,7 +33,6 @@ public class GreenhouseView implements CommandHandler {
         }
 
         Matcher matcher;
-
         matcher = GreenhouseCommands.SHOW_GREENHOUSE.getMatcher(input);
 
         if (matcher != null) {
@@ -131,8 +130,10 @@ public class GreenhouseView implements CommandHandler {
 
         System.out.println(result.getMessage());
 
-        if (result.isSuccessful())
-            System.out.println("Coins: " + result.getRemainingCoins() + " | Diamonds: " + result.getRemainingDiamonds());
+        if (result.isSuccessful()) {
+            System.out.println("Coins: " + result.getRemainingCoins()
+                    + " | Diamonds: " + result.getRemainingDiamonds());
+        }
 
     }
 

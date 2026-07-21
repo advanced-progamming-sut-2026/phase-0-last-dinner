@@ -1,4 +1,5 @@
 import controller.ApplicationController;
+import controller.LoginController;
 import controller.PlantPickController;
 import model.Menu.MenuType;
 import model.Plant;
@@ -129,6 +130,12 @@ public class PlantPickControllerTest {
         Field currentUser = ApplicationController.class.getDeclaredField("currentUser");
         currentUser.setAccessible(true);
         currentUser.set(controller, user);
+        Field loginControllerField = ApplicationController.class.getDeclaredField("loginController");
+        loginControllerField.setAccessible(true);
+        LoginController loginController = (LoginController) loginControllerField.get(controller);
+        Field loggedInUser = LoginController.class.getDeclaredField("currentUser");
+        loggedInUser.setAccessible(true);
+        loggedInUser.set(loginController, user);
         controller.getMenuContext().login();
 
         PlantDefinition sunflower = application.getPlantDefinitions().findByName("Sunflower");
@@ -138,7 +145,8 @@ public class PlantPickControllerTest {
         user.setDiamond(2);
 
         assertEquals("GAME_MENU", controller.execute("menu enter game"));
-        assertEquals("PLANT_PICK_MENU", controller.execute("menu enter plant pick"));
+        assertEquals("CHAPTER_MENU", controller.execute("menu enter chapter -c Ancient Egypt"));
+        assertEquals("PLANT_PICK_MENU", controller.execute("select level -t NORMAL"));
         controller.execute("add plant -t Sunflower");
         controller.execute("boost plant -t Sunflower");
         controller.execute("start game");

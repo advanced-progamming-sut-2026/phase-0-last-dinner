@@ -7,13 +7,11 @@ import java.util.List;
 
 public class AuraBuffBehavior implements ZombieBehavior {
     private double speedMultiplier;
-    private double damageMultiplier;
     private int effectRadius;
     private List<Zombie> affectedZombies;
 
-    public AuraBuffBehavior(double speedMultiplier, double damageMultiplier, int effectRadius) {
+    public AuraBuffBehavior(double speedMultiplier, double ignoredDamageMultiplier, int effectRadius) {
         this.speedMultiplier = speedMultiplier;
-        this.damageMultiplier = damageMultiplier;
         this.effectRadius = effectRadius;
         this.affectedZombies = new java.util.ArrayList<>();
     }

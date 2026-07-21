@@ -4,7 +4,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public enum LeaderBoardCommand {
-    SHOW("^\\s*menu\\s+leaderboard\\s*$");
+    SHOW("^\\s*menu\\s+leaderboard"
+            + "(?:\\s+-s\\s+(?<sort>[a-zA-Z_-]+))?"
+            + "(?:\\s+-o\\s+(?<order>asc|desc))?"
+            + "\\s*$");
 
     private final Pattern pattern;
 

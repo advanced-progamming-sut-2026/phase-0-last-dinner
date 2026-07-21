@@ -1,5 +1,7 @@
 package model.minigame.izombieminigame;
 
+import model.mechanism.Board;
+
 import model.mechanism.Position;
 import model.zombie.ZombieDefinition;
 
@@ -39,4 +41,8 @@ public interface IZombieIntegration {
     boolean hasAlivePlayerZombies();
 
     boolean isBrainEaten(int row);
+
+    default Board getBoard() {
+        return null;
+    }
 }

@@ -100,7 +100,13 @@ public class ShooterBehavior implements PlantBehavior {
         }
 
         for (int i = 0; i < Math.max(0, shotCount); i++) {
-            Projectile projectile = this.createProjectileForPlant(plant, board, plant.getPosition(), horizontalDirection, 0);
+            Projectile projectile = this.createProjectileForPlant(
+                    plant,
+                    board,
+                    plant.getPosition(),
+                    horizontalDirection,
+                    0
+            );
             board.addProjectile(projectile);
         }
     }
@@ -142,6 +148,7 @@ public class ShooterBehavior implements PlantBehavior {
             }
 
             Projectile projectile = this.projectileTemplate.copyAt(plant.getPosition(), 1, 0);
+            projectile.setSourcePlant(plant);
             projectile.setDamageExpression(DamageExpressionParser.selectExpressionAt(
                     this.projectileTemplate.getDamageExpression(),
                     bulbIndex
@@ -160,6 +167,7 @@ public class ShooterBehavior implements PlantBehavior {
             int verticalDirection
     ) {
         Projectile projectile = this.projectileTemplate.copyAt(spawn, horizontalDirection, verticalDirection);
+        projectile.setSourcePlant(plant);
 
         if (this.shooterPattern == ShooterPattern.STACKED_FORWARD) {
             int stackIndex = Math.max(0, this.samePlantCount(plant, board) - 1);

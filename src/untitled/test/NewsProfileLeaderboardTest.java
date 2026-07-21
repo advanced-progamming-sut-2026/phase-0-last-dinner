@@ -6,6 +6,7 @@ import model.User.AccountResult;
 import model.User.AccountService;
 import model.User.AccountStatus;
 import model.User.LeaderboardEntry;
+import model.User.LeaderboardSortField;
 import model.User.PasswordHasher;
 import model.User.ProfileInformation;
 import model.User.User;
@@ -140,6 +141,40 @@ public class NewsProfileLeaderboardTest {
     }
 
     @Test
+    public void leaderboardSupportsDocumentedColumnsAndBothSortDirections() throws Exception {
+        UserRepository repository = this.createRepository();
+        User first = this.createUser("first");
+        User second = this.createUser("second");
+        first.setCompletedDailyQuests(2);
+        first.setCompletedNonDailyQuests(4);
+        first.setCompletedMinigames(1);
+        second.setCompletedDailyQuests(5);
+        second.setCompletedNonDailyQuests(1);
+        second.setCompletedMinigames(3);
+        repository.add(first);
+        repository.add(second);
+
+        LeaderBoardController controller = new LeaderBoardController(
+                new LeaderBoardView(),
+                new AccountService(repository)
+        );
+
+        List<LeaderboardEntry> ascending = controller.showLeaderboard(
+                LeaderboardSortField.DAILY_QUESTS,
+                true
+        );
+        List<LeaderboardEntry> descending = controller.showLeaderboard(
+                LeaderboardSortField.DAILY_QUESTS,
+                false
+        );
+
+        assertEquals("first", ascending.get(0).getUsername());
+        assertEquals("second", descending.get(0).getUsername());
+        assertEquals(3, descending.get(0).getCompletedMinigames());
+        assertEquals(1, descending.get(0).getCompletedNonDailyQuests());
+    }
+
+    @Test
     public void applicationRoutesNewsProfileAndLeaderboardCommands() throws Exception {
         UserRepository repository = this.createRepository();
         User user = this.createUser("shayan");
@@ -165,8 +200,8 @@ public class NewsProfileLeaderboardTest {
             controller.execute("menu profile change-nickname -u newnickname");
             assertEquals("newnickname", user.getNickname());
             controller.execute("menu exit");
-            controller.execute("menu enter game");
             controller.execute("menu leaderboard");
+            assertEquals("MEOW_POINT_MENU", controller.execute("menu meow-point"));
         } finally {
             System.setOut(previousOutput);
         }

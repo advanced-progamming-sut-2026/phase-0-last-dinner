@@ -11,6 +11,30 @@ public enum ZombotanyCommands {
                     + "\\s*$"
     ),
 
+    SHOW_ALL_PLANTS(
+            "^\\s*show\\s+all\\s+plants\\s*$"
+    ),
+
+    SHOW_AVAILABLE_PLANTS(
+            "^\\s*show\\s+available\\s+plants\\s*$"
+    ),
+
+    SHOW_SELECTED_PLANTS(
+            "^\\s*show\\s+selected\\s+plants\\s*$"
+    ),
+
+    ADD_PLANT(
+            "^\\s*add\\s+plant\\s+-t\\s+(?<plant>.+?)\\s*$"
+    ),
+
+    REMOVE_PLANT(
+            "^\\s*remove\\s+plant\\s+-t\\s+(?<plant>.+?)\\s*$"
+    ),
+
+    START_GAME(
+            "^\\s*start\\s+game\\s*$"
+    ),
+
     PLANT(
             "^\\s*zombotany\\s+plant"
                     + "\\s+-p\\s+(?<plant>.+?)"

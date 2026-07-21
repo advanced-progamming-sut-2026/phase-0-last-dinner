@@ -24,65 +24,67 @@ public class CollectionView implements CommandHandler {
             return;
         }
 
-        Matcher matcher;
-
-        matcher = CollectionCommands.SHOW_PLANTS.getMatcher(input);
-
-        if (matcher != null) {
-            this.showUnlockedPlants();
-            return;
-        }
-
-        matcher = CollectionCommands.SHOW_ALL_PLANTS.getMatcher(input);
-
-        if (matcher != null) {
-            this.showAllPlants();
-            return;
-        }
-
-        matcher = CollectionCommands.SHOW_ZOMBIES.getMatcher(input);
-
-        if (matcher != null) {
-            this.showEncounteredZombies();
-            return;
-        }
-
-        matcher = CollectionCommands.SHOW_ALL_ZOMBIES.getMatcher(input);
-
-        if (matcher != null) {
-            this.showAllZombies();
-            return;
-        }
-
-        matcher = CollectionCommands.SHOW_PLANT.getMatcher(input);
-
-        if (matcher != null) {
-            this.showPlant(this.cleanName(matcher.group("plantName")));
-            return;
-        }
-
-        matcher = CollectionCommands.SHOW_ZOMBIE.getMatcher(input);
-
-        if (matcher != null) {
-            this.showZombie(this.cleanName(matcher.group("zombieName")));
-            return;
-        }
-
-        matcher = CollectionCommands.UPGRADE_PLANT.getMatcher(input);
-
-        if (matcher != null) {
-            this.upgradePlant(this.cleanName(matcher.group("plantName")));
-            return;
-        }
-
-        matcher = CollectionCommands.PURCHASE_PLANT.getMatcher(input);
-
-        if (matcher != null) {
-            this.purchasePlant(this.cleanName(matcher.group("plantName")));
+        if (this.handleListCommand(input) || this.handleItemCommand(input)) {
             return;
         }
 
         System.out.println("Invalid collection command.");
+    }
+
+    private boolean handleListCommand(String input) {
+        Matcher matcher = CollectionCommands.SHOW_PLANTS.getMatcher(input);
+        if (matcher != null) {
+            this.showUnlockedPlants();
+            return true;
+        }
+
+        matcher = CollectionCommands.SHOW_ALL_PLANTS.getMatcher(input);
+        if (matcher != null) {
+            this.showAllPlants();
+            return true;
+        }
+
+        matcher = CollectionCommands.SHOW_ZOMBIES.getMatcher(input);
+        if (matcher != null) {
+            this.showEncounteredZombies();
+            return true;
+        }
+
+        matcher = CollectionCommands.SHOW_ALL_ZOMBIES.getMatcher(input);
+        if (matcher != null) {
+            this.showAllZombies();
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean handleItemCommand(String input) {
+        Matcher matcher = CollectionCommands.SHOW_PLANT.getMatcher(input);
+        if (matcher != null) {
+            this.showPlant(this.cleanName(matcher.group("plantName")));
+            return true;
+        }
+
+        matcher = CollectionCommands.SHOW_ZOMBIE.getMatcher(input);
+        if (matcher != null) {
+            this.showZombie(this.cleanName(matcher.group("zombieName")));
+            return true;
+        }
+
+        matcher = CollectionCommands.UPGRADE_PLANT.getMatcher(input);
+        if (matcher != null) {
+            this.upgradePlant(this.cleanName(matcher.group("plantName")));
+            return true;
+        }
+
+        matcher = CollectionCommands.PURCHASE_PLANT.getMatcher(input);
+        if (matcher != null) {
+            this.purchasePlant(this.cleanName(matcher.group("plantName")));
+            return true;
+        }
+
+        return false;
     }
 
     private void showUnlockedPlants() {
@@ -172,32 +174,36 @@ public class CollectionView implements CommandHandler {
     }
 
     private void printPlantState(PlantCollectionState state) {
-        if (state == null)
+        if (state == null) {
             return;
+        }
 
+        this.printPlantProgress(state);
+        this.printPlantAttributes(state);
+        this.printLevelUpEffects(state);
+
+        System.out.println("----------------------------------------");
+    }
+
+    private void printPlantProgress(PlantCollectionState state) {
         System.out.println("Name: " + state.getName());
         System.out.println("Status: " + (state.isUnlocked() ? "unlocked" : "locked"));
-
         System.out.println(
                 "Level: " + state.getCurrentLevel()
                         + "/" + state.getMaximumLevel()
         );
-
         System.out.println("Seed packets: " + state.getSeedPackets());
-
         if (state.getCurrentLevel() >= state.getMaximumLevel()) {
-
             System.out.println("Next upgrade: maximum level reached");
         } else {
             System.out.println("Required seed packets: " + state.getRequiredSeedPackets());
-
             System.out.println("Required coins: " + state.getRequiredCoins());
         }
+    }
 
+    private void printPlantAttributes(PlantCollectionState state) {
         System.out.println("Sun cost: " + state.getSunCost());
-
         System.out.println("Base health: " + state.getBaseHealth());
-
         System.out.println(
                 "Damage: "
                         + this.displayText(
@@ -229,31 +235,38 @@ public class CollectionView implements CommandHandler {
                 "Plant Food: " + this.displayText(state.getPlantFoodEffectDescription()
                 )
         );
+    }
 
-        if (state.getLevelUpEffects().isEmpty())
+    private void printLevelUpEffects(PlantCollectionState state) {
+        if (state.getLevelUpEffects().isEmpty()) {
             System.out.println("Level-up effects: none");
-        else {
-            System.out.println("Level-up effects:");
-
-            for (int i = 0; i < state.getLevelUpEffects().size(); i++) {
-                System.out.println(
-                        "- Level "
-                                + (i + 2)
-                                + ": "
-                                + state.getLevelUpEffects()
-                                .get(i)
-                );
-            }
+            return;
         }
+        System.out.println("Level-up effects:");
+        for (int i = 0; i < state.getLevelUpEffects().size(); i++) {
+            System.out.println(
+                    "- Level "
+                            + (i + 2)
+                            + ": "
+                            + state.getLevelUpEffects().get(i)
+            );
+        }
+    }
+
+    private void printZombieState(ZombieCollectionState state) {
+        if (state == null) {
+            return;
+        }
+
+        this.printZombieIdentity(state);
+        this.printZombieStats(state);
+        this.printZombieArmor(state);
+        this.printConditionResistances(state);
 
         System.out.println("----------------------------------------");
     }
 
-    private void printZombieState(ZombieCollectionState state) {
-        if (state == null)
-            return;
-
-
+    private void printZombieIdentity(ZombieCollectionState state) {
         System.out.println(
                 "Name: " + this.displayText(state.getDisplayName())
         );
@@ -277,7 +290,9 @@ public class CollectionView implements CommandHandler {
         System.out.println(
                 "Chapter: " + state.getChapter()
         );
+    }
 
+    private void printZombieStats(ZombieCollectionState state) {
         System.out.println(
                 "Hitpoints: " + state.getHitpoints()
         );
@@ -301,11 +316,6 @@ public class CollectionView implements CommandHandler {
         System.out.println(
                 "Can spawn Plant Food: " + state.isCanSpawnPlantFood()
         );
-
-        this.printZombieArmor(state);
-        this.printConditionResistances(state);
-
-        System.out.println("----------------------------------------");
     }
 
     private void printZombieArmor(ZombieCollectionState state) {

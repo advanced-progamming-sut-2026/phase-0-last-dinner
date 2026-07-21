@@ -1,5 +1,10 @@
 package model.minigame;
 
+import lombok.Getter;
+import lombok.Setter;
+
+@Getter
+@Setter
 public class MiniGameStage {
     private int stageNumber;
     private double difficultyMultiplier;

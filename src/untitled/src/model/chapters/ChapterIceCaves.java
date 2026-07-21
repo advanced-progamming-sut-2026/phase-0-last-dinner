@@ -3,11 +3,18 @@ package model.chapters;
 import lombok.Getter;
 import lombok.Setter;
 import model.Plant;
-import model.mechanism.Board;import model.mechanism.Position;import model.mechanism.TerrainType;import model.mechanism.Tile;
+import model.mechanism.Board;
+import model.mechanism.Position;
+import model.mechanism.TerrainType;
+import model.mechanism.Tile;
+import model.mechanism.ZombieSpawner;
+import model.plant.PlantTag;
 import model.zombie.Zombie;
 import model.zombie.ZombieCondition;
+import model.zombie.ZombieDefinition;
 
-import java.util.ArrayList;import java.util.List;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 @Getter
@@ -17,6 +24,8 @@ public class ChapterIceCaves extends Chapter{
     private ArrayList<Tile> frozenTiles;
     private ArrayList<Tile> slipperyTiles;
     private ArrayList<Zombie> frozenZombies; // جاهایی که باید زامبی یخ زده باشه رو توی این نگه میدارم
+    private ZombieSpawner zombieSpawner;
+    private boolean frozenZombieStartEnabled;
     public ChapterIceCaves() {
         super(ChapterType.ICE_CAVES);
         this.frozenTiles = new ArrayList<>();
@@ -25,6 +34,9 @@ public class ChapterIceCaves extends Chapter{
     }
     @Override
     public Board buildBoard() {
+        this.frozenTiles.clear();
+        this.slipperyTiles.clear();
+        this.frozenZombies.clear();
         List<Tile> tiles = new ArrayList<>();
         for (int row = 0; row < 5; row++) {
             for (int col = 0; col < 9; col++) {
@@ -40,6 +52,9 @@ public class ChapterIceCaves extends Chapter{
                 }
                 Tile tile = new Tile(new Position(col, row), type);
                 if (type == TerrainType.FROZEN) frozenTiles.add(tile);
+                if (type == TerrainType.SLIPPERY_UP || type == TerrainType.SLIPPERY_DOWN) {
+                    slipperyTiles.add(tile);
+                }
                 tiles.add(tile);
             }
         }
@@ -65,10 +80,41 @@ public class ChapterIceCaves extends Chapter{
             List<Plant> plantsInRow = board.getPlantsInLane(new Position(0, row));
 
             for (Plant plant : plantsInRow) {
-                if (plant != null && !plant.isDead()) {
-                    plant.addFreezeLevel();
+                if (plant != null && !plant.isDead()
+                        && (plant.getTags() == null || !plant.getTags().contains(PlantTag.FIRE))) {
+                    board.getPlantCoverSystem().hitWithSnowball(plant);
                 }
             }
+        }
+    }
+
+    public void spawnFrozenZombies(Board board) {
+        if (!this.frozenZombieStartEnabled || board == null || this.zombieSpawner == null
+                || !this.frozenZombies.isEmpty()
+                || this.zombieSpawner.getDefinitionRepository() == null) {
+            return;
+        }
+
+        ZombieDefinition definition = this.zombieSpawner.getDefinitionRepository().findByAlias("ZombieDefault");
+        if (definition == null) {
+            return;
+        }
+
+        for (Tile frozenTile : this.frozenTiles) {
+            if (frozenTile == null || frozenTile.getPosition() == null
+                    || frozenTile.getTerrainType() != TerrainType.FROZEN
+                    || !frozenTile.getZombies().isEmpty()) {
+                continue;
+            }
+
+            Zombie zombie = this.zombieSpawner.getZombieFactory().create(definition, frozenTile.getPosition());
+            if (zombie == null) {
+                continue;
+            }
+
+            zombie.applyDifficulty(this.zombieSpawner.getDifficultyConfig().getMultiplier());
+            board.addZombie(zombie, frozenTile.getPosition());
+            this.frozenZombies.add(zombie);
         }
     }
 
@@ -85,6 +131,7 @@ public class ChapterIceCaves extends Chapter{
 
     @Override
     public void onWaveStart(Board board, model.mechanism.Wave wave) {
+        this.spawnFrozenZombies(board);
         this.spawnIceWind(board);
     }
 

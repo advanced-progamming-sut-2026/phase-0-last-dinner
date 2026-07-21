@@ -28,7 +28,7 @@ public class ConveyorBeltLevel extends Level implements Tickable {
         this.random = new Random();
         this.plantGenerationIntervalTicks = (long) GENERATION_INTERVAL_SECONDS * gameClock.getTicksPerSecond();
     }
-    private static final int WAVE_COUNT = 5;
+    private static final int WAVE_COUNT = 4;
     protected List<Wave> buildWaves(double baseDifficulty) {
         List<Wave> waves = new ArrayList<>();
         for (int i = 1; i <= WAVE_COUNT; i++) {
@@ -59,6 +59,7 @@ public class ConveyorBeltLevel extends Level implements Tickable {
     @Override
     public void start() {
         setStarted(true);
+        this.conveyorPlants.clear();
         this.nextGenerationTick = this.gameClock.getCurrentTick();
         this.generateRandomPlant();
         this.nextGenerationTick += this.plantGenerationIntervalTicks;
@@ -89,14 +90,7 @@ public class ConveyorBeltLevel extends Level implements Tickable {
 
     @Override
     public boolean isWinConditionMet() {
-        List<Wave> waves = getWaves();
-        if (waves == null || waves.isEmpty()) {
-            return false;
-        }
-        Wave lastWave = waves.get(waves.size() - 1);
-        return lastWave.isFinalWave()
-                && lastWave.isStarted()
-                && lastWave.getRemainingHealthPercentage() <= 0;
+        return this.areAllWavesDefeated();
     }
 
     @Override

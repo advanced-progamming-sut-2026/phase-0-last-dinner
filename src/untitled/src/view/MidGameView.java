@@ -4,6 +4,7 @@ import controller.MidGameController;
 import model.Plant;
 import model.mechanism.*;
 import model.zombie.Zombie;
+import model.zombie.ZombieArmor;
 
 import java.util.List;
 import java.util.Map;
@@ -20,104 +21,137 @@ public class MidGameView implements CommandHandler, GameEventListener {
     public void handleCommand(String input) {
         for (MidGameCommand command : MidGameCommand.values()) {
             Matcher matcher = command.getMatcher(input);
-            if (matcher == null) continue;
-
-            switch (command) {
-                case ADVANCE_TIME: {
-                    int count = Integer.parseInt(matcher.group("count"));
-                    observer.onAdvanceTimeRequested(count);
-                    break;
-                }
-                case SHOW_MAP: {
-                    showMap(observer.onShowMapRequested());
-                    break;
-                }
-                case SHOW_SUN_AMOUNT: {
-                    System.out.println("Sun: " + observer.onShowSunAmountRequested());
-                    break;
-                }
-                case SHOW_PLANTS_STATUS: {
-                    showPlantsStatus(observer.onShowPlantsStatusRequested());
-                    break;
-                }
-                case SHOW_TILE_STATUS: {
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    showTileStatus(observer.onShowTileStatusRequested(x, y));
-                    break;
-                }
-                case COLLECT_SUN: {
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    if (!observer.onCollectSunRequested(x, y)) {
-                        System.out.println("No sun at (" + (x + 1) + ", " + (y + 1) + ").");
-                    }
-                    break;
-                }
-                case PLANT_PLANT: {
-                    String type = matcher.group("type");
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    if (!observer.onPlantPlantRequested(type, x, y)) {
-                        System.out.println("Cannot plant " + type + " at (" + (x + 1) + ", " + (y + 1) + ").");
-                    }
-                    break;
-                }
-                case PLUCK_PLANT: {
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    if (!observer.onPluckPlantRequested(x, y)) {
-                        System.out.println("No plant at (" + (x + 1) + ", " + (y + 1) + ").");
-                    }
-                    break;
-                }
-                case FEED_PLANT: {
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    if (!observer.onFeedPlantRequested(x, y)) {
-                        System.out.println("Cannot feed plant at (" + (x + 1) + ", " + (y + 1) + ").");
-                    }
-                    break;
-                }
-                case CHEAT_ADD_SUNS: {
-                    int count = Integer.parseInt(matcher.group("count"));
-                    observer.onCheatAddSunsRequested(count);
-                    break;
-                }
-                case CHEAT_REMOVE_COOLDOWN: {
-                    observer.onCheatRemoveCooldownRequested();
-                    break;
-                }
-                case CHEAT_ADD_PLANT_FOOD: {
-                    observer.onCheatAddPlantFoodRequested();
-                    break;
-                }
-                case RELEASE_THE_NUKE: {
-                    observer.onReleaseTheNukeRequested();
-                    break;
-                }
-                case ZOMBIES_INFO: {
-                    showZombiesInfo(observer.onZombiesInfoRequested());
-                    break;
-                }
-                case SPAWN_ZOMBIE: {
-                    String type = matcher.group("type");
-                    int x = Integer.parseInt(matcher.group("x")) - 1;
-                    int y = Integer.parseInt(matcher.group("y")) - 1;
-                    if (!observer.onSpawnZombieRequested(type, x, y)) {
-                        System.out.println("Could not spawn zombie.");
-                    }
-                    break;
-                }
-                default: {
-                    System.out.println("Invalid command.");
-                    break;
-                }
+            if (matcher != null) {
+                executeCommand(command, matcher);
+                return;
             }
-            return;
         }
 
         System.out.println("Invalid command.");
+    }
+
+    private void executeCommand(MidGameCommand command, Matcher matcher) {
+        switch (command) {
+            case ADVANCE_TIME:
+                observer.onAdvanceTimeRequested(readNumber(matcher, "count"));
+                break;
+            case SHOW_MAP:
+                showMap(observer.onShowMapRequested());
+                break;
+            case SHOW_SUN_AMOUNT:
+                System.out.println("Sun: " + observer.onShowSunAmountRequested());
+                break;
+            case SHOW_PLANTS_STATUS:
+                showPlantsStatus(observer.onShowPlantsStatusRequested());
+                break;
+            case SHOW_TILE_STATUS:
+                showTileStatus(observer.onShowTileStatusRequested(readX(matcher), readY(matcher)));
+                break;
+            case COLLECT_SUN:
+                collectSun(matcher);
+                break;
+            case PLANT_PLANT:
+                plant(matcher, false);
+                break;
+            case PLANT_IMITATER:
+                plant(matcher, true);
+                break;
+            case PLUCK_PLANT:
+                pluckPlant(matcher);
+                break;
+            case FEED_PLANT:
+                feedPlant(matcher);
+                break;
+            case CHEAT_ADD_SUNS:
+            case CHEAT_REMOVE_COOLDOWN:
+            case CHEAT_ADD_PLANT_FOOD:
+            case RELEASE_THE_NUKE:
+                executeCheatCommand(command, matcher);
+                break;
+            case ZOMBIES_INFO:
+                showZombiesInfo(observer.onZombiesInfoRequested());
+                break;
+            case SPAWN_ZOMBIE:
+                spawnZombie(matcher);
+                break;
+            default:
+                System.out.println("Invalid command.");
+                break;
+        }
+    }
+
+    private void executeCheatCommand(MidGameCommand command, Matcher matcher) {
+        switch (command) {
+            case CHEAT_ADD_SUNS:
+                observer.onCheatAddSunsRequested(readNumber(matcher, "count"));
+                break;
+            case CHEAT_REMOVE_COOLDOWN:
+                observer.onCheatRemoveCooldownRequested();
+                break;
+            case CHEAT_ADD_PLANT_FOOD:
+                observer.onCheatAddPlantFoodRequested();
+                break;
+            default:
+                observer.onReleaseTheNukeRequested();
+                break;
+        }
+    }
+
+    private int readNumber(Matcher matcher, String group) {
+        return Integer.parseInt(matcher.group(group));
+    }
+
+    private int readX(Matcher matcher) {
+        return readNumber(matcher, "x") - 1;
+    }
+
+    private int readY(Matcher matcher) {
+        return readNumber(matcher, "y") - 1;
+    }
+
+    private void collectSun(Matcher matcher) {
+        int x = readX(matcher);
+        int y = readY(matcher);
+        if (!observer.onCollectSunRequested(x, y)) {
+            System.out.println("No sun at (" + (x + 1) + ", " + (y + 1) + ").");
+        }
+    }
+
+    private void plant(Matcher matcher, boolean imitater) {
+        String type = matcher.group("type");
+        int x = readX(matcher);
+        int y = readY(matcher);
+        boolean planted = imitater
+                ? observer.onPlantImitaterRequested(type, x, y)
+                : observer.onPlantPlantRequested(type, x, y);
+        if (planted) {
+            return;
+        }
+        String prefix = imitater ? "Cannot plant Imitater as " : "Cannot plant ";
+        System.out.println(prefix + type + " at (" + (x + 1) + ", " + (y + 1) + ").");
+    }
+
+    private void pluckPlant(Matcher matcher) {
+        int x = readX(matcher);
+        int y = readY(matcher);
+        if (!observer.onPluckPlantRequested(x, y)) {
+            System.out.println("No plant at (" + (x + 1) + ", " + (y + 1) + ").");
+        }
+    }
+
+    private void feedPlant(Matcher matcher) {
+        int x = readX(matcher);
+        int y = readY(matcher);
+        if (!observer.onFeedPlantRequested(x, y)) {
+            System.out.println("Cannot feed plant at (" + (x + 1) + ", " + (y + 1) + ").");
+        }
+    }
+
+    private void spawnZombie(Matcher matcher) {
+        String type = matcher.group("type");
+        if (!observer.onSpawnZombieRequested(type, readX(matcher), readY(matcher))) {
+            System.out.println("Could not spawn zombie.");
+        }
     }
 
     private void showMap(Board board) {
@@ -129,6 +163,10 @@ public class MidGameView implements CommandHandler, GameEventListener {
         System.out.println("Wave: " + observer.getCurrentWaveNumber());
         System.out.println("Sun: " + observer.onShowSunAmountRequested());
         System.out.println("Plant Food: " + observer.onShowPlantFoodCountRequested());
+        List<String> conveyorPlants = observer.onShowConveyorPlantsRequested();
+        if (conveyorPlants != null && !conveyorPlants.isEmpty()) {
+            System.out.println("Conveyor: " + conveyorPlants);
+        }
         System.out.println();
 
         for (int row = 0; row < 5; row++) {
@@ -153,7 +191,13 @@ public class MidGameView implements CommandHandler, GameEventListener {
                 terrain = "~";
                 break;
             case GRAVE:
-                terrain = "†";
+                if (tile.getGraveLoot() == GraveLootType.SUN) {
+                    terrain = "S";
+                } else if (tile.getGraveLoot() == GraveLootType.PLANT_FOOD) {
+                    terrain = "F";
+                } else {
+                    terrain = "G";
+                }
                 break;
             case FROZEN:
                 terrain = "#";
@@ -199,6 +243,8 @@ public class MidGameView implements CommandHandler, GameEventListener {
             System.out.print(" | cost: " + status.getSunCost());
             if (status.isAvailable()) {
                 System.out.println(" | available");
+            } else if (status.getRemainingCooldownTicks() <= 0) {
+                System.out.println(" | not enough sun");
             } else {
                 System.out.println(" | available in: " + status.getRemainingSeconds() + "s");
             }
@@ -211,25 +257,68 @@ public class MidGameView implements CommandHandler, GameEventListener {
             return;
         }
         System.out.println("Terrain: " + tile.getTerrainType());
+        showPlantsOnTile(tile);
+        showZombiesOnTile(tile);
+    }
+
+    private void showPlantsOnTile(Tile tile) {
         System.out.println("Plants:");
         if (tile.getPlants().isEmpty()) {
             System.out.println("  none");
-        } else {
-            for (Plant plant : tile.getPlants()) {
-                System.out.println("  - " + plant.getName()
-                        + " | hp: " + plant.getHealth()
-                        + "/" + plant.getMaximumHealth());
-            }
+            return;
         }
+        for (Plant plant : tile.getPlants()) {
+            System.out.println("  - " + plant.getName()
+                    + " | hp: " + plant.getHealth()
+                    + "/" + plant.getMaximumHealth());
+            System.out.println("    level: " + plant.getLevel());
+            System.out.println("    categories: " + plant.getCategories());
+            System.out.println("    tags: " + plant.getTags());
+            System.out.println("    disabled: " + plant.isDisabled());
+        }
+    }
+
+    private void showZombiesOnTile(Tile tile) {
         System.out.println("Zombies:");
         if (tile.getZombies().isEmpty()) {
             System.out.println("  none");
-        } else {
-            for (Zombie zombie : tile.getZombies()) {
-                System.out.println("  - " + zombie.getDefinition().getDisplayName()
-                        + " | hp: " + zombie.getHealth());
-            }
+            return;
         }
+        for (Zombie zombie : tile.getZombies()) {
+            showZombieOnTile(zombie);
+        }
+    }
+
+    private void showZombieOnTile(Zombie zombie) {
+        String name = zombie.getDefinition() == null
+                ? "Zombie"
+                : zombie.getDefinition().getDisplayName();
+        System.out.println("  - " + name
+                + " | hp: " + zombie.getHealth()
+                + "/" + zombie.getMaximumHealth());
+        System.out.println("    speed: " + this.formatNumber(zombie.getCurrentSpeed()));
+        System.out.println("    effects: " + zombie.getConditions());
+        System.out.println("    armor:");
+        if (!showZombieArmor(zombie)) {
+            System.out.println("      none");
+        }
+    }
+
+    private boolean showZombieArmor(Zombie zombie) {
+        boolean hasArmor = false;
+        if (zombie.getArmors() == null) {
+            return false;
+        }
+        for (ZombieArmor armor : zombie.getArmors()) {
+            if (armor == null || armor.isDropped() || armor.isDestroyed()
+                    || armor.getDefinition() == null) {
+                continue;
+            }
+            hasArmor = true;
+            System.out.println("      " + armor.getDefinition().getAlias()
+                    + ": " + armor.getCurrentHealth());
+        }
+        return hasArmor;
     }
 
     private void showZombiesInfo(List<ZombieStatus> statuses) {

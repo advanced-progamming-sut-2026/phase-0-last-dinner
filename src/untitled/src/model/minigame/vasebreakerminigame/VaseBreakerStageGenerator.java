@@ -116,82 +116,54 @@ public class VaseBreakerStageGenerator {
             int emptyVaseCount,
             int gargantuarVaseCount
     ) {
-        List<Position> positions = createPositions(
-                firstColumn,
-                lastColumn,
-                rowCount
-        );
-
-        List<VaseTemplate> templates =
-                new ArrayList<>();
-
-        addVisiblePlantVases(
-                templates,
-                visiblePlantVaseCount
-        );
-
-        addHiddenSeedPacketVases(
-                templates,
-                hiddenSeedPacketCount
-        );
-
-        addRegularZombieVases(
-                templates,
-                regularZombieCount
-        );
-
-        addEmptyVases(
-                templates,
-                emptyVaseCount
-        );
-
-        addGargantuarVases(
-                templates,
+        List<Position> positions = createPositions(firstColumn, lastColumn, rowCount);
+        List<VaseTemplate> templates = createTemplates(
+                visiblePlantVaseCount,
+                hiddenSeedPacketCount,
+                regularZombieCount,
+                emptyVaseCount,
                 gargantuarVaseCount
         );
-
         if (positions.size() != templates.size()) {
             throw new IllegalStateException(
-                    "The number of vase contents does not "
-                            + "match the number of positions."
+                    "The number of vase contents does not match the number of positions."
             );
         }
 
-        Collections.shuffle(
-                templates,
-                random
-        );
-
+        Collections.shuffle(templates, random);
         List<Vase> vases = new ArrayList<>();
-
         for (int i = 0; i < positions.size(); i++) {
-            VaseTemplate template =
-                    templates.get(i);
-
-            PlantDefinition plantDefinition =
-                    choosePlantDefinition(
-                            stageNumber,
-                            template
-                    );
-
-            ZombieDefinition zombieDefinition =
-                    chooseZombieDefinition(
-                            stageNumber,
-                            template
-                    );
-
-            Vase vase = new Vase(
-                    positions.get(i),
-                    template.vaseType,
-                    template.contentType,
-                    plantDefinition,
-                    zombieDefinition
-            );
-
-            vases.add(vase);
+            vases.add(createVase(stageNumber, positions.get(i), templates.get(i)));
         }
-
         return vases;
+    }
+
+    private List<VaseTemplate> createTemplates(
+            int visiblePlantVaseCount,
+            int hiddenSeedPacketCount,
+            int regularZombieCount,
+            int emptyVaseCount,
+            int gargantuarVaseCount
+    ) {
+        List<VaseTemplate> templates = new ArrayList<>();
+        addVisiblePlantVases(templates, visiblePlantVaseCount);
+        addHiddenSeedPacketVases(templates, hiddenSeedPacketCount);
+        addRegularZombieVases(templates, regularZombieCount);
+        addEmptyVases(templates, emptyVaseCount);
+        addGargantuarVases(templates, gargantuarVaseCount);
+        return templates;
+    }
+
+    private Vase createVase(int stageNumber, Position position, VaseTemplate template) {
+        PlantDefinition plantDefinition = choosePlantDefinition(stageNumber, template);
+        ZombieDefinition zombieDefinition = chooseZombieDefinition(stageNumber, template);
+        return new Vase(
+                position,
+                template.vaseType,
+                template.contentType,
+                plantDefinition,
+                zombieDefinition
+        );
     }
 
     private List<Position> createPositions(

@@ -10,8 +10,13 @@ public class PlantDefinitionRepository {
     }
 
     public PlantDefinition findByName(String name) {
+        if (name == null) {
+            return null;
+        }
+
         for (PlantDefinition definition : this.definitions) {
-            if (definition.getName().equals(name)) {
+            if (definition != null && definition.getName() != null
+                    && definition.getName().equalsIgnoreCase(name)) {
                 return definition;
             }
         }

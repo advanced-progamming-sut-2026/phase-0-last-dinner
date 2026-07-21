@@ -84,7 +84,7 @@ public class Wave {
                 continue;
             }
 
-            totalMaximumHealth += zombie.getDefinition().getHitpoints();
+            totalMaximumHealth += zombie.getMaximumHealth();
             totalCurrentHealth += Math.max(0, zombie.getHealth());
 
             if (zombie.getArmors() != null) {

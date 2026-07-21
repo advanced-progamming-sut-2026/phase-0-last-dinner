@@ -44,6 +44,17 @@ class PlantBehaviorFactory {
             );
         }
 
+        PlantBehavior rangedBehavior = this.createRangedBehavior(definition, name, categories);
+        return rangedBehavior == null
+                ? this.createCloseOrSupportBehavior(definition, name, categories)
+                : rangedBehavior;
+    }
+
+    private PlantBehavior createRangedBehavior(
+            PlantDefinition definition,
+            String name,
+            Set<PlantCategory> categories
+    ) {
         if (this.hasCategory(categories, PlantCategory.SUN_PRODUCER)) {
             return this.createSunProducer(definition, name);
         }
@@ -77,6 +88,14 @@ class PlantBehaviorFactory {
             return this.createShooter(definition, name);
         }
 
+        return null;
+    }
+
+    private PlantBehavior createCloseOrSupportBehavior(
+            PlantDefinition definition,
+            String name,
+            Set<PlantCategory> categories
+    ) {
         if (this.hasCategory(categories, PlantCategory.EXPLOSIVE)) {
             return this.createExplosive(definition, name);
         }
@@ -230,7 +249,11 @@ class PlantBehaviorFactory {
                 armDelayTicks,
                 activateOnPlanting
         );
+        this.configureExplosiveBehavior(behavior, name);
+        return behavior;
+    }
 
+    private void configureExplosiveBehavior(ExplosiveBehavior behavior, String name) {
         if (name.contains("iceberg lettuce") || name.contains("ice-shroom")) {
             behavior.setConditionOnHit(ZombieCondition.FROZEN, this.secondsToTicks(3));
         }
@@ -257,8 +280,6 @@ class PlantBehaviorFactory {
             grape.setRemainingTicks(this.secondsToTicks(5));
             behavior.setSecondaryProjectileBurst(grape, 8);
         }
-
-        return behavior;
     }
 
     private PlantBehavior createMelee(PlantDefinition definition, String name) {

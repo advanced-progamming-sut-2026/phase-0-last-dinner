@@ -38,7 +38,9 @@ public class AllLaneBarragePlantFoodBehavior implements PlantFoodBehavior {
             Position spawn = new Position(plant.getPosition().getX(), row);
 
             for (int volley = 0; volley < this.volleyCount; volley++) {
-                board.addProjectile(this.projectileTemplate.copyAt(spawn, 1, 0));
+                Projectile projectile = this.projectileTemplate.copyAt(spawn, 1, 0);
+                projectile.setSourcePlant(plant);
+                board.addProjectile(projectile);
             }
         }
     }

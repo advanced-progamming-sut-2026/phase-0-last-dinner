@@ -23,7 +23,9 @@ public class ProfileInformation {
         this.gamesPlayed = user.getGamesPlayed();
         this.coins = user.getGold();
         this.diamonds = user.getDiamond();
-        this.completedLevels = Math.max(0, user.getLevel() - 1);
+        this.completedLevels = user.getCompletedAdventureLevelCount() > 0
+                ? user.getCompletedAdventureLevelCount()
+                : Math.max(0, user.getLevel() - 1);
         this.maximumMeowPoints = user.getMaxObtainedMeowPoints();
     }
 }

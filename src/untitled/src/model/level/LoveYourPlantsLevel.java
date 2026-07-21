@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class LoveYourPlantsLevel extends Level {
-    private static final int WAVE_COUNT = 5;
+    private static final int WAVE_COUNT = 4;
     private final int maximumDestroyedPlants = 5;
     private int destroyedPlantCount;
 
@@ -51,15 +51,7 @@ public class LoveYourPlantsLevel extends Level {
 
     @Override
     public boolean isWinConditionMet() {
-        List<Wave> waves = getWaves();
-        if (waves == null || waves.isEmpty()) {
-            return false;
-        }
-
-        Wave lastWave = waves.get(waves.size() - 1);
-        return lastWave.isFinalWave()
-                && lastWave.isStarted()
-                && lastWave.getRemainingHealthPercentage() <= 0;
+        return this.areAllWavesDefeated();
     }
 
     @Override

@@ -128,7 +128,11 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
                 get(values, headerIndexes, "Base Ability"),
                 get(values, headerIndexes, "Plant Food Effect"),
                 levelUpEffects,
-                parseDouble(getRequired(values, headerIndexes, "Action Interval (s)", lineNumber), "Action Interval (s)", lineNumber),
+                parseDouble(
+                        getRequired(values, headerIndexes, "Action Interval (s)", lineNumber),
+                        "Action Interval (s)",
+                        lineNumber
+                ),
                 parseDouble(getRequired(values, headerIndexes, "Recharge (s)", lineNumber), "Recharge (s)", lineNumber)
         );
     }
@@ -329,7 +333,10 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid integer for '" + fieldName + "' at CSV line " + lineNumber + ": " + value, e);
+            throw new IllegalArgumentException(
+                    "Invalid integer for '" + fieldName + "' at CSV line " + lineNumber + ": " + value,
+                    e
+            );
         }
     }
 
@@ -341,7 +348,10 @@ public class CsvPlantDefinitionRepository extends PlantDefinitionRepository {
         try {
             return Double.parseDouble(value.trim());
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid number for '" + fieldName + "' at CSV line " + lineNumber + ": " + value, e);
+            throw new IllegalArgumentException(
+                    "Invalid number for '" + fieldName + "' at CSV line " + lineNumber + ": " + value,
+                    e
+            );
         }
     }
 

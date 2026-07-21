@@ -45,56 +45,48 @@ public class IZombieSunProducerBehavior
             long minimumProductionIntervalTicks,
             long intervalDecreaseTicks
     ) {
-        if (miniGame == null) {
-            throw new IllegalArgumentException(
-                    "Mini game cannot be null."
-            );
-        }
+        validateSettings(
+                miniGame,
+                sunAmount,
+                initialProductionIntervalTicks,
+                minimumProductionIntervalTicks,
+                intervalDecreaseTicks
+        );
+        this.miniGame = miniGame;
+        this.sunAmount = sunAmount;
+        this.initialProductionIntervalTicks = initialProductionIntervalTicks;
+        this.minimumProductionIntervalTicks = minimumProductionIntervalTicks;
+        this.intervalDecreaseTicks = intervalDecreaseTicks;
+        resetProduction();
+    }
 
-        if (sunAmount <= 0) {
-            throw new IllegalArgumentException(
-                    "Sun amount must be positive."
-            );
+    private static void validateSettings(
+            IZombieMiniGame game,
+            int amount,
+            long initialInterval,
+            long minimumInterval,
+            long decrease
+    ) {
+        if (game == null) {
+            throw new IllegalArgumentException("Mini game cannot be null.");
         }
-
-        if (initialProductionIntervalTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "Initial production interval must be positive."
-            );
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Sun amount must be positive.");
         }
-
-        if (minimumProductionIntervalTicks <= 0) {
-            throw new IllegalArgumentException(
-                    "Minimum production interval must be positive."
-            );
+        if (initialInterval <= 0) {
+            throw new IllegalArgumentException("Initial production interval must be positive.");
         }
-
-        if (minimumProductionIntervalTicks
-                > initialProductionIntervalTicks) {
+        if (minimumInterval <= 0) {
+            throw new IllegalArgumentException("Minimum production interval must be positive.");
+        }
+        if (minimumInterval > initialInterval) {
             throw new IllegalArgumentException(
                     "Minimum production interval cannot be greater than initial interval."
             );
         }
-
-        if (intervalDecreaseTicks < 0) {
-            throw new IllegalArgumentException(
-                    "Interval decrease cannot be negative."
-            );
+        if (decrease < 0) {
+            throw new IllegalArgumentException("Interval decrease cannot be negative.");
         }
-
-        this.miniGame = miniGame;
-        this.sunAmount = sunAmount;
-
-        this.initialProductionIntervalTicks =
-                initialProductionIntervalTicks;
-
-        this.minimumProductionIntervalTicks =
-                minimumProductionIntervalTicks;
-
-        this.intervalDecreaseTicks =
-                intervalDecreaseTicks;
-
-        resetProduction();
     }
 
     @Override

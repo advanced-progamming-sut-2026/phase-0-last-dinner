@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import lombok.Setter;
+import model.User.User;
 import model.zombie.Zombie;
 import view.GameEventListener;
 
@@ -18,6 +19,7 @@ public class LootSystem {
     private int potAmount;
     private GameEventListener listener;
     private Random random;
+    private User user;
 
     public LootSystem() {
         this.droppedLoot = new ArrayList<>();
@@ -57,15 +59,33 @@ public class LootSystem {
         loot.collect();
 
         if (loot.getType() == LootType.COIN) {
-            this.coinAmount += loot.getAmount();
+            if (this.user != null) {
+                this.user.setGold(this.safeAdd(this.user.getGold(), loot.getAmount()));
+                this.coinAmount = this.user.getGold();
+            } else {
+                this.coinAmount = this.safeAdd(this.coinAmount, loot.getAmount());
+            }
             this.fireEvent("A zombie dropped a coin; you have " + this.coinAmount + " coins now.");
         } else if (loot.getType() == LootType.DIAMOND) {
-            this.diamondAmount += loot.getAmount();
+            if (this.user != null) {
+                this.user.setDiamond(this.safeAdd(this.user.getDiamond(), loot.getAmount()));
+                this.diamondAmount = this.user.getDiamond();
+            } else {
+                this.diamondAmount = this.safeAdd(this.diamondAmount, loot.getAmount());
+            }
             this.fireEvent("A zombie dropped a diamond; you have " + this.diamondAmount + " diamonds now.");
         } else if (loot.getType() == LootType.POT) {
-            this.potAmount += loot.getAmount();
+            this.potAmount = this.safeAdd(this.potAmount, loot.getAmount());
+            if (this.user != null && this.user.getGreenhouse() != null) {
+                this.user.getGreenhouse().unlockNextPot();
+            }
             this.fireEvent("A zombie dropped a pot; you have " + this.potAmount + " pots now.");
         }
+    }
+
+    private int safeAdd(int value, int amount) {
+        long result = (long) value + amount;
+        return result > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
     }
 
     private void fireEvent(String message) {

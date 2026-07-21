@@ -7,13 +7,11 @@ import model.zombie.Zombie;
 
 public class RangedZombieBehavior implements ZombieBehavior {
     private RangedAbilityType abilityType;
-    private int range;
     private long actionIntervalTicks;
     private long ticksSinceLastAction;
 
-    public RangedZombieBehavior(RangedAbilityType abilityType, int range, long actionIntervalTicks) {
+    public RangedZombieBehavior(RangedAbilityType abilityType, int ignoredRange, long actionIntervalTicks) {
         this.abilityType = abilityType;
-        this.range = range;
         this.actionIntervalTicks = actionIntervalTicks;
     }
 

@@ -12,7 +12,7 @@ import java.util.List;
 
 public class DeadlineLevel extends Level {
     private final int deadlineX = 3;
-    private static final int WAVE_COUNT = 5;
+    private static final int WAVE_COUNT = 4;
 
     public DeadlineLevel(Chapter chapter, List<Plant> allowedPlants, double baseDifficulty) {
         super(LevelType.DEADLINE, chapter, allowedPlants, baseDifficulty);
@@ -44,7 +44,7 @@ public class DeadlineLevel extends Level {
                 continue;
             }
             Position position = zombie.getPosition();
-            if (position != null && position.getX() <= this.deadlineX) {
+            if (position != null && zombie.getExactX() <= this.deadlineX) {
                 return true;
             }
         }
@@ -63,16 +63,7 @@ public class DeadlineLevel extends Level {
 
     @Override
     public boolean isWinConditionMet() {
-        List<Wave> waves = getWaves();
-
-        if (waves == null || waves.isEmpty()) {
-            return false;
-        }
-
-        Wave lastWave = waves.get(waves.size() - 1);
-        return lastWave.isFinalWave()
-                && lastWave.isStarted()
-                && lastWave.getRemainingHealthPercentage() <= 0;
+        return this.areAllWavesDefeated();
     }
 
     @Override

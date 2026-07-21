@@ -20,7 +20,7 @@ public class ZombotanyJalapenoBehavior
     private boolean exploded;
 
     public ZombotanyJalapenoBehavior() {
-        this(60);
+        this(100);
     }
 
     public ZombotanyJalapenoBehavior(
@@ -55,13 +55,6 @@ public class ZombotanyJalapenoBehavior
             Plant plant,
             Board board
     ) {
-        if (exploded
-                || zombie == null
-                || plant == null
-                || board == null) {
-            return;
-        }
-        burnRow(zombie, board);
     }
 
     @Override

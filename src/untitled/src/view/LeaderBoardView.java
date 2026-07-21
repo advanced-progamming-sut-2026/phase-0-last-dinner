@@ -1,8 +1,10 @@
 package view;
 
 import model.User.LeaderboardEntry;
+import model.User.LeaderboardSortField;
 
 import java.util.List;
+import java.util.regex.Matcher;
 
 public class LeaderBoardView implements CommandHandler {
     private LeaderBoardViewObserver observer;
@@ -18,16 +20,29 @@ public class LeaderBoardView implements CommandHandler {
             return;
         }
 
-        if (LeaderBoardCommand.SHOW.getMatcher(input) == null) {
+        Matcher matcher = LeaderBoardCommand.SHOW.getMatcher(input);
+        if (matcher == null) {
             System.out.println("Invalid leaderboard command.");
             return;
         }
 
-        this.printLeaderboard(this.observer.onShowLeaderboardRequested());
+        try {
+            LeaderboardSortField sortField = LeaderboardSortField.from(matcher.group("sort"));
+            boolean ascending = "asc".equalsIgnoreCase(matcher.group("order"));
+            this.printLeaderboard(
+                    this.observer.onShowLeaderboardRequested(sortField, ascending)
+            );
+        } catch (IllegalArgumentException exception) {
+            System.out.println(exception.getMessage());
+        }
     }
 
     private void printLeaderboard(List<LeaderboardEntry> entries) {
         System.out.println("Leaderboard");
+        System.out.println(
+                "rank | username | nickname | chapter | level | minigames"
+                        + " | daily quests | non daily quests | meow points"
+        );
 
         if (entries == null || entries.isEmpty()) {
             System.out.println("No players were found.");
@@ -39,6 +54,11 @@ public class LeaderBoardView implements CommandHandler {
                     entry.getRank()
                             + " | " + entry.getUsername()
                             + " | " + entry.getNickname()
+                            + " | " + entry.getLastChapter()
+                            + " | " + entry.getLastLevel()
+                            + " | " + entry.getCompletedMinigames()
+                            + " | " + entry.getCompletedDailyQuests()
+                            + " | " + entry.getCompletedNonDailyQuests()
                             + " | " + entry.getMeowPoints()
             );
         }

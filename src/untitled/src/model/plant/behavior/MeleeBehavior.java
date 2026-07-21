@@ -87,11 +87,11 @@ public class MeleeBehavior implements PlantBehavior {
             }
 
             if (DamageExpressionParser.isInstantKill(activeDamage)) {
-                board.getCombatSystem().killZombie(zombie);
+                board.getCombatSystem().killZombie(zombie, plant);
                 this.remainingDigestTicks = this.digestTicks;
             } else {
                 int damage = DamageExpressionParser.parseTotalDamage(activeDamage);
-                board.getCombatSystem().applyDamageToZombie(zombie, damage);
+                board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
             }
         }
     }

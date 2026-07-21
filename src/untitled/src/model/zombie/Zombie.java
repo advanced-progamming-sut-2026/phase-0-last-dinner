@@ -24,6 +24,7 @@ public class Zombie implements Tickable {
     @Setter
     private Position position;
     private int health;
+    private int maximumHealth;
     @Setter
     private double currentSpeed;
     private boolean glowing;
@@ -40,6 +41,8 @@ public class Zombie implements Tickable {
     // exact x harekate kasri ro negah midare va position tile ro round mikone
     private double exactX;
     private int poisonDamagePerTick;
+    @Setter
+    private Plant poisonSourcePlant;
     // behavior marg va remove reward do marhale joda hastan
     private boolean deathProcessed;
     private boolean deathBehaviorCalled;
@@ -57,6 +60,7 @@ public class Zombie implements Tickable {
         this.definition = definition;
         this.setPosition(position);
         this.health = health;
+        this.maximumHealth = Math.max(0, health);
         this.currentSpeed = currentSpeed;
         this.armors = armors == null ? new ArrayList<ZombieArmor>() : armors;
         this.conditions = conditions == null ? new ArrayList<ZombieCondition>() : conditions;
@@ -83,16 +87,7 @@ public class Zombie implements Tickable {
     }
 
     public void move() {
-        if (this.dead || this.position == null || this.attacking || this.terrainFrozen) {
-            return;
-        }
-
-        if (this.hasCondition(ZombieCondition.FROZEN) || this.hasCondition(ZombieCondition.STUNNED)
-                || this.hasCondition(ZombieCondition.TRANSFORMED)) {
-            return;
-        }
-
-        if (this.behavior != null && !this.behavior.canMove(this, this.board)) {
+        if (this.isMovementBlocked()) {
             return;
         }
 
@@ -132,6 +127,17 @@ public class Zombie implements Tickable {
                 this.position = destination;
             }
         }
+    }
+
+    private boolean isMovementBlocked() {
+        return this.dead
+                || this.position == null
+                || this.attacking
+                || this.terrainFrozen
+                || this.hasCondition(ZombieCondition.FROZEN)
+                || this.hasCondition(ZombieCondition.STUNNED)
+                || this.hasCondition(ZombieCondition.TRANSFORMED)
+                || (this.behavior != null && !this.behavior.canMove(this, this.board));
     }
 
     public void attack(Plant plant) {
@@ -175,12 +181,21 @@ public class Zombie implements Tickable {
         }
     }
 
+    public void multiplyHealth(double multiplier) {
+        if (multiplier <= 0 || this.dead) {
+            return;
+        }
+
+        this.health = Math.max(1, (int) Math.round(this.health * multiplier));
+        this.maximumHealth = Math.max(1, (int) Math.round(this.maximumHealth * multiplier));
+    }
+
     public void applyDifficulty(double multiplier) {
         if (multiplier <= 0) {
             return;
         }
 
-        this.health = Math.max(1, (int) Math.round(this.health * multiplier));
+        this.multiplyHealth(multiplier);
         if (this.behavior != null) {
             this.behavior.multiplyDamage(multiplier);
         }
@@ -275,6 +290,7 @@ public class Zombie implements Tickable {
 
         if (condition == ZombieCondition.POISONED) {
             this.poisonDamagePerTick = 0;
+            this.poisonSourcePlant = null;
         }
     }
 

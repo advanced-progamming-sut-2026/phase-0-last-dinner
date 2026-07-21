@@ -23,6 +23,8 @@ public class ChapterBigWaveBeach extends Chapter{
     }
     @Override
     public Board buildBoard() {
+        this.waterTiles.clear();
+        this.lowBeachTiles.clear();
         List<Tile> tiles = new ArrayList<>();
         for (int row = 0; row < 5; row++) {
             for (int col = 0; col < 9; col++) {
@@ -72,7 +74,14 @@ public class ChapterBigWaveBeach extends Chapter{
 
             if (this.lowBeachTiles.contains(tile)) {
                 if (shouldBeSubmerged) {
+                    tile.setTerrainType(TerrainType.WATER);
+                    if (!this.waterTiles.contains(tile)) {
+                        this.waterTiles.add(tile);
+                    }
                     this.destroyIncompatiblePlants(board, tile);
+                } else if (tile.getTerrainType() == TerrainType.WATER) {
+                    tile.setTerrainType(TerrainType.LOW_BEACH);
+                    this.waterTiles.remove(tile);
                 }
                 continue;
             }

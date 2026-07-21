@@ -38,7 +38,7 @@ public class TangleKelpPlantFoodBehavior implements PlantFoodBehavior {
         int count = Math.min(this.targetCount, waterZombies.size());
 
         for (int i = 0; i < count; i++) {
-            board.getCombatSystem().killZombieIgnoringAllegiance(waterZombies.get(i));
+            board.getCombatSystem().killZombieIgnoringAllegiance(waterZombies.get(i), plant);
         }
     }
 

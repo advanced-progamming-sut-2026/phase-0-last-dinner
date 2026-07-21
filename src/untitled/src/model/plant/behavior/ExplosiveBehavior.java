@@ -92,8 +92,6 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
             return;
         }
 
-        List<Zombie> zombies;
-
         if (this.explosivePattern == ExplosivePattern.TERRAIN_ONLY) {
             this.finishTerrainRemoval(plant, board, TerrainType.FROZEN);
             return;
@@ -113,21 +111,32 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         }
 
         this.consumed = true;
+        List<Zombie> zombies = this.getAffectedZombies(plant, board);
+        this.damageZombies(plant, board, zombies);
+        this.applyTerrainEffect(plant, board);
+        this.launchSecondaryProjectiles(plant, board);
+        board.removePlant(plant);
+    }
 
+    private List<Zombie> getAffectedZombies(Plant plant, Board board) {
         if (this.explosivePattern == ExplosivePattern.FULL_LANE) {
-            zombies = board.getZombiesInLane(plant.getPosition());
-        } else if (this.explosivePattern == ExplosivePattern.FULL_BOARD) {
-            zombies = board.getAllZombies();
-        } else if (this.explosivePattern == ExplosivePattern.CONTACT_SINGLE) {
-            zombies = this.getContactZombies(plant, board);
+            return board.getZombiesInLane(plant.getPosition());
+        }
+        if (this.explosivePattern == ExplosivePattern.FULL_BOARD) {
+            return board.getAllZombies();
+        }
+        if (this.explosivePattern == ExplosivePattern.CONTACT_SINGLE) {
+            List<Zombie> zombies = this.getContactZombies(plant, board);
 
             if (zombies.size() > this.targetCount) {
                 zombies.subList(this.targetCount, zombies.size()).clear();
             }
-        } else {
-            zombies = board.getZombiesInRadius(plant.getPosition(), this.effectRadius);
+            return zombies;
         }
+        return board.getZombiesInRadius(plant.getPosition(), this.effectRadius);
+    }
 
+    private void damageZombies(Plant plant, Board board, List<Zombie> zombies) {
         for (Zombie zombie : zombies) {
             if (zombie == null || zombie.isHypnotized()
                     || (this.waterTargetsOnly && !this.isSubmergedWaterZombie(zombie, board))
@@ -139,22 +148,18 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
             if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
                 if (this.waterTargetsOnly) {
-                    board.getCombatSystem().killZombieIgnoringAllegiance(zombie);
+                    board.getCombatSystem().killZombieIgnoringAllegiance(zombie, plant);
                 } else {
-                    board.getCombatSystem().killZombie(zombie);
+                    board.getCombatSystem().killZombie(zombie, plant);
                 }
             } else {
                 int damage = DamageExpressionParser.parseTotalDamage(this.damageExpression);
 
                 if (damage > 0) {
-                    board.getCombatSystem().applyDamageToZombie(zombie, damage);
+                    board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
                 }
             }
         }
-
-        this.applyTerrainEffect(plant, board);
-        this.launchSecondaryProjectiles(plant, board);
-        board.removePlant(plant);
     }
 
     @Override
@@ -303,7 +308,7 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         int damage = Math.max(300, parsedDamage);
 
         for (Zombie zombie : board.getZombiesInRadius(plant.getPosition(), Math.max(1, this.effectRadius))) {
-            board.getCombatSystem().applyDamageToZombie(zombie, damage);
+            board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
         }
     }
 
@@ -340,11 +345,13 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
         for (int i = 0; i < this.secondaryProjectileCount; i++) {
             int[] direction = directions[i % directions.length];
-            board.addProjectile(this.secondaryProjectileTemplate.copyAt(
+            Projectile projectile = this.secondaryProjectileTemplate.copyAt(
                     plant.getPosition(),
                     direction[0],
                     direction[1]
-            ));
+            );
+            projectile.setSourcePlant(plant);
+            board.addProjectile(projectile);
         }
     }
 

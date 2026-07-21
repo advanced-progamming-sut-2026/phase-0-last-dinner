@@ -1,5 +1,4 @@
 package model.plant.behavior;
-
 import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.PlantingSystem;
@@ -12,11 +11,9 @@ import model.zombie.Zombie;
 import model.zombie.ZombieArmor;
 import model.zombie.ZombieCondition;
 import model.zombie.behavior.FlyingBehavior;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
-
 // effect haye moshtarak plant food ro ba yek config ejra mikone
 public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
     private PlantFoodEffectType effectType;
@@ -34,11 +31,19 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
     private boolean metallicTargetsOnly;
     private int maxTargetRange;
     private Random random = new Random();
-
     public ConfiguredPlantFoodBehavior(String effectDescription, int activationCount) {
-        this(PlantFoodEffectType.REPEAT_ABILITY, effectDescription, "0", activationCount, activationCount, 1, 0, 0, null);
+        this(
+                PlantFoodEffectType.REPEAT_ABILITY,
+                effectDescription,
+                "0",
+                activationCount,
+                activationCount,
+                1,
+                0,
+                0,
+                null
+        );
     }
-
     public ConfiguredPlantFoodBehavior(
             PlantFoodEffectType effectType,
             String effectDescription,
@@ -61,80 +66,120 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
         this.poisonDamagePerTick = 0;
         this.projectileTemplate = projectileTemplate;
     }
-
     public ConfiguredPlantFoodBehavior withTimedCondition(long durationTicks, int damagePerTick) {
         this.conditionDurationTicks = Math.max(1, durationTicks);
         this.poisonDamagePerTick = Math.max(0, damagePerTick);
         return this;
     }
-
     public ConfiguredPlantFoodBehavior withRandomTargets() {
         this.randomTargets = true;
         return this;
     }
-
     public ConfiguredPlantFoodBehavior withGroundTargetsOnly() {
         this.groundTargetsOnly = true;
         return this;
     }
-
     public ConfiguredPlantFoodBehavior withMetallicTargetsOnly() {
         this.metallicTargetsOnly = true;
         return this;
     }
-
     public ConfiguredPlantFoodBehavior withTargetRange(int range) {
         this.maxTargetRange = Math.max(0, range);
         return this;
     }
-
     public void setRandom(Random random) {
         this.random = random == null ? new Random() : random;
     }
-
     @Override
     public void activate(Plant plant, Board board) {
         if (plant == null || this.effectType == null || this.effectType == PlantFoodEffectType.NONE) {
             return;
         }
-
+        if (this.activateBasicEffect(plant, board) || this.activateConditionEffect(plant, board)) {
+            return;
+        }
+        this.activateSupportEffect(plant, board);
+    }
+    private boolean activateBasicEffect(Plant plant, Board board) {
         switch (this.effectType) {
             case SUN_BURST:
                 this.growSunProducer(plant);
                 this.addSun(board);
-                break;
+                return true;
             case PROJECTILE_BURST:
                 this.fireProjectiles(plant, board);
-                break;
+                return true;
             case TARGETED_DAMAGE:
-                this.affectZombies(board, this.getTargetZombies(plant, board, this.targetCount), null, false);
-                break;
+                this.affectZombies(
+                        plant,
+                        board,
+                        this.getTargetZombies(plant, board, this.targetCount),
+                        null,
+                        false
+                );
+                return true;
             case LANE_DAMAGE:
-                this.affectZombies(board, board == null ? null : board.getZombiesInLane(plant.getPosition()), null, false);
-                break;
+                this.affectZombies(plant, board, this.getLaneZombies(plant, board), null, false);
+                return true;
             case BOARD_DAMAGE:
-                this.affectZombies(board, board == null ? null : board.getAllZombies(), null, false);
-                break;
+                this.affectZombies(plant, board, board == null ? null : board.getAllZombies(), null, false);
+                return true;
             case AREA_DAMAGE:
-                this.affectZombies(board, board == null ? null : board.getZombiesInRadius(plant.getPosition(), this.radius), null, false);
-                break;
+                this.affectZombies(plant, board, this.getAreaZombies(plant, board), null, false);
+                return true;
+            default:
+                return false;
+        }
+    }
+    private boolean activateConditionEffect(Plant plant, Board board) {
+        switch (this.effectType) {
             case FREEZE_LANE:
-                this.affectZombies(board, board == null ? null : board.getZombiesInLane(plant.getPosition()), ZombieCondition.FROZEN, false);
+                this.affectZombies(plant, board, this.getLaneZombies(plant, board), ZombieCondition.FROZEN, false);
                 this.repeatAbility(plant);
-                break;
+                return true;
             case FREEZE_BOARD:
-                this.affectZombies(board, board == null ? null : board.getAllZombies(), ZombieCondition.FROZEN, false);
-                break;
+                this.affectZombies(
+                        plant,
+                        board,
+                        board == null ? null : board.getAllZombies(),
+                        ZombieCondition.FROZEN,
+                        false
+                );
+                return true;
             case POISON_TARGETS:
-                this.affectZombies(board, this.getTargetZombies(plant, board, this.targetCount), ZombieCondition.POISONED, false);
+                this.affectZombies(
+                        plant,
+                        board,
+                        this.getTargetZombies(plant, board, this.targetCount),
+                        ZombieCondition.POISONED,
+                        false
+                );
                 this.repeatAbility(plant);
-                break;
+                return true;
             case HYPNOTIZE_TARGETS:
-                this.affectZombies(board, this.getTargetZombies(plant, board, this.targetCount), ZombieCondition.HYPNOTIZED, false);
-                break;
+                this.affectZombies(
+                        plant,
+                        board,
+                        this.getTargetZombies(plant, board, this.targetCount),
+                        ZombieCondition.HYPNOTIZED,
+                        false
+                );
+                return true;
             case REMOVE_ARMOR:
-                this.affectZombies(board, this.getTargetZombies(plant, board, this.targetCount), null, true);
-                break;
+                this.affectZombies(
+                        plant,
+                        board,
+                        this.getTargetZombies(plant, board, this.targetCount),
+                        null,
+                        true
+                );
+                return true;
+            default:
+                return false;
+        }
+    }
+    private void activateSupportEffect(Plant plant, Board board) {
+        switch (this.effectType) {
             case ARM_AND_CLONE:
                 this.armExplosiveBehavior(plant);
                 this.cloneNearby(plant, board);
@@ -165,52 +210,51 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                 break;
         }
     }
-
+    private List<Zombie> getLaneZombies(Plant plant, Board board) {
+        return board == null ? null : board.getZombiesInLane(plant.getPosition());
+    }
+    private List<Zombie> getAreaZombies(Plant plant, Board board) {
+        return board == null ? null : board.getZombiesInRadius(plant.getPosition(), this.radius);
+    }
     private void repeatAbility(Plant plant) {
         int count = Math.max(1, this.activationCount);
-
         for (int i = 0; i < count; i++) {
             plant.useAbility();
         }
     }
-
     private void addSun(Board board) {
         if (board == null || board.getSunSystem() == null || this.sunAmount <= 0) {
             return;
         }
-
         board.getSunSystem().addSun(this.sunAmount);
     }
-
     private void fireProjectiles(Plant plant, Board board) {
         if (board == null || this.projectileTemplate == null) {
             this.repeatAbility(plant);
             return;
         }
-
         int count = Math.max(1, this.activationCount);
         List<Zombie> targets = this.getTargetZombies(plant, board, count);
-
         for (int i = 0; i < count; i++) {
+            Projectile projectile;
             if (targets.isEmpty()) {
-                board.addProjectile(this.projectileTemplate.copyAt(plant.getPosition()));
+                projectile = this.projectileTemplate.copyAt(plant.getPosition());
             } else {
-                board.addProjectile(this.projectileTemplate.copyAtTarget(
+                projectile = this.projectileTemplate.copyAtTarget(
                         plant.getPosition(),
                         targets.get(i % targets.size())
-                ));
+                );
             }
+            projectile.setSourcePlant(plant);
+            board.addProjectile(projectile);
         }
     }
-
     private List<Zombie> getTargetZombies(Plant plant, Board board, int limit) {
         if (plant == null || board == null) {
             return Collections.emptyList();
         }
-
         List<Zombie> targets = board.getAllZombies();
         targets.removeIf(zombie -> !this.isEligibleTarget(plant, zombie));
-
         if (this.randomTargets) {
             Collections.shuffle(targets, this.random);
         } else {
@@ -219,57 +263,45 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                     this.distanceSquared(plant, second)
             ));
         }
-
         int targetLimit = Math.max(1, limit);
-
         if (targets.size() > targetLimit) {
             targets.subList(targetLimit, targets.size()).clear();
         }
-
         return targets;
     }
-
     private boolean isEligibleTarget(Plant plant, Zombie zombie) {
         if (zombie == null || zombie.isDead() || zombie.isHypnotized() || zombie.getPosition() == null) {
             return false;
         }
-
         boolean lobbedProjectile = this.projectileTemplate != null && this.projectileTemplate.isLobbed();
-
         if (zombie.hasCondition(ZombieCondition.SUBMERGED) && !lobbedProjectile) {
             return false;
         }
-
         if (this.groundTargetsOnly && (zombie.findBehavior(FlyingBehavior.class) != null
                 || zombie.hasCondition(ZombieCondition.FLYING)
                 || zombie.hasCondition(ZombieCondition.SUBMERGED))) {
             return false;
         }
-
         if (this.metallicTargetsOnly && this.findMetallicArmor(zombie) == null) {
             return false;
         }
-
         if (this.maxTargetRange <= 0 || plant.getPosition() == null) {
             return true;
         }
-
         int deltaX = Math.abs(zombie.getPosition().getX() - plant.getPosition().getX());
         int deltaY = Math.abs(zombie.getPosition().getY() - plant.getPosition().getY());
         return Math.max(deltaX, deltaY) <= this.maxTargetRange;
     }
-
     private long distanceSquared(Plant plant, Zombie zombie) {
         if (plant == null || plant.getPosition() == null || zombie == null || zombie.getPosition() == null) {
             return Long.MAX_VALUE;
         }
-
         long deltaX = zombie.getPosition().getX() - plant.getPosition().getX();
         long deltaY = zombie.getPosition().getY() - plant.getPosition().getY();
         return deltaX * deltaX + deltaY * deltaY;
     }
-
     private void affectZombies(
+            Plant plant,
             Board board,
             List<Zombie> zombies,
             ZombieCondition condition,
@@ -278,64 +310,66 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
         if (board == null || zombies == null || zombies.isEmpty()) {
             return;
         }
-
         int remainingTargets = this.targetCount <= 0 ? zombies.size() : Math.min(this.targetCount, zombies.size());
-
         for (int i = 0; i < remainingTargets; i++) {
-            Zombie zombie = zombies.get(i);
-
-            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
-                    || zombie.hasCondition(ZombieCondition.SUBMERGED)) {
-                continue;
-            }
-
-            if (condition != null) {
-                if (this.conditionDurationTicks > 0) {
-                    zombie.addCondition(condition, this.conditionDurationTicks);
-                } else {
-                    zombie.addCondition(condition);
-                }
-
-                if (condition == ZombieCondition.POISONED && this.poisonDamagePerTick > 0) {
-                    zombie.addPoisonDamagePerTick(this.poisonDamagePerTick);
-                }
-            }
-
-            if (removeArmor) {
-                this.dropMetallicArmor(zombie);
-            }
-
-            if (board.getCombatSystem() == null || this.damageExpression == null) {
-                continue;
-            }
-
-            if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
-                board.getCombatSystem().killZombie(zombie);
-            } else {
-                int damage = DamageExpressionParser.parseTotalDamage(this.damageExpression);
-
-                if (damage > 0) {
-                    if (condition == ZombieCondition.POISONED) {
-                        board.getCombatSystem().applyDirectDamageToZombie(zombie, damage);
-                    } else {
-                        board.getCombatSystem().applyDamageToZombie(zombie, damage);
-                    }
-                }
-            }
+            this.affectZombie(plant, board, zombies.get(i), condition, removeArmor);
         }
     }
-
+    private void affectZombie(
+            Plant plant,
+            Board board,
+            Zombie zombie,
+            ZombieCondition condition,
+            boolean removeArmor
+    ) {
+        if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                || zombie.hasCondition(ZombieCondition.SUBMERGED)) {
+            return;
+        }
+        this.applyCondition(plant, zombie, condition);
+        if (removeArmor) {
+            this.dropMetallicArmor(zombie);
+        }
+        if (board.getCombatSystem() == null || this.damageExpression == null) {
+            return;
+        }
+        if (DamageExpressionParser.isInstantKill(this.damageExpression)) {
+            board.getCombatSystem().killZombie(zombie, plant);
+            return;
+        }
+        int damage = DamageExpressionParser.parseTotalDamage(this.damageExpression);
+        if (damage <= 0) {
+            return;
+        }
+        if (condition == ZombieCondition.POISONED) {
+            board.getCombatSystem().applyDirectDamageToZombie(zombie, damage, plant);
+        } else {
+            board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
+        }
+    }
+    private void applyCondition(Plant plant, Zombie zombie, ZombieCondition condition) {
+        if (condition == null) {
+            return;
+        }
+        if (this.conditionDurationTicks > 0) {
+            zombie.addCondition(condition, this.conditionDurationTicks);
+        } else {
+            zombie.addCondition(condition);
+        }
+        if (condition == ZombieCondition.POISONED && this.poisonDamagePerTick > 0) {
+            zombie.addPoisonDamagePerTick(this.poisonDamagePerTick);
+            zombie.setPoisonSourcePlant(plant);
+        }
+    }
     private void armExplosiveBehavior(Plant plant) {
         if (plant.getBehavior() instanceof ExplosiveBehavior) {
             ((ExplosiveBehavior) plant.getBehavior()).armNow();
         }
     }
-
     private void resetSamePlants(Plant plant, Board board) {
         if (board == null || plant.getName() == null) {
             return;
         }
-
         for (Plant samePlant : board.getPlantsByName(plant.getName())) {
             if (samePlant != null) {
                 samePlant.healToFull();
@@ -343,14 +377,11 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
             }
         }
     }
-
     private void shiftLane(Plant plant, Board board) {
         if (plant == null || board == null || plant.getPosition() == null) {
             return;
         }
-
         List<Zombie> laneZombies = board.getZombiesInLane(plant.getPosition());
-
         for (Zombie zombie : laneZombies) {
             if (zombie == null || zombie.isDead() || zombie.isHypnotized()
                     || zombie.getPosition() == null
@@ -359,68 +390,55 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                     || zombie.hasCondition(ZombieCondition.SUBMERGED)) {
                 continue;
             }
-
             Position upperLane = new Position(zombie.getPosition().getX(), zombie.getPosition().getY() - 1);
-
             if (board.moveZombie(zombie, upperLane)) {
                 continue;
             }
-
             Position lowerLane = new Position(zombie.getPosition().getX(), zombie.getPosition().getY() + 1);
             board.moveZombie(zombie, lowerLane);
         }
     }
-
     private void cloneNearby(Plant plant, Board board) {
         if (plant == null || board == null || plant.getPosition() == null) {
             return;
         }
-
         int cloneCount = Math.max(1, this.activationCount);
         int placed = 0;
         PlantingSystem placement = new PlantingSystem(board, null, null);
-
         for (int distance = 1; distance <= 2 && placed < cloneCount; distance++) {
             for (int deltaY = -distance; deltaY <= distance && placed < cloneCount; deltaY++) {
                 for (int deltaX = -distance; deltaX <= distance && placed < cloneCount; deltaX++) {
                     if (Math.abs(deltaX) != distance && Math.abs(deltaY) != distance) {
                         continue;
                     }
-
                     Position clonePosition = new Position(
                             plant.getPosition().getX() + deltaX,
                             plant.getPosition().getY() + deltaY
                     );
                     Plant clone = plant.copyForPlantFood(clonePosition);
-
                     if (!placement.canPlant(clone, clonePosition)) {
                         continue;
                     }
-
                     placement.plant(clone, clonePosition);
                     placed++;
                 }
             }
         }
     }
-
     @Override
     public boolean canActivate() {
         return this.effectType != null && this.effectType != PlantFoodEffectType.NONE;
     }
-
     private void growSunProducer(Plant plant) {
         if (plant != null && plant.getBehavior() instanceof SunProducerBehavior) {
             ((SunProducerBehavior) plant.getBehavior()).growToMaximum();
         }
     }
-
     private void boostProjectileModifier(Plant plant) {
         if (plant != null && plant.getBehavior() instanceof ModifierBehavior) {
             ((ModifierBehavior) plant.getBehavior()).boostProjectilesFor(100);
         }
     }
-
     @Override
     public PlantFoodBehavior copy() {
         Projectile projectileCopy = this.projectileTemplate == null
@@ -445,13 +463,11 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
         copy.maxTargetRange = this.maxTargetRange;
         return copy;
     }
-
     @Override
     public void applyUpgrade(PlantUpgradeEffect effect) {
         if (effect == null) {
             return;
         }
-
         this.damageExpression = DamageExpressionParser.addFlatDamage(this.damageExpression, effect.getDamageBonus());
         this.targetCount += effect.getTargetCountBonus();
         this.radius += effect.getRangeBonus();
@@ -459,11 +475,9 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
         this.bonusHealth += effect.getHealthBonus();
         this.conditionDurationTicks += effect.getDurationBonusTicks();
         this.poisonDamagePerTick += effect.getPoisonDamageBonusPerTick();
-
         if (this.maxTargetRange > 0) {
             this.maxTargetRange += effect.getRangeBonus();
         }
-
         if (this.projectileTemplate != null) {
             this.projectileTemplate.addDamageBonus(effect.getDamageBonus());
             this.projectileTemplate.addPierceBonus(effect.getPierceBonus());
@@ -474,20 +488,16 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
             this.projectileTemplate.addPlantFoodChanceBonus(effect.getPlantFoodChanceBonusPercent());
         }
     }
-
     private void dropMetallicArmor(Zombie zombie) {
         ZombieArmor armor = this.findMetallicArmor(zombie);
-
         if (armor != null) {
             armor.drop();
         }
     }
-
     private ZombieArmor findMetallicArmor(Zombie zombie) {
         if (zombie == null || zombie.getArmors() == null) {
             return null;
         }
-
         for (ZombieArmor armor : zombie.getArmors()) {
             if (armor != null && !armor.isDestroyed() && !armor.isDropped()
                     && armor.getDefinition() != null && armor.getDefinition().getFlags() != null
@@ -495,7 +505,6 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                 return armor;
             }
         }
-
         return null;
     }
 }

@@ -45,6 +45,6 @@ public class ChapterAncientEgypt extends Chapter {
     public Position spawnTornado(int row) {
         int columnsAhead = MIN_TORNADO_COLUMNS_AHEAD
                 + this.random.nextInt(MAX_TORNADO_COLUMNS_AHEAD - MIN_TORNADO_COLUMNS_AHEAD + 1);
-        return new Position(columnsAhead, row);
+        return new Position(DEFAULT_ZOMBIE_ENTRY_COLUMN - columnsAhead, row);
     }
 }

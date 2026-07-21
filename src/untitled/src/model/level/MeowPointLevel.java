@@ -12,16 +12,20 @@ import model.mechanism.ZombieKillEvent;
 import model.mechanism.ZombieKillObserver;
 import model.plant.Projectile;
 import model.zombie.Zombie;
+import model.zombie.ZombieDefinition;
 
+import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 
 @Getter
 public class MeowPointLevel extends Level implements Tickable, ZombieKillObserver {
-    private static final int WAVE_COUNT = 5;
+    private static final int WAVE_COUNT = 4;
     private static final int MULTI_KILL_BONUS_PER_EXTRA_ZOMBIE = 10;
     private static final int QUICK_KILL_BONUS = 15;
     private static final int QUICK_KILL_SECONDS_THRESHOLD = 2;
@@ -33,9 +37,12 @@ public class MeowPointLevel extends Level implements Tickable, ZombieKillObserve
     private final GameClock gameClock;
     private final long quickKillTicksThreshold;
     private final long killStreakGapTicks;
+    private final LocalDate challengeDate;
+    private final long dailySeed;
 
     private int point;
     private int destroyedPlantCount;
+    private boolean finalScoreCalculated;
 
     private final Map<Zombie, Long> zombieEntryTicks = new HashMap<>();
     private long lastKillTick = -1;
@@ -44,11 +51,41 @@ public class MeowPointLevel extends Level implements Tickable, ZombieKillObserve
     private final List<ZombieKillEvent> currentBatch = new ArrayList<>();
 
     public MeowPointLevel(Chapter chapter, List<Plant> allowedPlants, double baseDifficulty, GameClock gameClock) {
+        this(chapter, allowedPlants, baseDifficulty, gameClock, LocalDate.now());
+    }
+
+    public MeowPointLevel(
+            Chapter chapter,
+            List<Plant> allowedPlants,
+            double baseDifficulty,
+            GameClock gameClock,
+            LocalDate challengeDate
+    ) {
         super(LevelType.MEOW_POINT, chapter, allowedPlants, baseDifficulty);
         this.gameClock = gameClock;
+        this.challengeDate = challengeDate == null ? LocalDate.now() : challengeDate;
+        this.dailySeed = this.challengeDate.toEpochDay();
         int ticksPerSecond = 10;
         this.quickKillTicksThreshold = (long) QUICK_KILL_SECONDS_THRESHOLD * ticksPerSecond;
         this.killStreakGapTicks = (long) KILL_STREAK_GAP_SECONDS * ticksPerSecond;
+    }
+
+    public List<ZombieDefinition> createDailyZombieOrder(
+            List<ZombieDefinition> definitions
+    ) {
+        List<ZombieDefinition> ordered = new ArrayList<>();
+        if (definitions == null) {
+            return ordered;
+        }
+
+        for (ZombieDefinition definition : definitions) {
+            if (definition != null) {
+                ordered.add(definition);
+            }
+        }
+
+        Collections.shuffle(ordered, new Random(this.dailySeed));
+        return ordered;
     }
 
     @Override
@@ -73,6 +110,13 @@ public class MeowPointLevel extends Level implements Tickable, ZombieKillObserve
     @Override
     public void start() {
         setStarted(true);
+        this.point = 0;
+        this.destroyedPlantCount = 0;
+        this.finalScoreCalculated = false;
+        this.zombieEntryTicks.clear();
+        this.lastKillTick = -1;
+        this.currentBatchTick = Long.MIN_VALUE;
+        this.currentBatch.clear();
 
         List<Wave> waves = getWaves();
         if (waves != null && !waves.isEmpty()) {
@@ -120,25 +164,22 @@ public class MeowPointLevel extends Level implements Tickable, ZombieKillObserve
     }
 
     public void calculatePoint() {
+        if (this.finalScoreCalculated) {
+            return;
+        }
+
         this.flushBatch();
 
         if (this.destroyedPlantCount == 0) {
             this.addPoints(NO_PLANT_LOST_BONUS);
         }
+
+        this.finalScoreCalculated = true;
     }
 
     @Override
     public boolean isWinConditionMet() {
-        List<Wave> waves = getWaves();
-
-        if (waves == null || waves.isEmpty()) {
-            return false;
-        }
-
-        Wave lastWave = waves.get(waves.size() - 1);
-        return lastWave.isFinalWave()
-                && lastWave.isStarted()
-                && lastWave.getRemainingHealthPercentage() <= 0;
+        return this.areAllWavesDefeated();
     }
 
     @Override

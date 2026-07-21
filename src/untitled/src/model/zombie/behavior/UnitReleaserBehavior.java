@@ -35,7 +35,7 @@ public class UnitReleaserBehavior implements ZombieBehavior {
             return;
         }
 
-        if (zombie.getHealth() <= zombie.getDefinition().getHitpoints() * this.releaseHealthThreshold) {
+        if (zombie.getHealth() <= zombie.getMaximumHealth() * this.releaseHealthThreshold) {
             this.activate(zombie, board);
         }
     }

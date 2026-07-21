@@ -26,6 +26,8 @@ public class LoginController implements MenuController {
     }
 
     public AccountResult login(String username, String password, boolean stayLoggedIn) {
+        this.accountService.clearPendingRegistration();
+        this.accountService.clearPendingPasswordReset();
         AccountResult result = this.accountService.login(username, password, stayLoggedIn);
 
         if (result.isSuccessful()) {
@@ -38,6 +40,10 @@ public class LoginController implements MenuController {
 
     public AccountResult beginPasswordRecovery(String username, String email) {
         return this.accountService.beginPasswordReset(username, email);
+    }
+
+    public void cancelPendingPasswordRecovery() {
+        this.accountService.clearPendingPasswordReset();
     }
 
     public AccountResult resetPassword(

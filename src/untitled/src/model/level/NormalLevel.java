@@ -39,11 +39,7 @@ public class NormalLevel extends Level {
 
     @Override
     public boolean isWinConditionMet() {
-        List<Wave> waves = getWaves();
-        if (waves == null || waves.isEmpty()) return false;
-        Wave lastWave = waves.get(waves.size() - 1);
-        return lastWave.isStarted()
-                && lastWave.getRemainingHealthPercentage() == 0;
+        return this.areAllWavesDefeated();
     }
 
     @Override

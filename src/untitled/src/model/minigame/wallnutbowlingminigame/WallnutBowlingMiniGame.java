@@ -1,549 +1,402 @@
 package model.minigame.wallnutbowlingminigame;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
 import lombok.Getter;
 import model.mechanism.Position;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
+import model.minigame.StageProgressMiniGame;
 
 @Getter
-public class WallnutBowlingMiniGame extends MiniGame {
-    private static final int MIN_STAGE_NUMBER = 1;
-    private static final int MAX_STAGE_NUMBER = 3;
+public class WallnutBowlingMiniGame extends MiniGame implements StageProgressMiniGame {
+  private static final int MIN_STAGE_NUMBER = 1;
+  private static final int MAX_STAGE_NUMBER = 3;
 
-    private static final int BOARD_COLUMN_COUNT = 9;
-    private static final int BOARD_ROW_COUNT = 5;
+  private static final int BOARD_COLUMN_COUNT = 9;
+  private static final int BOARD_ROW_COUNT = 5;
 
-    private final List<BowlingWallnutType> conveyorBelt;
+  private final List<BowlingWallnutType> conveyorBelt;
 
-    private final List<RollingWallnut> rollingWallnuts;
+  private final List<RollingWallnut> rollingWallnuts;
 
-    private final WallnutBowlingIntegration integration;
+  private final WallnutBowlingIntegration integration;
 
-    private final WallnutBowlingStageGenerator stageGenerator;
+  private final WallnutBowlingStageGenerator stageGenerator;
 
-    private final boolean plantSelectionEnabled;
+  private final boolean plantSelectionEnabled;
 
-    private final boolean skySunEnabled;
+  private final boolean skySunEnabled;
 
-    private WallnutBowlingStageConfig currentStageConfig;
+  private WallnutBowlingStageConfig currentStageConfig;
 
-    private long currentTick;
+  private long currentTick;
 
-    private long ticksSinceLastGeneration;
+  private long ticksSinceLastGeneration;
 
-    private int currentStageNumber;
+  private int currentStageNumber;
 
-    private int highestUnlockedStage;
+  private int highestUnlockedStage;
 
-    private boolean wavesStarted;
+  private boolean wavesStarted;
 
-    private boolean lost;
+  private boolean lost;
 
-    public WallnutBowlingMiniGame() {
-        this(
-                new PlantZombieWallnutBowlingIntegration(),
-                new WallnutBowlingStageGenerator()
-        );
+  public WallnutBowlingMiniGame() {
+    this(new PlantZombieWallnutBowlingIntegration(), new WallnutBowlingStageGenerator());
+  }
+
+  public WallnutBowlingMiniGame(WallnutBowlingIntegration integration) {
+    this(integration, new WallnutBowlingStageGenerator());
+  }
+
+  public WallnutBowlingMiniGame(WallnutBowlingIntegration integration, Random random) {
+    this(integration, new WallnutBowlingStageGenerator(random));
+  }
+
+  public WallnutBowlingMiniGame(
+      WallnutBowlingIntegration integration, WallnutBowlingStageGenerator stageGenerator) {
+    super(MiniGameType.WALLNUT_BOWLING);
+
+    if (integration == null) {
+      this.integration = new PlantZombieWallnutBowlingIntegration();
+    } else {
+      this.integration = integration;
     }
 
-    public WallnutBowlingMiniGame(
-            WallnutBowlingIntegration integration
-    ) {
-        this(
-                integration,
-                new WallnutBowlingStageGenerator()
-        );
+    if (stageGenerator == null) {
+      this.stageGenerator = new WallnutBowlingStageGenerator();
+    } else {
+      this.stageGenerator = stageGenerator;
     }
 
-    public WallnutBowlingMiniGame(
-            WallnutBowlingIntegration integration,
-            Random random
-    ) {
-        this(
-                integration,
-                new WallnutBowlingStageGenerator(random)
-        );
+    this.currentStageConfig = this.stageGenerator.generateStage(1);
+
+    this.conveyorBelt = new ArrayList<>();
+    this.rollingWallnuts = new ArrayList<>();
+
+    this.plantSelectionEnabled = false;
+    this.skySunEnabled = false;
+
+    this.currentTick = 0;
+    this.ticksSinceLastGeneration = 0;
+
+    this.currentStageNumber = 1;
+    this.highestUnlockedStage = 1;
+
+    this.wavesStarted = false;
+    this.lost = false;
+  }
+
+  @Override
+  public void start() {
+    startStage(currentStageNumber);
+  }
+
+  public WallnutBowlingActionResult startStage(int stageNumber) {
+    if (!isValidStageNumber(stageNumber)) {
+      return WallnutBowlingActionResult.invalidStage(stageNumber);
     }
 
-    public WallnutBowlingMiniGame(
-            WallnutBowlingIntegration integration,
-            WallnutBowlingStageGenerator stageGenerator
-    ) {
-        super(MiniGameType.WALLNUT_BOWLING);
-
-        if (integration == null) {
-            this.integration =
-                    new PlantZombieWallnutBowlingIntegration();
-        } else {
-            this.integration = integration;
-        }
-
-        if (stageGenerator == null) {
-            this.stageGenerator =
-                    new WallnutBowlingStageGenerator();
-        } else {
-            this.stageGenerator = stageGenerator;
-        }
-
-        this.currentStageConfig =
-                this.stageGenerator.generateStage(1);
-
-        this.conveyorBelt = new ArrayList<>();
-        this.rollingWallnuts = new ArrayList<>();
-
-        this.plantSelectionEnabled = false;
-        this.skySunEnabled = false;
-
-        this.currentTick = 0;
-        this.ticksSinceLastGeneration = 0;
-
-        this.currentStageNumber = 1;
-        this.highestUnlockedStage = 1;
-
-        this.wavesStarted = false;
-        this.lost = false;
+    if (!isStageUnlocked(stageNumber)) {
+      return WallnutBowlingActionResult.stageLocked(stageNumber);
     }
 
-    @Override
-    public void start() {
-        startStage(currentStageNumber);
+    currentStageNumber = stageNumber;
+    if (getStages() != null && getStages().size() >= stageNumber) {
+      setCurrentStage(getStages().get(stageNumber - 1));
+    }
+    markStarted();
+    setCompleted(false);
+    resetStageState();
+    currentStageConfig = stageGenerator.generateStage(stageNumber);
+    integration.prepareStage(stageNumber);
+    setBoard(integration.getBoard());
+    if (integration.isReady()) {
+      integration.startZombieWaves(stageNumber);
+      wavesStarted = true;
+    }
+    for (int i = 0; i < currentStageConfig.getInitialWallnutCount(); i++) {
+      generateWallnut();
+    }
+    return WallnutBowlingActionResult.started(stageNumber);
+  }
+
+  private void resetStageState() {
+    currentTick = 0;
+    ticksSinceLastGeneration = 0;
+    lost = false;
+    wavesStarted = false;
+    conveyorBelt.clear();
+    rollingWallnuts.clear();
+  }
+
+  public BowlingWallnutType generateWallnut() {
+    if (!isStarted() || isCompleted() || isLoseConditionMet()) {
+      return null;
     }
 
-    public WallnutBowlingActionResult startStage(
-            int stageNumber
-    ) {
-        if (!isValidStageNumber(stageNumber)) {
-            return WallnutBowlingActionResult
-                    .invalidStage(stageNumber);
-        }
+    if (conveyorBelt.size() >= currentStageConfig.getConveyorCapacity()) {
 
-        if (!isStageUnlocked(stageNumber)) {
-            return WallnutBowlingActionResult
-                    .stageLocked(stageNumber);
-        }
-
-        currentStageNumber = stageNumber;
-
-        markStarted();
-        setCompleted(false);
-
-        currentTick = 0;
-        ticksSinceLastGeneration = 0;
-
-        lost = false;
-        wavesStarted = false;
-
-        conveyorBelt.clear();
-        rollingWallnuts.clear();
-
-        currentStageConfig =
-                stageGenerator.generateStage(
-                        stageNumber
-                );
-
-        integration.prepareStage(stageNumber);
-
-        if (integration.isReady()) {
-            integration.startZombieWaves(
-                    stageNumber
-            );
-
-            wavesStarted = true;
-        }
-
-        for (int i = 0;
-             i < currentStageConfig
-                     .getInitialWallnutCount();
-             i++) {
-
-            generateWallnut();
-        }
-
-        return WallnutBowlingActionResult.started(
-                stageNumber
-        );
+      return null;
     }
 
-    public BowlingWallnutType generateWallnut() {
-        if (!isStarted()
-                || isCompleted()
-                || isLoseConditionMet()) {
-            return null;
-        }
+    BowlingWallnutType type = stageGenerator.chooseRandomWallnutType(currentStageConfig);
 
-        if (conveyorBelt.size()
-                >= currentStageConfig
-                .getConveyorCapacity()) {
+    conveyorBelt.add(type);
 
-            return null;
-        }
+    ticksSinceLastGeneration = 0;
 
-        BowlingWallnutType type =
-                stageGenerator
-                        .chooseRandomWallnutType(
-                                currentStageConfig
-                        );
+    return type;
+  }
 
-        conveyorBelt.add(type);
-
-        ticksSinceLastGeneration = 0;
-
-        return type;
+  public WallnutBowlingActionResult placeWallnutFromConveyor(int userIndex, Position position) {
+    WallnutBowlingActionResult validationResult = validateAction(position);
+    if (validationResult != null) {
+      return validationResult;
+    }
+    if (!integration.isReady()) {
+      return WallnutBowlingActionResult.integrationNotReady();
+    }
+    if (conveyorBelt.isEmpty()) {
+      return WallnutBowlingActionResult.noWallnutAvailable();
     }
 
-    public WallnutBowlingActionResult
-    placeWallnutFromConveyor(
-            int userIndex,
-            Position position
-    ) {
-        WallnutBowlingActionResult validationResult =
-                validateAction(position);
-
-        if (validationResult != null) {
-            return validationResult;
-        }
-
-        if (!integration.isReady()) {
-            return WallnutBowlingActionResult
-                    .integrationNotReady();
-        }
-
-        if (conveyorBelt.isEmpty()) {
-            return WallnutBowlingActionResult
-                    .noWallnutAvailable();
-        }
-
-        int listIndex = userIndex - 1;
-
-        if (listIndex < 0
-                || listIndex >= conveyorBelt.size()) {
-
-            return WallnutBowlingActionResult
-                    .invalidConveyorIndex(
-                            userIndex
-                    );
-        }
-
-        if (!canPlaceAt(position)) {
-            return WallnutBowlingActionResult
-                    .outsidePlantingArea(position);
-        }
-
-        BowlingWallnutType type =
-                conveyorBelt.get(listIndex);
-
-        RollingWallnut wallnut =
-                createRollingWallnut(
-                        type,
-                        position
-                );
-
-        if (wallnut == null) {
-            return WallnutBowlingActionResult
-                    .invalidAction();
-        }
-
-        conveyorBelt.remove(listIndex);
-        rollingWallnuts.add(wallnut);
-
-        return WallnutBowlingActionResult.placed(
-                type,
-                position,
-                userIndex,
-                isCompleted(),
-                isLoseConditionMet()
-        );
+    int listIndex = userIndex - 1;
+    if (listIndex < 0 || listIndex >= conveyorBelt.size()) {
+      return WallnutBowlingActionResult.invalidConveyorIndex(userIndex);
+    }
+    if (!canPlaceAt(position)) {
+      return WallnutBowlingActionResult.outsidePlantingArea(position);
     }
 
-    public RollingWallnut placeWallnut(
-            BowlingWallnutType type,
-            Position position
-    ) {
-        if (type == null
-                || !integration.isReady()
-                || !canPlaceAt(position)) {
-            return null;
-        }
-
-        int listIndex =
-                conveyorBelt.indexOf(type);
-
-        if (listIndex < 0) {
-            return null;
-        }
-
-        RollingWallnut wallnut =
-                createRollingWallnut(
-                        type,
-                        position
-                );
-
-        if (wallnut == null) {
-            return null;
-        }
-
-        conveyorBelt.remove(listIndex);
-        rollingWallnuts.add(wallnut);
-
-        return wallnut;
+    BowlingWallnutType type = conveyorBelt.get(listIndex);
+    RollingWallnut wallnut = createRollingWallnut(type, position);
+    if (wallnut == null) {
+      return WallnutBowlingActionResult.invalidAction();
     }
 
-    private RollingWallnut createRollingWallnut(
-            BowlingWallnutType type,
-            Position position
-    ) {
-        int normalZombieHealth =
-                integration.getNormalZombieHealth();
+    conveyorBelt.remove(listIndex);
+    rollingWallnuts.add(wallnut);
+    return WallnutBowlingActionResult.placed(
+        type, position, userIndex, isCompleted(), isLoseConditionMet());
+  }
 
-        int cherryBombDamage =
-                integration.getCherryBombDamage();
-
-        return new RollingWallnut(
-                type,
-                position,
-                normalZombieHealth,
-                cherryBombDamage,
-                currentStageConfig
-                        .getMovementIntervalTicks(),
-                integration
-        );
+  public RollingWallnut placeWallnut(BowlingWallnutType type, Position position) {
+    if (type == null || !integration.isReady() || !canPlaceAt(position)) {
+      return null;
     }
 
-    public boolean canPlaceAt(
-            Position position
-    ) {
-        if (!isValidPosition(position)) {
-            return false;
-        }
+    int listIndex = conveyorBelt.indexOf(type);
 
-        return position.getX()
-                <= currentStageConfig
-                .getPlantingBoundaryColumn();
+    if (listIndex < 0) {
+      return null;
     }
 
-    @Override
-    public void onTick() {
-        if (!isStarted()
-                || isCompleted()
-                || isLoseConditionMet()) {
-            return;
-        }
+    RollingWallnut wallnut = createRollingWallnut(type, position);
 
-        currentTick++;
-        ticksSinceLastGeneration++;
-
-        startWavesIfReady();
-
-        if (integration.isReady()) {
-            integration.advanceOneTick();
-
-            if (integration.isBrainEaten()) {
-                markLost();
-            }
-        }
-
-        tickRollingWallnuts();
-
-        generateWallnutIfNeeded();
-
-        updateCompletedIfWon();
+    if (wallnut == null) {
+      return null;
     }
 
-    private void startWavesIfReady() {
-        if (wavesStarted
-                || !integration.isReady()) {
-            return;
-        }
+    conveyorBelt.remove(listIndex);
+    rollingWallnuts.add(wallnut);
 
-        integration.startZombieWaves(
-                currentStageNumber
-        );
+    return wallnut;
+  }
 
-        wavesStarted = true;
+  private RollingWallnut createRollingWallnut(BowlingWallnutType type, Position position) {
+    int normalZombieHealth = integration.getNormalZombieHealth();
+
+    int cherryBombDamage = integration.getCherryBombDamage();
+
+    return new RollingWallnut(
+        type,
+        position,
+        normalZombieHealth,
+        cherryBombDamage,
+        currentStageConfig.getMovementIntervalTicks(),
+        integration);
+  }
+
+  public boolean canPlaceAt(Position position) {
+    if (!isValidPosition(position)) {
+      return false;
     }
 
-    private void tickRollingWallnuts() {
-        List<RollingWallnut> wallnutsCopy =
-                new ArrayList<>(
-                        rollingWallnuts
-                );
+    return position.getX() <= currentStageConfig.getPlantingBoundaryColumn();
+  }
 
-        for (RollingWallnut wallnut
-                : wallnutsCopy) {
-
-            if (wallnut != null
-                    && wallnut.isMoving()) {
-
-                wallnut.onTick();
-            }
-        }
-
-        rollingWallnuts.removeIf(
-                wallnut ->
-                        wallnut == null
-                                || !wallnut.isMoving()
-                                || wallnut
-                                .isOutsideBoard()
-        );
+  @Override
+  public void onTick() {
+    if (!isStarted() || isCompleted() || isLoseConditionMet()) {
+      return;
     }
 
-    private void generateWallnutIfNeeded() {
-        if (conveyorBelt.size()
-                >= currentStageConfig
-                .getConveyorCapacity()) {
-            return;
-        }
+    currentTick++;
+    ticksSinceLastGeneration++;
 
-        if (ticksSinceLastGeneration
-                < currentStageConfig
-                .getGenerationIntervalTicks()) {
-            return;
-        }
+    startWavesIfReady();
 
-        generateWallnut();
+    if (integration.isReady()) {
+      integration.advanceOneTick();
+
+      if (integration.isBrainEaten()) {
+        markLost();
+      }
     }
 
-    @Override
-    public boolean isWinConditionMet() {
-        if (!isStarted()
-                || !integration.isReady()
-                || !wavesStarted) {
-            return false;
-        }
+    tickRollingWallnuts();
 
-        return integration.areAllWavesFinished()
-                && !integration.hasAliveZombies();
+    generateWallnutIfNeeded();
+
+    updateCompletedIfWon();
+  }
+
+  private void startWavesIfReady() {
+    if (wavesStarted || !integration.isReady()) {
+      return;
     }
 
-    @Override
-    public boolean isLoseConditionMet() {
-        return lost;
+    integration.startZombieWaves(currentStageNumber);
+
+    wavesStarted = true;
+  }
+
+  private void tickRollingWallnuts() {
+    List<RollingWallnut> wallnutsCopy = new ArrayList<>(rollingWallnuts);
+
+    for (RollingWallnut wallnut : wallnutsCopy) {
+
+      if (wallnut != null && wallnut.isMoving()) {
+
+        wallnut.onTick();
+      }
     }
 
-    public WallnutBowlingStateResult getState() {
-        long ticksUntilNextGeneration =
-                Math.max(
-                        0,
-                        currentStageConfig
-                                .getGenerationIntervalTicks()
-                                - ticksSinceLastGeneration
-                );
+    rollingWallnuts.removeIf(
+        wallnut -> wallnut == null || !wallnut.isMoving() || wallnut.isOutsideBoard());
+  }
 
-        return new WallnutBowlingStateResult(
-                currentStageNumber,
-                currentTick,
-                conveyorBelt,
-                rollingWallnuts,
-                currentStageConfig
-                        .getPlantingBoundaryColumn(),
-                ticksUntilNextGeneration,
-                isStarted(),
-                integration.isReady(),
-                isCompleted(),
-                isLoseConditionMet()
-        );
+  private void generateWallnutIfNeeded() {
+    if (conveyorBelt.size() >= currentStageConfig.getConveyorCapacity()) {
+      return;
     }
 
-    public boolean isStageUnlocked(
-            int stageNumber
-    ) {
-        return isValidStageNumber(stageNumber)
-                && stageNumber
-                <= highestUnlockedStage;
+    if (ticksSinceLastGeneration < currentStageConfig.getGenerationIntervalTicks()) {
+      return;
     }
 
-    public void unlockStage(int stageNumber) {
-        if (!isValidStageNumber(stageNumber)) {
-            return;
-        }
+    generateWallnut();
+  }
 
-        highestUnlockedStage = Math.max(
-                highestUnlockedStage,
-                stageNumber
-        );
+  @Override
+  public boolean isWinConditionMet() {
+    if (!isStarted() || !integration.isReady() || !wavesStarted) {
+      return false;
     }
 
-    public void markLost() {
-        if (!isStarted()
-                || isCompleted()
-                || lost) {
-            return;
-        }
+    return integration.areAllWavesFinished() && !integration.hasAliveZombies();
+  }
 
-        lost = true;
+  @Override
+  public boolean isLoseConditionMet() {
+    return lost;
+  }
+
+  public WallnutBowlingStateResult getState() {
+    long ticksUntilNextGeneration =
+        Math.max(0, currentStageConfig.getGenerationIntervalTicks() - ticksSinceLastGeneration);
+
+    return new WallnutBowlingStateResult(
+        currentStageNumber,
+        currentTick,
+        conveyorBelt,
+        rollingWallnuts,
+        currentStageConfig.getPlantingBoundaryColumn(),
+        ticksUntilNextGeneration,
+        isStarted(),
+        integration.isReady(),
+        isCompleted(),
+        isLoseConditionMet());
+  }
+
+  public boolean isStageUnlocked(int stageNumber) {
+    return isValidStageNumber(stageNumber) && stageNumber <= highestUnlockedStage;
+  }
+
+  public void unlockStage(int stageNumber) {
+    if (!isValidStageNumber(stageNumber)) {
+      return;
     }
 
-    private WallnutBowlingActionResult
-    validateAction(Position position) {
-        if (!isStarted()) {
-            return WallnutBowlingActionResult
-                    .gameNotStarted();
-        }
+    highestUnlockedStage = Math.max(highestUnlockedStage, stageNumber);
+  }
 
-        if (isCompleted()
-                || isLoseConditionMet()) {
-
-            return WallnutBowlingActionResult
-                    .gameAlreadyFinished(
-                            isCompleted(),
-                            isLoseConditionMet()
-                    );
-        }
-
-        if (!isValidPosition(position)) {
-            return WallnutBowlingActionResult
-                    .invalidPosition(position);
-        }
-
-        return null;
+  public void markLost() {
+    if (!isStarted() || isCompleted() || lost) {
+      return;
     }
 
-    private boolean isValidPosition(
-            Position position
-    ) {
-        if (position == null) {
-            return false;
-        }
+    lost = true;
+  }
 
-        return position.getX() >= 1
-                && position.getX()
-                <= BOARD_COLUMN_COUNT
-                && position.getY() >= 1
-                && position.getY()
-                <= BOARD_ROW_COUNT;
+  private WallnutBowlingActionResult validateAction(Position position) {
+    if (!isStarted()) {
+      return WallnutBowlingActionResult.gameNotStarted();
     }
 
-    private boolean isValidStageNumber(
-            int stageNumber
-    ) {
-        return stageNumber >= MIN_STAGE_NUMBER
-                && stageNumber
-                <= MAX_STAGE_NUMBER;
+    if (isCompleted() || isLoseConditionMet()) {
+
+      return WallnutBowlingActionResult.gameAlreadyFinished(isCompleted(), isLoseConditionMet());
     }
 
-    private void updateCompletedIfWon() {
-        if (isCompleted()
-                || isLoseConditionMet()
-                || !isWinConditionMet()) {
-            return;
-        }
-
-        markCompleted();
-        unlockNextStage();
+    if (!isValidPosition(position)) {
+      return WallnutBowlingActionResult.invalidPosition(position);
     }
 
-    private void unlockNextStage() {
-        if (currentStageNumber
-                >= MAX_STAGE_NUMBER) {
-            return;
-        }
+    return null;
+  }
 
-        unlockStage(
-                currentStageNumber + 1
-        );
+  private boolean isValidPosition(Position position) {
+    if (position == null) {
+      return false;
     }
+
+    return position.getX() >= 1
+        && position.getX() <= BOARD_COLUMN_COUNT
+        && position.getY() >= 1
+        && position.getY() <= BOARD_ROW_COUNT;
+  }
+
+  private boolean isValidStageNumber(int stageNumber) {
+    return stageNumber >= MIN_STAGE_NUMBER && stageNumber <= MAX_STAGE_NUMBER;
+  }
+
+  private void updateCompletedIfWon() {
+    if (isCompleted() || isLoseConditionMet() || !isWinConditionMet()) {
+      return;
+    }
+
+    if (currentStageNumber >= MAX_STAGE_NUMBER) {
+      markAllStagesCompleted();
+    } else {
+      markCompleted();
+    }
+    unlockNextStage();
+  }
+
+  private void unlockNextStage() {
+    if (currentStageNumber >= MAX_STAGE_NUMBER) {
+      return;
+    }
+
+    unlockStage(currentStageNumber + 1);
+  }
+
+  @Override
+  public void restoreHighestUnlockedStage(int stageNumber) {
+    this.highestUnlockedStage = Math.max(1, Math.min(MAX_STAGE_NUMBER, stageNumber));
+  }
 }

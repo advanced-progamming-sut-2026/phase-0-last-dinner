@@ -13,7 +13,11 @@ public class GargantuarBehavior implements ZombieBehavior {
     private double throwHealthThreshold;
     private boolean impThrown;
 
-    public GargantuarBehavior(ZombieDefinition impDefinition, ZombieFactory zombieFactory, double throwHealthThreshold) {
+    public GargantuarBehavior(
+            ZombieDefinition impDefinition,
+            ZombieFactory zombieFactory,
+            double throwHealthThreshold
+    ) {
         this.impDefinition = impDefinition;
         this.zombieFactory = zombieFactory;
         this.throwHealthThreshold = throwHealthThreshold;
@@ -21,8 +25,8 @@ public class GargantuarBehavior implements ZombieBehavior {
 
     @Override
     public void onTick(Zombie zombie, Board board) {
-        if (!this.impThrown && zombie != null && zombie.getDefinition() != null
-                && zombie.getHealth() <= zombie.getDefinition().getHitpoints() * this.throwHealthThreshold) {
+        if (!this.impThrown && zombie != null
+                && zombie.getHealth() <= zombie.getMaximumHealth() * this.throwHealthThreshold) {
             this.throwImp(zombie, board);
         }
     }

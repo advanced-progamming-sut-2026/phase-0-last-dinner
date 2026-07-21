@@ -2,6 +2,7 @@ package model.mechanism;
 
 import lombok.Getter;
 import model.chapters.Chapter;
+import model.chapters.ChapterBigWaveBeach;
 import model.zombie.Zombie;
 import model.zombie.ZombieChapter;
 import model.zombie.ZombieDefinition;
@@ -43,15 +44,24 @@ public class ZombieSpawner {
     }
     public List<Zombie> spawnWave(Wave wave) {
         List<Zombie> spawnedZombies = new ArrayList<>();
-
         if (wave == null) {
             return spawnedZombies;
         }
 
-        int requestedCost = Math.max(0, (int) wave.getDifficulty());
+        double difficulty = wave.getDifficulty();
+        if (!this.isValidWaveDifficulty(difficulty)) {
+            return spawnedZombies;
+        }
+
+        int requestedCost = (int) difficulty;
         List<ZombieDefinition> definitions = this.getEligibleDefinitions(requestedCost);
         boolean[] reachableCosts = this.calculateReachableCosts(requestedCost, definitions);
-        int remainingCost = this.findLargestReachableCost(requestedCost, reachableCosts);
+
+        if (!reachableCosts[requestedCost]) {
+            return spawnedZombies;
+        }
+
+        int remainingCost = requestedCost;
 
         while (remainingCost > 0) {
             ZombieDefinition definition = this.chooseZombieDefinition(
@@ -65,7 +75,7 @@ public class ZombieSpawner {
             }
 
             int row = this.chooseRandomRow();
-            Zombie zombie = this.spawnZombie(definition, null, row);
+            Zombie zombie = this.spawnZombie(definition, null, row, wave.isFinalWave());
 
             if (zombie == null) {
                 break;
@@ -81,6 +91,13 @@ public class ZombieSpawner {
         }
 
         return spawnedZombies;
+    }
+
+    private boolean isValidWaveDifficulty(double difficulty) {
+        return Double.isFinite(difficulty)
+                && difficulty > 0
+                && difficulty <= Integer.MAX_VALUE
+                && difficulty == Math.floor(difficulty);
     }
 
     public Zombie spawnZombie(
@@ -102,7 +119,9 @@ public class ZombieSpawner {
         }
 
         int safeRow = Math.max(0, Math.min(4, row));
-        Position spawnPosition = this.chapter != null
+        Position spawnPosition = this.isBeachFisherman(definition)
+                ? new Position(8, safeRow)
+                : this.chapter != null
                 ? this.chapter.resolveZombieSpawnPosition(safeRow, isFinalWave)
                 : new Position(8, safeRow);
         Zombie zombie = this.zombieFactory.create(definition, spawnPosition);
@@ -113,6 +132,12 @@ public class ZombieSpawner {
         }
 
         return zombie;
+    }
+
+    private boolean isBeachFisherman(ZombieDefinition definition) {
+        return this.chapter instanceof ChapterBigWaveBeach
+                && definition.getAlias() != null
+                && "ZombieBeachFisherman".equalsIgnoreCase(definition.getAlias());
     }
 
     public int chooseRandomRow() {
@@ -147,6 +172,10 @@ public class ZombieSpawner {
         this.activeChapter = activeChapter == null
                 ? ZombieChapter.ALL_CHAPTERS
                 : activeChapter;
+    }
+
+    public void setChapter(Chapter chapter) {
+        this.chapter = chapter;
     }
 
     public void setRandom(Random random) {
@@ -266,16 +295,6 @@ public class ZombieSpawner {
         return Math.max(1, (int) Math.round(
                 definition.getWavePointCost() * this.difficultyConfig.getInverseMultiplier()
         ));
-    }
-
-    private int findLargestReachableCost(int requestedCost, boolean[] reachableCosts) {
-        for (int cost = requestedCost; cost > 0; cost--) {
-            if (reachableCosts[cost]) {
-                return cost;
-            }
-        }
-
-        return 0;
     }
 
     private String getDefinitionName(ZombieDefinition definition) {

@@ -103,6 +103,9 @@ public class SunSystem implements Tickable {
                 producer
         );
         this.suns.add(sun);
+        this.fireEvent("Plant " + producer.getName() + " produced a sun at ("
+                + (producer.getPosition().getX() + 1) + ", "
+                + (producer.getPosition().getY() + 1) + ").");
         return sun;
     }
 

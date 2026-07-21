@@ -22,37 +22,25 @@ public class ZombotanyController implements ZombotanyViewObserver {
 
     private final ZombotanyMiniGame game;
 
-    public ZombotanyController(
-            ZombotanyView view,
-            ZombotanyMiniGame game
-    ) {
+    public ZombotanyController(ZombotanyView view, ZombotanyMiniGame game) {
         if (view == null) {
-            throw new IllegalArgumentException(
-                    "Zombotany view cannot be null."
-            );
+            throw new IllegalArgumentException("Zombotany view cannot be null.");
         }
-
         if (game == null) {
-            throw new IllegalArgumentException(
-                    "Zombotany game cannot be null."
-            );
+            throw new IllegalArgumentException("Zombotany game cannot be null.");
         }
-
         this.game = game;
         view.setObserver(this);
     }
 
     @Override
-    public ZombotanyActionResult onStartRequested(
-            int stageNumber
-    ) {
+    public ZombotanyActionResult onStartRequested(int stageNumber) {
         if (stageNumber < 1 || stageNumber > 3) {
             return result(
                     ZombotanyActionStatus.INVALID_STAGE,
                     "Zombotany stage must be between 1 and 3."
             );
         }
-
         if (stageNumber
                 > game.getHighestUnlockedStage()) {
             return result(
@@ -60,20 +48,57 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     "Complete the previous Zombotany stage first."
             );
         }
-
-        if (!game.startStage(stageNumber)) {
+        if (!game.preparePlantSelection(stageNumber)) {
             return result(
                     ZombotanyActionStatus.INVALID_STAGE,
                     "The requested stage could not be started."
             );
         }
-
         return result(
                 ZombotanyActionStatus.SUCCESS,
-                "Zombotany stage "
+                "Plant selection opened for Zombotany stage "
                         + stageNumber
-                        + " started."
+                        + "."
         );
+    }
+
+    @Override
+    public List<PlantDefinition> onShowAvailablePlantsRequested() {
+        return game.getAvailablePlants();
+    }
+
+    @Override
+    public List<PlantDefinition> onShowSelectedPlantsRequested() {
+        return game.getSelectedPlants();
+    }
+
+    @Override
+    public ZombotanyActionResult onAddPlantRequested(String plantName) {
+        if (!game.isPlantSelectionPrepared() || game.isStarted()) {
+            return result(ZombotanyActionStatus.NOT_STARTED, "Open plant selection first.");
+        }
+        if (!game.addSelectedPlant(plantName)) {
+            return result(ZombotanyActionStatus.INVALID_PLANT,
+                    "The plant is unavailable already selected or all 8 slots are full.");
+        }
+        return result(ZombotanyActionStatus.SUCCESS, plantName.trim() + " selected.");
+    }
+
+    @Override
+    public ZombotanyActionResult onRemovePlantRequested(String plantName) {
+        if (!game.removeSelectedPlant(plantName)) {
+            return result(ZombotanyActionStatus.INVALID_PLANT, "The plant is not selected.");
+        }
+        return result(ZombotanyActionStatus.SUCCESS, plantName.trim() + " removed.");
+    }
+
+    @Override
+    public ZombotanyActionResult onStartGameRequested() {
+        if (!game.startSelectedStage()) {
+            return result(ZombotanyActionStatus.NOT_STARTED,
+                    "Select at least one plant before starting the game.");
+        }
+        return result(ZombotanyActionStatus.SUCCESS, "Zombotany game started.");
     }
 
     @Override
@@ -83,46 +108,27 @@ public class ZombotanyController implements ZombotanyViewObserver {
     ) {
         ZombotanyActionResult invalidState =
                 validateRunningGame();
-
         if (invalidState != null) {
             return invalidState;
         }
-
         if (!isInsideBoard(position)) {
             return result(
                     ZombotanyActionStatus.INVALID_POSITION,
                     "Plant position must be inside the 9 by 5 board."
             );
         }
-
         PlantDefinition definition =
                 findAvailablePlant(plantName);
-
-        if (definition == null) {
-            return result(
-                    ZombotanyActionStatus.INVALID_PLANT,
-                    "This plant is not available in the current stage."
-            );
+        ZombotanyActionResult invalidPlant = validatePlantRequest(plantName, definition);
+        if (invalidPlant != null) {
+            return invalidPlant;
         }
-
-        if (game.getSunAmount()
-                < definition.getCost()) {
-            return result(
-                    ZombotanyActionStatus.NOT_ENOUGH_SUN,
-                    definition.getName()
-                            + " costs "
-                            + definition.getCost()
-                            + " sun."
-            );
-        }
-
         if (!game.plant(plantName, position)) {
             return result(
                     ZombotanyActionStatus.CANNOT_PLANT,
                     "The tile may be occupied or the plant may be on cooldown."
             );
         }
-
         return result(
                 ZombotanyActionStatus.SUCCESS,
                 definition.getName()
@@ -132,27 +138,48 @@ public class ZombotanyController implements ZombotanyViewObserver {
         );
     }
 
+    private ZombotanyActionResult validatePlantRequest(
+            String plantName,
+            PlantDefinition definition
+    ) {
+        if (definition == null) {
+            return result(
+                    ZombotanyActionStatus.INVALID_PLANT,
+                    "This plant is not available in the current stage."
+            );
+        }
+        if (!game.isPlantSelected(plantName)) {
+            return result(
+                    ZombotanyActionStatus.INVALID_PLANT,
+                    "This plant was not selected for the current stage."
+            );
+        }
+        if (game.getSunAmount() < definition.getCost()) {
+            return result(
+                    ZombotanyActionStatus.NOT_ENOUGH_SUN,
+                    definition.getName() + " costs " + definition.getCost() + " sun."
+            );
+        }
+        return null;
+    }
+
     @Override
     public ZombotanyActionResult onCollectSunRequested(
             Position position
     ) {
         ZombotanyActionResult invalidState =
                 validateRunningGame();
-
         if (invalidState != null) {
             return invalidState;
         }
-
         if (!isInsideBoard(position)) {
             return result(
                     ZombotanyActionStatus.INVALID_POSITION,
                     "Sun position must be inside the board."
             );
         }
-
         int collected =
                 game.collectSun(position);
-
         if (collected <= 0) {
             return result(
                     ZombotanyActionStatus.NO_SUN_AT_POSITION,
@@ -161,7 +188,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                             + "."
             );
         }
-
         return result(
                 ZombotanyActionStatus.SUCCESS,
                 collected
@@ -177,32 +203,27 @@ public class ZombotanyController implements ZombotanyViewObserver {
     ) {
         ZombotanyActionResult invalidState =
                 validateRunningGame();
-
         if (invalidState != null) {
             return invalidState;
         }
-
         if (!isInsideBoard(position)) {
             return result(
                     ZombotanyActionStatus.INVALID_POSITION,
                     "Plant Food position must be inside the board."
             );
         }
-
         if (game.getPlantFoodAmount() <= 0) {
             return result(
                     ZombotanyActionStatus.NO_PLANT_FOOD,
                     "No Plant Food is currently available."
             );
         }
-
         if (!game.usePlantFood(position)) {
             return result(
                     ZombotanyActionStatus.CANNOT_USE_PLANT_FOOD,
                     "There is no plant that can receive Plant Food at this position."
             );
         }
-
         return result(
                 ZombotanyActionStatus.SUCCESS,
                 "Plant Food used at "
@@ -221,25 +242,19 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     "Tick count must be greater than zero."
             );
         }
-
         ZombotanyActionResult invalidState =
                 validateRunningGame();
-
         if (invalidState != null) {
             return invalidState;
         }
-
         int advancedTicks = 0;
-
         for (int tick = 0; tick < ticks; tick++) {
             game.onTick();
             advancedTicks++;
-
             if (game.isCompleted()) {
                 break;
             }
         }
-
         return successfulResult(
                 "Time advanced by "
                         + advancedTicks
@@ -250,19 +265,14 @@ public class ZombotanyController implements ZombotanyViewObserver {
     @Override
     public ZombotanyStateResult onShowRequested() {
         Board board = game.getBoard();
-
         List<List<String>> plantGrid =
                 createPlantGrid(board);
-
         List<ZombotanyZombieState> zombies =
                 createZombieStates(board);
-
         List<Position> sunPositions =
                 createSunPositions(board);
-
         boolean won = game.isCompleted()
                 && !game.isLost();
-
         return new ZombotanyStateResult(
                 game.getCurrentStageNumber(),
                 game.getHighestUnlockedStage(),
@@ -287,44 +297,34 @@ public class ZombotanyController implements ZombotanyViewObserver {
     ) {
         List<List<String>> grid =
                 new ArrayList<>();
-
         for (int y = 0;
              y < ZombotanyStateResult.ROW_COUNT;
              y++) {
-
             List<String> row =
                     new ArrayList<>();
-
             for (int x = 0;
                  x < ZombotanyStateResult.COLUMN_COUNT;
                  x++) {
-
                 String plantName = "";
-
                 if (board != null) {
                     List<Plant> plants =
                             board.getPlantsAt(
                                     new Position(x, y)
                             );
-
                     if (!plants.isEmpty()) {
                         Plant plant = plants.get(
                                 plants.size() - 1
                         );
-
                         if (plant != null
                                 && plant.getName() != null) {
                             plantName = plant.getName();
                         }
                     }
                 }
-
                 row.add(plantName);
             }
-
             grid.add(row);
         }
-
         return grid;
     }
 
@@ -332,21 +332,17 @@ public class ZombotanyController implements ZombotanyViewObserver {
     createZombieStates(Board board) {
         List<ZombotanyZombieState> states =
                 new ArrayList<>();
-
         if (board == null) {
             return states;
         }
-
         for (Zombie zombie : board.getAllZombies()) {
             if (zombie == null
                     || zombie.isDead()
                     || zombie.getPosition() == null) {
                 continue;
             }
-
             ZombotanyTrait trait =
                     game.getTrait(zombie);
-
             states.add(
                     new ZombotanyZombieState(
                             getZombieName(zombie),
@@ -358,7 +354,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     )
             );
         }
-
         return states;
     }
 
@@ -367,13 +362,11 @@ public class ZombotanyController implements ZombotanyViewObserver {
     ) {
         List<Position> positions =
                 new ArrayList<>();
-
         if (board == null
                 || board.getSunSystem() == null
                 || board.getSunSystem().getSuns() == null) {
             return positions;
         }
-
         for (Sun sun
                 : board.getSunSystem().getSuns()) {
             if (sun == null
@@ -381,14 +374,12 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     || sun.getPosition() == null) {
                 continue;
             }
-
             positions.add(
                     toExternalPosition(
                             sun.getPosition()
                     )
             );
         }
-
         return positions;
     }
 
@@ -399,7 +390,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                 || plantName.trim().isEmpty()) {
             return null;
         }
-
         for (PlantDefinition definition
                 : game.getAvailablePlants()) {
             if (definition != null
@@ -411,7 +401,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                 return definition;
             }
         }
-
         return null;
     }
 
@@ -419,18 +408,14 @@ public class ZombotanyController implements ZombotanyViewObserver {
         if (zombie.getDefinition() == null) {
             return "Zombie";
         }
-
         String displayName =
                 zombie.getDefinition().getDisplayName();
-
         if (displayName != null
                 && !displayName.trim().isEmpty()) {
             return displayName;
         }
-
         String alias =
                 zombie.getDefinition().getAlias();
-
         return alias == null || alias.trim().isEmpty()
                 ? "Zombie"
                 : alias;
@@ -444,7 +429,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     "Start a Zombotany stage first."
             );
         }
-
         if (game.isCompleted()) {
             if (game.isLost()) {
                 return result(
@@ -452,7 +436,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                         "The zombies reached the house."
                 );
             }
-
             return result(
                     game.getCurrentStageNumber() >= 3
                             ? ZombotanyActionStatus.GAME_WON
@@ -460,7 +443,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     "This Zombotany stage is complete."
             );
         }
-
         return null;
     }
 
@@ -473,7 +455,6 @@ public class ZombotanyController implements ZombotanyViewObserver {
                     "The zombies reached the house."
             );
         }
-
         if (game.isCompleted()) {
             if (game.getCurrentStageNumber() >= 3) {
                 return result(
@@ -482,14 +463,12 @@ public class ZombotanyController implements ZombotanyViewObserver {
                                 + " All Zombotany stages are complete."
                 );
             }
-
             return result(
                     ZombotanyActionStatus.STAGE_WON,
                     message
                             + " The next stage is unlocked."
             );
         }
-
         return result(
                 ZombotanyActionStatus.SUCCESS,
                 message

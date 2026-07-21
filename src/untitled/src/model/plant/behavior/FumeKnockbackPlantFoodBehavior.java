@@ -28,7 +28,7 @@ public class FumeKnockbackPlantFoodBehavior implements PlantFoodBehavior {
             }
 
             if (this.damage > 0 && board.getCombatSystem() != null) {
-                board.getCombatSystem().applyDamageToZombie(zombie, this.damage);
+                board.getCombatSystem().applyDamageToZombie(zombie, this.damage, plant);
             }
 
             if (!zombie.isDead()) {

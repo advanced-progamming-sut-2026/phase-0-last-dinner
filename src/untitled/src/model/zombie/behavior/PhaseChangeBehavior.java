@@ -41,8 +41,7 @@ public class PhaseChangeBehavior implements ZombieBehavior {
         }
 
         boolean shouldTransition = this.triggerArmorType == null
-                ? zombie.getDefinition() != null
-                    && zombie.getHealth() <= zombie.getDefinition().getHitpoints() * this.transitionHealthPercent
+                ? zombie.getHealth() <= zombie.getMaximumHealth() * this.transitionHealthPercent
                 : !this.hasIntactTriggerArmor(zombie);
 
         if (shouldTransition) {

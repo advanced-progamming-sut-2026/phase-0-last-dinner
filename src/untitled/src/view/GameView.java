@@ -1,5 +1,6 @@
 package view;
 
+import java.math.BigInteger;
 import java.util.regex.Matcher;
 
 public class GameView implements CommandHandler, GameEventListener {
@@ -44,7 +45,8 @@ public class GameView implements CommandHandler, GameEventListener {
                     break;
                 }
                 case CHEAT_ADD: {
-                    int count = Integer.parseInt(matcher.group("count"));
+                    BigInteger requested = new BigInteger(matcher.group("count"));
+                    int count = requested.min(BigInteger.valueOf(Integer.MAX_VALUE)).intValue();
                     String currency = matcher.group("currency");
                     observer.onCheatAddRequested(count, currency);
                     break;

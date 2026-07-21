@@ -4,6 +4,7 @@ import lombok.Getter;
 import model.mechanism.Position;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
+import model.minigame.StageProgressMiniGame;
 import model.minigame.zombotanyminigame.PlantZombieZombotanyIntegration;
 import model.minigame.zombotanyminigame.ZombotanyIntegration;
 import model.minigame.zombotanyminigame.ZombotanyStageConfig;
@@ -14,11 +15,14 @@ import model.zombie.ZombieDefinition;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Getter
-public class ZombotanyMiniGame extends MiniGame {
+public class ZombotanyMiniGame extends MiniGame implements StageProgressMiniGame {
+    private static final int PLANT_SLOT_COUNT = 8;
 
     private final ZombotanyIntegration integration;
 
@@ -27,6 +31,8 @@ public class ZombotanyMiniGame extends MiniGame {
 
     private List<ZombieDefinition> availableZombies;
     private List<PlantDefinition> availablePlants;
+    private Set<String> selectedPlantNames;
+    private boolean plantSelectionPrepared;
 
     private int currentStageNumber;
     private int highestUnlockedStage;
@@ -53,6 +59,7 @@ public class ZombotanyMiniGame extends MiniGame {
         this.zombieTraits = new LinkedHashMap<>();
         this.availableZombies = new ArrayList<>();
         this.availablePlants = new ArrayList<>();
+        this.selectedPlantNames = new LinkedHashSet<>();
 
         this.currentStageNumber = 1;
         this.highestUnlockedStage = 1;
@@ -65,6 +72,19 @@ public class ZombotanyMiniGame extends MiniGame {
     }
 
     public boolean startStage(int stageNumber) {
+        if (!this.preparePlantSelection(stageNumber)) {
+            return false;
+        }
+
+        for (PlantDefinition definition : this.availablePlants) {
+            if (definition != null) {
+                this.addSelectedPlant(definition.getName());
+            }
+        }
+        return this.startSelectedStage();
+    }
+
+    public boolean preparePlantSelection(int stageNumber) {
         if (stageNumber < 1
                 || stageNumber > 3
                 || stageNumber
@@ -85,6 +105,8 @@ public class ZombotanyMiniGame extends MiniGame {
 
         this.currentStageNumber = stageNumber;
         this.lost = false;
+        this.plantSelectionPrepared = true;
+        this.selectedPlantNames.clear();
 
         this.zombieTraits =
                 new LinkedHashMap<>(
@@ -108,8 +130,35 @@ public class ZombotanyMiniGame extends MiniGame {
         );
 
         setCompleted(false);
-        markStarted();
+        setStarted(false);
 
+        return true;
+    }
+
+    public boolean addSelectedPlant(String plantName) {
+        PlantDefinition definition = this.findAvailablePlantDefinition(plantName);
+        if (!this.plantSelectionPrepared || isStarted() || definition == null
+                || this.selectedPlantNames.size() >= PLANT_SLOT_COUNT) {
+            return false;
+        }
+
+        return this.selectedPlantNames.add(this.normalizePlantName(definition.getName()));
+    }
+
+    public boolean removeSelectedPlant(String plantName) {
+        if (!this.plantSelectionPrepared || isStarted()) {
+            return false;
+        }
+
+        return this.selectedPlantNames.remove(this.normalizePlantName(plantName));
+    }
+
+    public boolean startSelectedStage() {
+        if (!this.plantSelectionPrepared || isStarted() || this.selectedPlantNames.isEmpty()) {
+            return false;
+        }
+
+        markStarted();
         return true;
     }
 
@@ -118,6 +167,10 @@ public class ZombotanyMiniGame extends MiniGame {
             Position position
     ) {
         if (!canPerformAction()) {
+            return false;
+        }
+
+        if (!this.selectedPlantNames.contains(this.normalizePlantName(plantName))) {
             return false;
         }
 
@@ -169,7 +222,11 @@ public class ZombotanyMiniGame extends MiniGame {
                 );
             }
 
-            markCompleted();
+            if (currentStageNumber >= 3) {
+                markAllStagesCompleted();
+            } else {
+                markCompleted();
+            }
         }
     }
 
@@ -204,9 +261,29 @@ public class ZombotanyMiniGame extends MiniGame {
     public boolean findAvailablePlant(
             String plantName
     ) {
+        return this.findAvailablePlantDefinition(plantName) != null;
+    }
+
+    public boolean isPlantSelected(String plantName) {
+        return this.selectedPlantNames.contains(this.normalizePlantName(plantName));
+    }
+
+    public List<PlantDefinition> getSelectedPlants() {
+        List<PlantDefinition> selected = new ArrayList<>();
+        for (PlantDefinition definition : this.availablePlants) {
+            if (definition != null && this.isPlantSelected(definition.getName())) {
+                selected.add(definition);
+            }
+        }
+        return selected;
+    }
+
+    private PlantDefinition findAvailablePlantDefinition(
+            String plantName
+    ) {
         if (plantName == null
                 || plantName.trim().isEmpty()) {
-            return false;
+            return null;
         }
 
         for (PlantDefinition definition
@@ -217,11 +294,15 @@ public class ZombotanyMiniGame extends MiniGame {
                     .equalsIgnoreCase(
                             plantName.trim()
                     )) {
-                return true;
+                return definition;
             }
         }
 
-        return false;
+        return null;
+    }
+
+    private String normalizePlantName(String plantName) {
+        return plantName == null ? "" : plantName.trim().toLowerCase(java.util.Locale.ROOT);
     }
 
     private boolean canPerformAction() {
@@ -270,5 +351,10 @@ public class ZombotanyMiniGame extends MiniGame {
 
     public int getAliveZombieCount() {
         return integration.getAliveZombieCount();
+    }
+
+    @Override
+    public void restoreHighestUnlockedStage(int stageNumber) {
+        this.highestUnlockedStage = Math.max(1, Math.min(3, stageNumber));
     }
 }

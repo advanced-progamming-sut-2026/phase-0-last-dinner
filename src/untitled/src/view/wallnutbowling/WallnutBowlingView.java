@@ -30,95 +30,85 @@ public class WallnutBowlingView
             );
             return;
         }
-
-        Matcher matcher;
-
-        matcher = WallnutBowlingCommands.START
-                .getMatcher(input);
-
-        if (matcher != null) {
-            handleStartCommand(matcher);
+        if (handleGameCommand(input) || handleNavigationCommand(input)) {
             return;
         }
-
-        matcher = WallnutBowlingCommands
-                .PLACE_WALLNUT
-                .getMatcher(input);
-
-        if (matcher != null) {
-            handlePlaceCommand(matcher);
-            return;
-        }
-
-        matcher = WallnutBowlingCommands.SHOW
-                .getMatcher(input);
-
-        if (matcher != null) {
-            WallnutBowlingStateResult state =
-                    observer
-                            .onShowWallnutBowlingRequested();
-
-            showState(state);
-            return;
-        }
-
-        matcher = WallnutBowlingCommands
-                .ADVANCE_TIME
-                .getMatcher(input);
-
-        if (matcher != null) {
-            handleAdvanceCommand(matcher);
-            return;
-        }
-
-        matcher = WallnutBowlingCommands.HELP
-                .getMatcher(input);
-
-        if (matcher != null) {
-            showHelp();
-            return;
-        }
-
-        matcher = WallnutBowlingCommands.BACK
-                .getMatcher(input);
-
-        if (matcher != null) {
-            /*
-             * TODO: Notify the main menu router after
-             * menu navigation is implemented.
-             */
-
-            System.out.println(
-                    "Returning to minigame menu."
-            );
-            return;
-        }
-
         System.out.println(
                 "Invalid command. Use "
                         + "'wallnut bowling help'."
         );
     }
 
+    private boolean handleGameCommand(String input) {
+        Matcher matcher = WallnutBowlingCommands.START
+                .getMatcher(input);
+        if (matcher != null) {
+            handleStartCommand(matcher);
+            return true;
+        }
+        matcher = WallnutBowlingCommands
+                .PLACE_WALLNUT
+                .getMatcher(input);
+        if (matcher != null) {
+            handlePlaceCommand(matcher);
+            return true;
+        }
+        matcher = WallnutBowlingCommands.SHOW
+                .getMatcher(input);
+        if (matcher != null) {
+            WallnutBowlingStateResult state =
+                    observer
+                            .onShowWallnutBowlingRequested();
+            showState(state);
+            return true;
+        }
+        matcher = WallnutBowlingCommands
+                .ADVANCE_TIME
+                .getMatcher(input);
+        if (matcher != null) {
+            handleAdvanceCommand(matcher);
+            return true;
+        }
+        return false;
+    }
+
+    private boolean handleNavigationCommand(String input) {
+        Matcher matcher = WallnutBowlingCommands.HELP
+                .getMatcher(input);
+        if (matcher != null) {
+            showHelp();
+            return true;
+        }
+        matcher = WallnutBowlingCommands.BACK
+                .getMatcher(input);
+        if (matcher != null) {
+            /*
+             * TODO: Notify the main menu router after
+             * menu navigation is implemented.
+             */
+            System.out.println(
+                    "Returning to minigame menu."
+            );
+            return true;
+        }
+        return false;
+    }
+
     private void handleStartCommand(
             Matcher matcher
     ) {
         String stageText = matcher.group("stage");
-
         int stageNumber = 1;
-
         if (stageText != null) {
             stageNumber = Integer.parseInt(
                     stageText
             );
         }
-
         WallnutBowlingActionResult result =
                 observer
                         .onStartWallnutBowlingRequested(
                                 stageNumber
                         );
-
         showActionResult(result);
     }
 
@@ -128,19 +118,16 @@ public class WallnutBowlingView
         int conveyorIndex = Integer.parseInt(
                 matcher.group("index")
         );
-
         Position position = readPosition(
                 matcher,
                 "x",
                 "y"
         );
-
         WallnutBowlingActionResult result =
                 observer.onPlaceWallnutRequested(
                         conveyorIndex,
                         position
                 );
-
         showActionResult(result);
     }
 
@@ -150,12 +137,10 @@ public class WallnutBowlingView
         int ticks = Integer.parseInt(
                 matcher.group("ticks")
         );
-
         WallnutBowlingActionResult result =
                 observer.onAdvanceTicksRequested(
                         ticks
                 );
-
         showActionResult(result);
     }
 
@@ -167,11 +152,9 @@ public class WallnutBowlingView
         int x = Integer.parseInt(
                 matcher.group(xGroup)
         );
-
         int y = Integer.parseInt(
                 matcher.group(yGroup)
         );
-
         return new Position(x, y);
     }
 
@@ -182,141 +165,104 @@ public class WallnutBowlingView
             System.out.println("No result.");
             return;
         }
-
         WallnutBowlingActionStatus status =
                 result.getStatus();
-
         switch (status) {
             case STARTED:
-                System.out.println(
-                        "Wallnut Bowling stage "
-                                + result.getStageNumber()
-                                + " started."
-                );
-                break;
-
             case WALLNUT_GENERATED:
-                System.out.println(
-                        displayWallnutType(
-                                result.getWallnutType()
-                        )
-                                + " was added to "
-                                + "the conveyor belt."
-                );
-                break;
-
             case WALLNUT_PLACED:
-                System.out.println(
-                        displayWallnutType(
-                                result.getWallnutType()
-                        )
-                                + " from conveyor slot "
-                                + result.getConveyorIndex()
-                                + " was placed at "
-                                + formatPosition(
-                                result.getPosition()
-                        )
-                                + "."
-                );
-                break;
-
             case TIME_ADVANCED:
-                System.out.println(
-                        "Time advanced by "
-                                + result.getAdvancedTicks()
-                                + " ticks."
-                );
-                break;
-
             case NO_WALLNUT_AVAILABLE:
-                System.out.println(
-                        "The conveyor belt is empty."
-                );
-                break;
-
             case INVALID_CONVEYOR_INDEX:
-                System.out.println(
-                        "There is no wallnut at conveyor "
-                                + "slot "
-                                + result.getConveyorIndex()
-                                + "."
-                );
+                showProgressResult(result);
                 break;
-
             case INVALID_STAGE:
-                System.out.println(
-                        "Wallnut Bowling stage must "
-                                + "be between 1 and 3."
-                );
-                break;
-
             case STAGE_LOCKED:
-                System.out.println(
-                        "Wallnut Bowling stage "
-                                + result.getStageNumber()
-                                + " is locked."
-                );
-                break;
-
             case GAME_NOT_STARTED:
-                System.out.println(
-                        "Start Wallnut Bowling first."
-                );
-                break;
-
             case GAME_ALREADY_FINISHED:
-                System.out.println(
-                        "This Wallnut Bowling stage "
-                                + "is already finished."
-                );
+                showStageError(result);
                 break;
-
             case INVALID_POSITION:
-                System.out.println(
-                        "Position "
-                                + formatPosition(
-                                result.getPosition()
-                        )
-                                + " is outside the 9x5 lawn."
-                );
-                break;
-
             case OUTSIDE_PLANTING_AREA:
-                System.out.println(
-                        "Wallnuts can only be placed "
-                                + "between the house and "
-                                + "the red line."
-                );
-                break;
-
             case INTEGRATION_NOT_READY:
-                System.out.println(
-                        "Wallnut Bowling is waiting for "
-                                + "Board and Zombie integration."
-                );
-                break;
-
             case INVALID_ACTION:
-                System.out.println(
-                        "This action cannot be completed."
-                );
+                showPlacementError(result);
                 break;
-
             default:
                 System.out.println(
                         "Unknown Wallnut Bowling result."
                 );
                 break;
         }
-
         if (result.isWon()) {
             System.out.println("Another day...");
         }
-
         if (result.isLost()) {
             System.out.println(
                     "We ate your brainz dear humanz."
             );
+        }
+    }
+
+    private void showProgressResult(WallnutBowlingActionResult result) {
+        switch (result.getStatus()) {
+            case STARTED:
+                System.out.println("Wallnut Bowling stage " + result.getStageNumber() + " started.");
+                break;
+            case WALLNUT_GENERATED:
+                System.out.println(displayWallnutType(result.getWallnutType())
+                        + " was added to the conveyor belt.");
+                break;
+            case WALLNUT_PLACED:
+                System.out.println(displayWallnutType(result.getWallnutType()) + " from conveyor slot "
+                        + result.getConveyorIndex() + " was placed at "
+                        + formatPosition(result.getPosition()) + ".");
+                break;
+            case TIME_ADVANCED:
+                System.out.println("Time advanced by " + result.getAdvancedTicks() + " ticks.");
+                break;
+            case NO_WALLNUT_AVAILABLE:
+                System.out.println("The conveyor belt is empty.");
+                break;
+            default:
+                System.out.println("There is no wallnut at conveyor slot "
+                        + result.getConveyorIndex() + ".");
+                break;
+        }
+    }
+
+    private void showStageError(WallnutBowlingActionResult result) {
+        switch (result.getStatus()) {
+            case INVALID_STAGE:
+                System.out.println("Wallnut Bowling stage must be between 1 and 3.");
+                break;
+            case STAGE_LOCKED:
+                System.out.println("Wallnut Bowling stage " + result.getStageNumber() + " is locked.");
+                break;
+            case GAME_NOT_STARTED:
+                System.out.println("Start Wallnut Bowling first.");
+                break;
+            default:
+                System.out.println("This Wallnut Bowling stage is already finished.");
+                break;
+        }
+    }
+
+    private void showPlacementError(WallnutBowlingActionResult result) {
+        switch (result.getStatus()) {
+            case INVALID_POSITION:
+                System.out.println("Position " + formatPosition(result.getPosition())
+                        + " is outside the 9x5 lawn.");
+                break;
+            case OUTSIDE_PLANTING_AREA:
+                System.out.println("Wallnuts can only be placed between the house and the red line.");
+                break;
+            case INTEGRATION_NOT_READY:
+                System.out.println("Wallnut Bowling is waiting for Board and Zombie integration.");
+                break;
+            default:
+                System.out.println("This action cannot be completed.");
+                break;
         }
     }
 
@@ -330,36 +276,33 @@ public class WallnutBowlingView
             );
             return;
         }
-
         System.out.println(
                 "Wallnut Bowling stage: "
                         + state.getStageNumber()
         );
-
         System.out.println(
                 "Current tick: "
                         + state.getCurrentTick()
         );
-
         System.out.println(
                 "Planting boundary: columns 1 to "
                         + state.getPlantingBoundaryColumn()
         );
-
         System.out.println(
                 "Ticks until next wallnut: "
                         + state.getTicksUntilNextGeneration()
         );
-
         System.out.println(
                 "Integration ready: "
                         + state.isIntegrationReady()
         );
-
         showConveyorBelt(state);
         showLawn(state);
         showRollingWallnuts(state);
+        showGameState(state);
+    }
 
+    private void showGameState(WallnutBowlingStateResult state) {
         if (!state.isStarted()) {
             System.out.println(
                     "State: not started"
@@ -383,19 +326,15 @@ public class WallnutBowlingView
             WallnutBowlingStateResult state
     ) {
         System.out.println("Conveyor belt:");
-
         if (state.getConveyorBelt().isEmpty()) {
             System.out.println("- empty");
             return;
         }
-
         for (int i = 0;
              i < state.getConveyorBelt().size();
              i++) {
-
             BowlingWallnutType type =
                     state.getConveyorBelt().get(i);
-
             System.out.println(
                     "- slot "
                             + (i + 1)
@@ -411,19 +350,14 @@ public class WallnutBowlingView
         System.out.println(
                 "Moving wallnuts:"
         );
-
         boolean found = false;
-
         for (RollingWallnut wallnut
                 : state.getRollingWallnuts()) {
-
             if (wallnut == null
                     || !wallnut.isMoving()) {
                 continue;
             }
-
             found = true;
-
             System.out.println(
                     "- "
                             + displayWallnutType(
@@ -440,7 +374,6 @@ public class WallnutBowlingView
                             + wallnut.getCollisionCount()
             );
         }
-
         if (!found) {
             System.out.println("- none");
         }
@@ -452,40 +385,30 @@ public class WallnutBowlingView
         System.out.println(
                 "Lawn:"
         );
-
         System.out.println(
                 "N = normal, E = explosive, "
                         + "G = giant, | = red line"
         );
-
         System.out.println(
                 "    1 2 3 | 4 5 6 7 8 9"
         );
-
         for (int y = 1; y <= 5; y++) {
             StringBuilder row = new StringBuilder();
-
             row.append(y).append(" | ");
-
             for (int x = 1; x <= 9; x++) {
                 Position position = new Position(x, y);
-
                 row.append(
                         wallnutSymbolAt(
                                 state,
                                 position
                         )
                 );
-
                 row.append(' ');
-
                 if (x == state
                         .getPlantingBoundaryColumn()) {
-
                     row.append("| ");
                 }
             }
-
             System.out.println(row);
         }
     }
@@ -496,7 +419,6 @@ public class WallnutBowlingView
     ) {
         for (RollingWallnut wallnut
                 : state.getRollingWallnuts()) {
-
             if (wallnut == null
                     || wallnut.getPosition() == null
                     || !samePosition(
@@ -505,24 +427,18 @@ public class WallnutBowlingView
             )) {
                 continue;
             }
-
             if (wallnut.getType()
                     == BowlingWallnutType
                     .EXPLODE_O_NUT) {
-
                 return 'E';
             }
-
             if (wallnut.getType()
                     == BowlingWallnutType
                     .GIANT_WALLNUT) {
-
                 return 'G';
             }
-
             return 'N';
         }
-
         return '.';
     }
 
@@ -533,7 +449,6 @@ public class WallnutBowlingView
         if (first == null || second == null) {
             return false;
         }
-
         return first.getX() == second.getX()
                 && first.getY() == second.getY();
     }
@@ -544,7 +459,6 @@ public class WallnutBowlingView
         if (type == null) {
             return "Unknown Wallnut";
         }
-
         switch (type) {
             case BOWLING_WALLNUT:
                 return "Bowling Wallnut";
@@ -563,7 +477,6 @@ public class WallnutBowlingView
         if (position == null) {
             return "(unknown)";
         }
-
         return "("
                 + position.getX()
                 + ", "
@@ -575,29 +488,23 @@ public class WallnutBowlingView
         System.out.println(
                 "Wallnut Bowling commands:"
         );
-
         System.out.println(
                 "- wallnut bowling start [-s <1..3>]"
         );
-
         System.out.println(
                 "- wallnut bowling show"
         );
-
         System.out.println(
                 "- wallnut bowling place "
                         + "-i <conveyor_slot> "
                         + "-l (<x>, <y>)"
         );
-
         System.out.println(
                 "- wallnut bowling advance -t <ticks>"
         );
-
         System.out.println(
                 "- wallnut bowling help"
         );
-
         System.out.println(
                 "- Back to minigame menu"
         );

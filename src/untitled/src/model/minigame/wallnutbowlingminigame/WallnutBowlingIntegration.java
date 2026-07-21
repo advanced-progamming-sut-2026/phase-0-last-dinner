@@ -1,5 +1,7 @@
 package model.minigame.wallnutbowlingminigame;
 
+import model.mechanism.Board;
+
 import model.mechanism.Position;
 
 public interface WallnutBowlingIntegration {
@@ -36,4 +38,8 @@ public interface WallnutBowlingIntegration {
     boolean hasAliveZombies();
 
     boolean isBrainEaten();
+
+    default Board getBoard() {
+        return null;
+    }
 }

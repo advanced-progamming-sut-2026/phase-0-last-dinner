@@ -51,7 +51,18 @@ public class ZombieBehaviorFactory {
 
         CompositeZombieBehavior behavior = new CompositeZombieBehavior();
         String alias = normalize(definition.getAlias());
+        this.addAncientAndIceBehavior(alias, definition, behavior);
+        this.addBeachAndDarkBehavior(alias, definition, behavior);
+        this.addModernAndLostBehavior(alias, definition, behavior);
+        behavior.addBehavior(new BasicZombieBehavior(definition.getEatDamagePerSecond()));
+        return behavior;
+    }
 
+    private void addAncientAndIceBehavior(
+            String alias,
+            ZombieDefinition definition,
+            CompositeZombieBehavior behavior
+    ) {
         switch (alias) {
             case "zombiegargantuar":
                 behavior.addBehavior(new GargantuarBehavior(
@@ -75,12 +86,23 @@ public class ZombieBehaviorFactory {
                 break;
             case "zombieiceagehunter":
                 behavior.addBehavior(new ColdResistantBehavior());
-                behavior.addBehavior(new SnowballBehavior(4, 10));
+                behavior.addBehavior(new SnowballBehavior(10));
                 break;
             case "zombieiceagetroglobite":
                 behavior.addBehavior(new ColdResistantBehavior());
                 behavior.addBehavior(new BlockPusherBehavior("Ice Block", 1200, 3));
                 break;
+            default:
+                break;
+        }
+    }
+
+    private void addBeachAndDarkBehavior(
+            String alias,
+            ZombieDefinition definition,
+            CompositeZombieBehavior behavior
+    ) {
+        switch (alias) {
             case "zombiebeachfisherman":
                 behavior.addBehavior(new FishermanBehavior(25));
                 break;
@@ -106,6 +128,17 @@ public class ZombieBehaviorFactory {
             case "zombiedarkimpdragon":
                 behavior.addBehavior(new ProjectileShieldBehavior(ProjectileType.FIRE));
                 break;
+            default:
+                break;
+        }
+    }
+
+    private void addModernAndLostBehavior(
+            String alias,
+            ZombieDefinition definition,
+            CompositeZombieBehavior behavior
+    ) {
+        switch (alias) {
             case "zombiemodernallstar":
                 behavior.addBehavior(new ChargingZombieBehavior(2.0, 0.5));
                 break;
@@ -136,9 +169,6 @@ public class ZombieBehaviorFactory {
             default:
                 break;
         }
-
-        behavior.addBehavior(new BasicZombieBehavior(definition.getEatDamagePerSecond()));
-        return behavior;
     }
 
     private ZombieDefinition findImpDefinition(ZombieDefinition gargantuarDefinition) {

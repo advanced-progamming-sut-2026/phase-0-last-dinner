@@ -38,6 +38,7 @@ public class ChapterMedieval extends Chapter {
 
     @Override
     public Board buildBoard() {
+        this.necromancyGraves.clear();
         List<Tile> tiles = new ArrayList<>();
         for (int row = 0; row < 5; row++) {
             for (int col = 0; col < 9; col++) {
@@ -64,7 +65,7 @@ public class ChapterMedieval extends Chapter {
         }
 
         this.spawnGrave(board);
-        this.spawnNecromancyZombies(board);
+        this.spawnNecromancyZombies(board, wave);
     }
 
     public void spawnGrave(Board board) {
@@ -104,8 +105,8 @@ public class ChapterMedieval extends Chapter {
             tile.setGraveLoot(this.rollGraveLoot());
 
             this.fireEvent("A new grave has formed at position ("
-                    + tile.getPosition().getX() + ", "
-                    + tile.getPosition().getY() + ").");
+                    + (tile.getPosition().getX() + 1) + ", "
+                    + (tile.getPosition().getY() + 1) + ").");
         }
     }
     private GraveLootType rollGraveLoot() {
@@ -123,6 +124,10 @@ public class ChapterMedieval extends Chapter {
     }
 
     public void spawnNecromancyZombies(Board board) {
+        this.spawnNecromancyZombies(board, null);
+    }
+
+    private void spawnNecromancyZombies(Board board, Wave wave) {
         if (board == null || this.zombieSpawner == null) {
             return;
         }
@@ -149,11 +154,15 @@ public class ChapterMedieval extends Chapter {
                 continue;
             }
 
+            zombie.applyDifficulty(this.zombieSpawner.getDifficultyConfig().getMultiplier());
             board.addZombie(zombie, tile.getPosition());
+            if (wave != null) {
+                wave.addZombie(zombie);
+            }
             this.fireEvent("A " + definition.getDisplayName()
                     + " rises from a grave at position ("
-                    + tile.getPosition().getX() + ", "
-                    + tile.getPosition().getY() + ").");
+                    + (tile.getPosition().getX() + 1) + ", "
+                    + (tile.getPosition().getY() + 1) + ").");
         }
     }
 }

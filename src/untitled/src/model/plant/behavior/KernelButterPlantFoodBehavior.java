@@ -27,7 +27,7 @@ public class KernelButterPlantFoodBehavior implements PlantFoodBehavior {
             }
 
             zombie.addCondition(ZombieCondition.STUNNED, this.stunTicks);
-            this.applyLobbedDamage(board, zombie);
+            this.applyLobbedDamage(plant, board, zombie);
         }
     }
 
@@ -46,7 +46,7 @@ public class KernelButterPlantFoodBehavior implements PlantFoodBehavior {
         this.stunTicks += Math.max(0, effect.getDurationBonusTicks());
     }
 
-    private void applyLobbedDamage(Board board, Zombie zombie) {
+    private void applyLobbedDamage(Plant plant, Board board, Zombie zombie) {
         if (this.damage <= 0 || board.getCombatSystem() == null) {
             return;
         }
@@ -55,10 +55,10 @@ public class KernelButterPlantFoodBehavior implements PlantFoodBehavior {
             zombie.takeDamage(this.damage);
 
             if (zombie.isDead()) {
-                board.getCombatSystem().killZombieIgnoringAllegiance(zombie);
+                board.getCombatSystem().killZombieIgnoringAllegiance(zombie, plant);
             }
         } else {
-            board.getCombatSystem().applyDamageToZombie(zombie, this.damage);
+            board.getCombatSystem().applyDamageToZombie(zombie, this.damage, plant);
         }
     }
 }

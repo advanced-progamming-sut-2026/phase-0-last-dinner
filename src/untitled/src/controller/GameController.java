@@ -13,7 +13,11 @@ public class GameController implements GameViewObserver {
 
     private final UserRepository userRepository;
 
-    public GameController(LoginController loginController, UserRepository userRepository, ChapterController chapterController) {
+    public GameController(
+            LoginController loginController,
+            UserRepository userRepository,
+            ChapterController chapterController
+    ) {
         if (loginController == null || userRepository == null || chapterController == null) {
             throw new IllegalArgumentException("loginController, userRepository and chapterController are required");
         }
@@ -57,14 +61,19 @@ public class GameController implements GameViewObserver {
         }
 
         if ("coin".equalsIgnoreCase(currencyType)) {
-            user.setGold(user.getGold() + count);
+            user.setGold(this.safeAdd(user.getGold(), count));
         } else if ("diamond".equalsIgnoreCase(currencyType)) {
-            user.setDiamond(user.getDiamond() + count);
+            user.setDiamond(this.safeAdd(user.getDiamond(), count));
         } else {
             return;
         }
 
         this.userRepository.save();
+    }
+
+    private int safeAdd(int currentValue, int amount) {
+        long result = (long) currentValue + amount;
+        return result > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
     }
 
     public void startGame() {
@@ -86,15 +95,7 @@ public class GameController implements GameViewObserver {
             return false;
         }
 
-        ChapterType currentChapterType = user.getChapter() == null
-                ? null
-                : user.getChapter().getChapter();
-
-        boolean isUnlocked = currentChapterType == null
-                ? requestedChapter == ChapterType.ANCIENT_EGYPT
-                : requestedChapter.ordinal() <= currentChapterType.ordinal();
-
-        if (!isUnlocked) {
+        if (!user.isChapterUnlocked(requestedChapter)) {
             return false;
         }
 

@@ -57,6 +57,11 @@ public class QuestObj {
         this.rewardClaimed = false;
     }
 
+    public void restoreState(int completionPercentage, boolean rewardClaimed) {
+        this.setCompletionPercentage(completionPercentage);
+        this.rewardClaimed = rewardClaimed && this.isCompleted();
+    }
+
     public String getCompletionCondition() {
         return this.resolve(this.quest.getCompletionCondition());
     }
@@ -90,8 +95,9 @@ public class QuestObj {
             case ECONOMICAL_GARDENER:
                 return "0";
             case FAMILY_MASSACRE:
+                return "SHOOTER";
             case BLOOMING_WITH_LIMITS:
-                return "selected family";
+                return "SUN_PRODUCER";
             case EMPTY_COLUMN:
             case UNDEFENDED_ROW:
             case UNDEFENDED_CROSS:

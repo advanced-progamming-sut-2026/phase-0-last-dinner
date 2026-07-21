@@ -33,97 +33,64 @@ public class WallnutBowlingStageConfig {
             int explodeONutChance,
             int giantWallnutChance
     ) {
-        validatePositive(
+        validateCounts(
                 stageNumber,
-                "Stage number"
-        );
-
-        validatePositive(
                 plantingBoundaryColumn,
-                "Planting boundary column"
-        );
-
-        validatePositive(
                 conveyorCapacity,
-                "Conveyor capacity"
-        );
-
-        validatePositive(
                 initialWallnutCount,
-                "Initial wallnut count"
-        );
-
-        validatePositive(
                 generationIntervalTicks,
-                "Generation interval"
+                movementIntervalTicks
         );
-
-        validatePositive(
-                movementIntervalTicks,
-                "Movement interval"
-        );
-
-        validateChance(
-                normalWallnutChance,
-                "Normal wallnut chance"
-        );
-
-        validateChance(
-                explodeONutChance,
-                "Explode-O-Nut chance"
-        );
-
-        validateChance(
-                giantWallnutChance,
-                "Giant wallnut chance"
-        );
-
-        int totalChance =
-                normalWallnutChance
-                        + explodeONutChance
-                        + giantWallnutChance;
-
-        if (totalChance != 100) {
-            throw new IllegalArgumentException(
-                    "Wallnut chances must add up to 100."
-            );
-        }
-
+        validateChances(normalWallnutChance, explodeONutChance, giantWallnutChance);
         if (initialWallnutCount > conveyorCapacity) {
             throw new IllegalArgumentException(
-                    "Initial wallnut count cannot be "
-                            + "greater than conveyor capacity."
+                    "Initial wallnut count cannot be greater than conveyor capacity."
             );
         }
 
         this.stageNumber = stageNumber;
-
-        this.plantingBoundaryColumn =
-                plantingBoundaryColumn;
-
-        this.conveyorCapacity =
-                conveyorCapacity;
-
-        this.initialWallnutCount =
-                initialWallnutCount;
-
-        this.generationIntervalTicks =
-                generationIntervalTicks;
-
-        this.movementIntervalTicks =
-                movementIntervalTicks;
-
-        this.normalWallnutChance =
-                normalWallnutChance;
-
-        this.explodeONutChance =
-                explodeONutChance;
-
-        this.giantWallnutChance =
-                giantWallnutChance;
+        this.plantingBoundaryColumn = plantingBoundaryColumn;
+        this.conveyorCapacity = conveyorCapacity;
+        this.initialWallnutCount = initialWallnutCount;
+        this.generationIntervalTicks = generationIntervalTicks;
+        this.movementIntervalTicks = movementIntervalTicks;
+        this.normalWallnutChance = normalWallnutChance;
+        this.explodeONutChance = explodeONutChance;
+        this.giantWallnutChance = giantWallnutChance;
     }
 
-    private void validatePositive(
+    private static void validateCounts(
+            int stageNumber,
+            int plantingBoundaryColumn,
+            int conveyorCapacity,
+            int initialWallnutCount,
+            long generationIntervalTicks,
+            int movementIntervalTicks
+    ) {
+        validatePositive(stageNumber, "Stage number");
+        validatePositive(plantingBoundaryColumn, "Planting boundary column");
+        validatePositive(conveyorCapacity, "Conveyor capacity");
+        validatePositive(initialWallnutCount, "Initial wallnut count");
+        validatePositive(generationIntervalTicks, "Generation interval");
+        validatePositive(movementIntervalTicks, "Movement interval");
+    }
+
+    private static void validateChances(
+            int normalWallnutChance,
+            int explodeONutChance,
+            int giantWallnutChance
+    ) {
+        validateChance(normalWallnutChance, "Normal wallnut chance");
+        validateChance(explodeONutChance, "Explode-O-Nut chance");
+        validateChance(giantWallnutChance, "Giant wallnut chance");
+
+        int totalChance = normalWallnutChance + explodeONutChance + giantWallnutChance;
+        if (totalChance != 100) {
+            throw new IllegalArgumentException("Wallnut chances must add up to 100.");
+        }
+    }
+
+    private static void validatePositive(
             long value,
             String fieldName
     ) {
@@ -134,7 +101,7 @@ public class WallnutBowlingStageConfig {
         }
     }
 
-    private void validateChance(
+    private static void validateChance(
             int chance,
             String fieldName
     ) {

@@ -9,6 +9,9 @@ import java.util.Map;
 // masir haye mojaz beyn menu ha ro negah midare
 public class GameMenuContext extends MenuContext {
     private final Map<MenuType, MenuState> states;
+    private MenuType leaderboardExitDestination;
+    private MenuType plantPickExitDestination;
+    private MenuType midGameExitDestination;
 
     public GameMenuContext() {
         this.states = this.createStates();
@@ -50,6 +53,22 @@ public class GameMenuContext extends MenuContext {
             throw new IllegalStateException("Login is required before entering main menu");
         }
 
+        if (destination == MenuType.LEADERBOARD_MENU) {
+            this.leaderboardExitDestination = this.getCurrentMenu();
+        }
+
+        if (destination == MenuType.PLANT_PICK_MENU) {
+            this.plantPickExitDestination = this.getCurrentMenu();
+        }
+
+        if (destination == MenuType.MID_GAME_MENU) {
+            this.midGameExitDestination = this.getCurrentMenu() == MenuType.PLANT_PICK_MENU
+                    && this.plantPickExitDestination != null
+                    ? this.plantPickExitDestination
+                    : this.getCurrentMenu();
+            this.plantPickExitDestination = null;
+        }
+
         this.changeState(this.states.get(destination));
     }
 
@@ -66,11 +85,44 @@ public class GameMenuContext extends MenuContext {
             throw new IllegalStateException("Use logout to leave main menu");
         }
 
-        MenuType destination = this.currentState.getExitDestination();
+        MenuType destination;
+        if (currentMenu == MenuType.LEADERBOARD_MENU && this.leaderboardExitDestination != null) {
+            destination = this.leaderboardExitDestination;
+        } else if (currentMenu == MenuType.PLANT_PICK_MENU && this.plantPickExitDestination != null) {
+            destination = this.plantPickExitDestination;
+        } else if (currentMenu == MenuType.MID_GAME_MENU && this.midGameExitDestination != null) {
+            destination = this.midGameExitDestination;
+        } else {
+            destination = this.currentState.getExitDestination();
+        }
 
         if (destination != null) {
             this.changeState(this.states.get(destination));
         }
+
+        if (currentMenu == MenuType.LEADERBOARD_MENU) {
+            this.leaderboardExitDestination = null;
+        }
+        if (currentMenu == MenuType.PLANT_PICK_MENU) {
+            this.plantPickExitDestination = null;
+        }
+        if (currentMenu == MenuType.MID_GAME_MENU) {
+            this.midGameExitDestination = null;
+        }
+    }
+
+    public void finishGame(boolean won) {
+        if (this.getCurrentMenu() != MenuType.MID_GAME_MENU) {
+            return;
+        }
+
+        MenuType destination = won
+                ? MenuType.MAIN_MENU
+                : this.midGameExitDestination == null
+                        ? MenuType.GAME_MENU
+                        : this.midGameExitDestination;
+        this.midGameExitDestination = null;
+        this.changeState(this.states.get(destination));
     }
 
     @Override
@@ -82,6 +134,9 @@ public class GameMenuContext extends MenuContext {
     @Override
     public void logout() {
         this.loggedIn = false;
+        this.leaderboardExitDestination = null;
+        this.plantPickExitDestination = null;
+        this.midGameExitDestination = null;
         this.changeState(this.states.get(MenuType.SIGNUP_MENU));
     }
 
@@ -97,67 +152,89 @@ public class GameMenuContext extends MenuContext {
     private Map<MenuType, MenuState> createStates() {
         // masire vorud va khoruje har menu ro misaze
         Map<MenuType, MenuState> result = new EnumMap<>(MenuType.class);
-        result.put(MenuType.SIGNUP_MENU, new State(
+        this.addAccountStates(result);
+        this.addMainStates(result);
+        this.addGameStates(result);
+        this.addLeafStates(result);
+        return result;
+    }
+
+    private void addAccountStates(Map<MenuType, MenuState> statesByType) {
+        statesByType.put(MenuType.SIGNUP_MENU, new State(
                 MenuType.SIGNUP_MENU,
                 list(MenuType.LOGIN_MENU),
                 null
         ));
-        result.put(MenuType.LOGIN_MENU, new State(
+        statesByType.put(MenuType.LOGIN_MENU, new State(
                 MenuType.LOGIN_MENU,
                 list(MenuType.MAIN_MENU),
                 MenuType.SIGNUP_MENU
         ));
-        result.put(MenuType.MAIN_MENU, new State(
+    }
+
+    private void addMainStates(Map<MenuType, MenuState> statesByType) {
+        statesByType.put(MenuType.MAIN_MENU, new State(
                 MenuType.MAIN_MENU,
                 list(
                         MenuType.GAME_MENU,
                         MenuType.SETTINGS_MENU,
                         MenuType.NETWORK_MENU,
                         MenuType.NEWS_MENU,
-                        MenuType.PROFILE_MENU
+                        MenuType.PROFILE_MENU,
+                        MenuType.LEADERBOARD_MENU,
+                        MenuType.MEOW_POINT_MENU
                 ),
                 null
         ));
-        result.put(MenuType.GAME_MENU, new State(
+        statesByType.put(MenuType.GAME_MENU, new State(
                 MenuType.GAME_MENU,
                 list(
                         MenuType.COLLECTION_MENU,
                         MenuType.GREENHOUSE_MENU,
                         MenuType.TRAVEL_LOG_MENU,
                         MenuType.LEADERBOARD_MENU,
-                        MenuType.CHAPTER_MENU,
-                        MenuType.PLANT_PICK_MENU
+                        MenuType.CHAPTER_MENU
                 ),
                 MenuType.MAIN_MENU
         ));
-        result.put(MenuType.COLLECTION_MENU, new State(
+    }
+
+    private void addGameStates(Map<MenuType, MenuState> statesByType) {
+        statesByType.put(MenuType.COLLECTION_MENU, new State(
                 MenuType.COLLECTION_MENU,
                 Collections.<MenuType>emptyList(),
                 MenuType.GAME_MENU
         ));
-        result.put(MenuType.GREENHOUSE_MENU, this.gameMenuChild(MenuType.GREENHOUSE_MENU));
-        result.put(MenuType.TRAVEL_LOG_MENU, this.gameMenuChild(MenuType.TRAVEL_LOG_MENU));
-        result.put(MenuType.LEADERBOARD_MENU, this.gameMenuChild(MenuType.LEADERBOARD_MENU));
-        result.put(MenuType.CHAPTER_MENU, new State(
-                MenuType.CHAPTER_MENU,
+        statesByType.put(MenuType.GREENHOUSE_MENU, this.gameMenuChild(MenuType.GREENHOUSE_MENU));
+        statesByType.put(MenuType.TRAVEL_LOG_MENU, this.gameMenuChild(MenuType.TRAVEL_LOG_MENU));
+        statesByType.put(MenuType.LEADERBOARD_MENU, leaf(MenuType.LEADERBOARD_MENU));
+        statesByType.put(MenuType.MEOW_POINT_MENU, new State(
+                MenuType.MEOW_POINT_MENU,
                 list(MenuType.PLANT_PICK_MENU),
+                MenuType.MAIN_MENU
+        ));
+        statesByType.put(MenuType.CHAPTER_MENU, new State(
+                MenuType.CHAPTER_MENU,
+                list(MenuType.PLANT_PICK_MENU, MenuType.MID_GAME_MENU),
                 MenuType.GAME_MENU
         ));
-        result.put(MenuType.PLANT_PICK_MENU, new State(
+        statesByType.put(MenuType.PLANT_PICK_MENU, new State(
                 MenuType.PLANT_PICK_MENU,
                 list(MenuType.MID_GAME_MENU),
                 MenuType.CHAPTER_MENU
         ));
-        result.put(MenuType.MID_GAME_MENU, new State(
+        statesByType.put(MenuType.MID_GAME_MENU, new State(
                 MenuType.MID_GAME_MENU,
                 Collections.<MenuType>emptyList(),
                 MenuType.GAME_MENU
         ));
-        result.put(MenuType.SETTINGS_MENU, leaf(MenuType.SETTINGS_MENU));
-        result.put(MenuType.NETWORK_MENU, leaf(MenuType.NETWORK_MENU));
-        result.put(MenuType.NEWS_MENU, leaf(MenuType.NEWS_MENU));
-        result.put(MenuType.PROFILE_MENU, leaf(MenuType.PROFILE_MENU));
-        return result;
+    }
+
+    private void addLeafStates(Map<MenuType, MenuState> statesByType) {
+        statesByType.put(MenuType.SETTINGS_MENU, leaf(MenuType.SETTINGS_MENU));
+        statesByType.put(MenuType.NETWORK_MENU, leaf(MenuType.NETWORK_MENU));
+        statesByType.put(MenuType.NEWS_MENU, leaf(MenuType.NEWS_MENU));
+        statesByType.put(MenuType.PROFILE_MENU, leaf(MenuType.PROFILE_MENU));
     }
 
     private State leaf(MenuType type) {
@@ -167,7 +244,6 @@ public class GameMenuContext extends MenuContext {
 
     private State gameMenuChild(MenuType type) {
         // menu haye bedune zir menu ke zire GAME_MENU hastan ro misaze
-        // (Greenhouse, TravelLog, Leaderboard, Chapter)
         return new State(type, Collections.<MenuType>emptyList(), MenuType.GAME_MENU);
     }
 

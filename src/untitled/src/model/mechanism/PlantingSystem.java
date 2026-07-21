@@ -35,13 +35,7 @@ public class PlantingSystem {
             return false;
         }
 
-        Tile tile = this.board.getTile(position);
-
-        if (tile == null || !tile.canPlacePlant(plant)) {
-            return false;
-        }
-
-        return this.canStackOnTile(plant, tile);
+        return this.canPlaceOnTile(plant, position);
     }
 
     public void plant(Plant plant, Position position) {
@@ -49,18 +43,39 @@ public class PlantingSystem {
             return;
         }
 
-        plant.setPosition(position);
-        plant.setBoard(this.board);
-
-        Tile tile = this.board.getTile(position);
-
-        if (tile == null) {
-            return;
-        }
-
-        tile.addPlant(plant);
+        this.placeOnBoard(plant, position);
         this.spendSun(plant);
         this.startCooldown(plant);
+
+        this.activateOnPlanting(plant);
+    }
+
+    public boolean plantWithoutCost(Plant plant, Position position) {
+        if (!this.canPlaceOnTile(plant, position)) {
+            return false;
+        }
+
+        this.placeOnBoard(plant, position);
+        this.activateOnPlanting(plant);
+        return true;
+    }
+
+    private boolean canPlaceOnTile(Plant plant, Position position) {
+        if (plant == null || position == null || this.board == null) {
+            return false;
+        }
+
+        Tile tile = this.board.getTile(position);
+        return tile != null && tile.canPlacePlant(plant) && this.canStackOnTile(plant, tile);
+    }
+
+    private void placeOnBoard(Plant plant, Position position) {
+        plant.setPosition(position);
+        plant.setBoard(this.board);
+        this.board.getTile(position).addPlant(plant);
+    }
+
+    private void activateOnPlanting(Plant plant) {
 
         if (plant.getBehavior() instanceof OnPlantingBehavior) {
             OnPlantingBehavior plantingBehavior = (OnPlantingBehavior) plant.getBehavior();
@@ -109,23 +124,11 @@ public class PlantingSystem {
         }
 
         if ("pea pod".equals(newName)) {
-            if (tile.getPlants().size() >= 5) {
-                return false;
-            }
-
-            for (Plant existingPlant : tile.getPlants()) {
-                if (!"pea pod".equals(this.normalizedName(existingPlant))) {
-                    return false;
-                }
-            }
-
-            return true;
+            return this.canStackPeaPod(tile);
         }
 
-        for (Plant existingPlant : tile.getPlants()) {
-            if ("pea pod".equals(this.normalizedName(existingPlant))) {
-                return false;
-            }
+        if (this.hasPlantNamed(tile, "pea pod")) {
+            return false;
         }
 
         if ("lily pad".equals(newName)) {
@@ -144,16 +147,32 @@ public class PlantingSystem {
         }
 
         if ("pumpkin".equals(newName)) {
-            for (Plant existingPlant : tile.getPlants()) {
-                if ("pumpkin".equals(this.normalizedName(existingPlant))) {
-                    return false;
-                }
-            }
-
-            return true;
+            return !this.hasPlantNamed(tile, "pumpkin");
         }
 
         return this.hasStackTag(plant) || this.hasStackTag(topPlant);
+    }
+
+    private boolean canStackPeaPod(Tile tile) {
+        if (tile.getPlants().size() >= 5) {
+            return false;
+        }
+
+        for (Plant existingPlant : tile.getPlants()) {
+            if (!"pea pod".equals(this.normalizedName(existingPlant))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean hasPlantNamed(Tile tile, String plantName) {
+        for (Plant existingPlant : tile.getPlants()) {
+            if (plantName.equals(this.normalizedName(existingPlant))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean hasStackTag(Plant plant) {

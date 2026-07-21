@@ -5,13 +5,15 @@ import model.mechanism.Board;
 import model.zombie.Zombie;
 
 public class SnowballBehavior implements ZombieBehavior {
-    private final int range;
     private final long throwIntervalTicks;
     private long ticksSinceThrow;
 
-    public SnowballBehavior(int range, long throwIntervalTicks) {
-        this.range = Math.max(1, range);
+    public SnowballBehavior(long throwIntervalTicks) {
         this.throwIntervalTicks = Math.max(1, throwIntervalTicks);
+    }
+
+    public SnowballBehavior(int ignoredRange, long throwIntervalTicks) {
+        this(throwIntervalTicks);
     }
 
     @Override
@@ -46,7 +48,7 @@ public class SnowballBehavior implements ZombieBehavior {
             }
 
             int distance = zombie.getPosition().getX() - plant.getPosition().getX();
-            if (distance >= 0 && distance <= this.range && distance < nearestDistance) {
+            if (distance >= 0 && distance < nearestDistance) {
                 nearest = plant;
                 nearestDistance = distance;
             }

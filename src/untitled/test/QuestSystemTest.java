@@ -55,6 +55,8 @@ public class QuestSystemTest {
         assertTrue(controller.onClaimQuestRequested("Only Cactus").startsWith("Quest reward claimed"));
         assertEquals(20, user.getDiamond());
         assertEquals(1, user.getCompletedQuests());
+        assertEquals(1, user.getCompletedDailyQuests());
+        assertEquals(0, user.getCompletedNonDailyQuests());
         assertEquals("Quest reward was already claimed.", controller.onClaimQuestRequested("ONLY_CACTUS"));
         assertEquals(20, user.getDiamond());
     }

@@ -1,6 +1,7 @@
 package controller;
 
 import model.Plant;
+import model.level.ConveyorBeltLevel;
 import model.mechanism.*;
 import model.zombie.Zombie;
 import model.zombie.ZombieDefinition;
@@ -50,13 +51,29 @@ public class MidGameController implements MidGameViewObserver {
     }
 
     @Override
+    public List<String> onShowConveyorPlantsRequested() {
+        List<String> plantNames = new ArrayList<>();
+        if (!(this.game.getActiveLevel() instanceof ConveyorBeltLevel)) {
+            return plantNames;
+        }
+
+        for (Plant plant : ((ConveyorBeltLevel) this.game.getActiveLevel()).getConveyorPlants()) {
+            if (plant != null && plant.getName() != null) {
+                plantNames.add(plant.getName());
+            }
+        }
+
+        return plantNames;
+    }
+
+    @Override
     public Tile onShowTileStatusRequested(int x, int y) {
         return game.getGameStatusService().getTileStatus(new Position(x, y));
     }
 
     @Override
     public boolean onCollectSunRequested(int x, int y) {
-        int collected = game.getSunSystem().collectSun(new Position(x, y));
+        int collected = game.collectSun(new Position(x, y));
         return collected > 0;
     }
 
@@ -66,12 +83,13 @@ public class MidGameController implements MidGameViewObserver {
     }
 
     @Override
+    public boolean onPlantImitaterRequested(String type, int x, int y) {
+        return game.plantImitater(this.cleanType(type), new Position(x, y));
+    }
+
+    @Override
     public boolean onPluckPlantRequested(int x, int y) {
-        Position position = new Position(x, y);
-        Tile tile = game.getBoard().getTile(position);
-        if (tile == null || tile.getPlants().isEmpty()) return false;
-        game.getPlantingSystem().pluck(position);
-        return true;
+        return game.pluckPlant(new Position(x, y));
     }
 
     @Override
