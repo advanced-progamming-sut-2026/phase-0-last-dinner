@@ -15,5 +15,6 @@ public enum MenuType {
     CHAPTER_MENU,
     GREENHOUSE_MENU,
     PLANT_PICK_MENU,
-    MID_GAME_MENU
+    MID_GAME_MENU,
+    SETTING
 }

@@ -67,6 +67,11 @@ public class LoginController implements MenuController {
         return this.currentUser;
     }
 
+    public GameMenuContext getMenuContext() {
+        return this.menuContext;
+    }
+
+
     public User getCurrentUser() {
         return this.currentUser;
     }
