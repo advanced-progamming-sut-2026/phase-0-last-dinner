@@ -62,10 +62,6 @@ public class GameEngine {
         }
     }
 
-    public void unregister(Tickable tickable) {
-        this.tickables.remove(tickable);
-    }
-
     public void endGame() {
         this.gameRunning = false;
         this.fireEvent("Game ended.");

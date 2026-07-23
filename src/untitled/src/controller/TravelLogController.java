@@ -183,10 +183,6 @@ public class TravelLogController
         };
     }
 
-    public PageName getCurrentPageName() {
-        return currentPageName;
-    }
-
     public TravelLog getTravelLog() {
         return travelLog;
     }

@@ -187,16 +187,6 @@ public class Projectile implements Tickable {
         }
     }
 
-    public boolean isInRangeOf(Position targetPosition) {
-        if (this.maxRange <= 0 || this.position == null || targetPosition == null) {
-            return true;
-        }
-
-        double deltaX = targetPosition.getX() - this.originX;
-        double deltaY = targetPosition.getY() - this.originY;
-        return Math.abs(deltaX) + Math.abs(deltaY) <= this.maxRange;
-    }
-
     public boolean canHit(Zombie zombie) {
         return zombie != null && !this.hitZombies.contains(zombie);
     }
@@ -265,14 +255,6 @@ public class Projectile implements Tickable {
         }
     }
 
-    public void hit(Zombie zombie) {
-        this.target = zombie;
-    }
-
-    public void expire() {
-        this.expired = true;
-    }
-
     public void setPosition(Position position) {
         this.position = position;
 
@@ -312,14 +294,6 @@ public class Projectile implements Tickable {
 
     public void setConditionDurationTicks(long conditionDurationTicks) {
         this.conditionDurationTicks = Math.max(0, conditionDurationTicks);
-    }
-
-    public void setPoisonDamagePerTick(int poisonDamagePerTick) {
-        this.poisonDamagePerTick = Math.max(0, poisonDamagePerTick);
-    }
-
-    public void setStunChancePercent(int stunChancePercent) {
-        this.stunChancePercent = Math.max(0, Math.min(100, stunChancePercent));
     }
 
     public void setSplashRadius(int splashRadius) {

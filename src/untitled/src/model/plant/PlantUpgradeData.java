@@ -75,16 +75,6 @@ public class PlantUpgradeData {
                 && this.availableCoins >= this.requiredCoins;
     }
 
-    public String getCurrentLevelEffect() {
-        PlantUpgradeEffect effect = this.effectForLevel(this.currentLevel);
-        return effect == null ? null : effect.getDescription();
-    }
-
-    public String getNextLevelEffect() {
-        PlantUpgradeEffect effect = this.nextUpgradeEffect();
-        return effect == null ? null : effect.getDescription();
-    }
-
     public PlantUpgradeEffect nextUpgradeEffect() {
         return this.effectForLevel(this.currentLevel + 1);
     }

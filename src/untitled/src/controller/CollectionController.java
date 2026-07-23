@@ -80,36 +80,6 @@ public class CollectionController implements MenuController, CollectionViewObser
     public void changeMenu() {
     }
 
-    public void showUnlockedPlants() {
-        if (this.user != null) {
-            this.onShowUnlockedPlantsRequested();
-        }
-    }
-
-    public void showAllPlants() {
-        if (this.user != null) {
-            this.onShowAllPlantsRequested();
-        }
-    }
-
-    public void showUnlockedZombies() {
-        if (this.user != null) {
-            this.onShowEncounteredZombiesRequested();
-        }
-    }
-
-    public void showAllZombies() {
-        if (this.user != null) {
-            this.onShowAllZombiesRequested();
-        }
-    }
-
-    public void showSpecificPlant() {
-    }
-
-    public void showSpecificZombie() {
-    }
-
     public PlantUpgradeResult upgradePlant(String plantName) {
         if (this.plantDefinitions == null) {
             return PlantUpgradeResult.PLANT_NOT_FOUND;
@@ -134,14 +104,8 @@ public class CollectionController implements MenuController, CollectionViewObser
         return result;
     }
 
-    public void upgradePlant() {
-    }
-
     public PlantUpgradeService getPlantUpgradeService() {
         return this.plantUpgrades;
-    }
-
-    public void buyPlant() {
     }
 
     @Override

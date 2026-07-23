@@ -62,10 +62,6 @@ public class PlantCooldownManager implements Tickable {
         this.availableAtTick.clear();
     }
 
-    public void resetAllCooldowns() {
-        this.availableAtTick.clear();
-    }
-
     public void resetCooldown(Plant plant) {
         if (plant != null && plant.getName() != null) {
             this.availableAtTick.remove(plant.getName());

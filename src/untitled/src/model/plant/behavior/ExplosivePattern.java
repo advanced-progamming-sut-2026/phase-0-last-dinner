@@ -7,6 +7,5 @@ public enum ExplosivePattern {
     FULL_LANE,
     FULL_BOARD,
     TERRAIN_ONLY,
-    GRAVE_ONLY,
-    RANDOM_TARGETS
+    GRAVE_ONLY
 }

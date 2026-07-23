@@ -99,14 +99,6 @@ public class WaveManager implements Tickable {
         return this.waves != null && this.currentWaveIndex + 1 < this.waves.size();
     }
 
-    public double calculateWaveDifficulty(int waveNumber) {
-        if (waveNumber <= 0 || this.waves == null || waveNumber > this.waves.size()) {
-            return 0;
-        }
-
-        return this.waves.get(waveNumber - 1).getDifficulty();
-    }
-
     // list jadid ro migozare va shorue wave ha ro az aval reset mikone
     public void configureWaves(List<Wave> waves) {
         this.waves = waves == null ? new ArrayList<Wave>() : waves;

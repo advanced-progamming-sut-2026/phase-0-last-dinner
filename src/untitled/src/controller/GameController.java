@@ -27,10 +27,6 @@ public class GameController implements GameViewObserver {
         this.chapterController = chapterController;
     }
 
-    public void enterChapter(String chapterName) {
-        this.chapterController.enterChapterMenu(this.parseChapter(chapterName));
-    }
-
     public void enterGreenhouse() {
         this.loginController.getMenuContext().enterMenu(MenuType.GREENHOUSE_MENU);
     }
@@ -74,9 +70,6 @@ public class GameController implements GameViewObserver {
     private int safeAdd(int currentValue, int amount) {
         long result = (long) currentValue + amount;
         return result > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) result;
-    }
-
-    public void startGame() {
     }
 
     @Override

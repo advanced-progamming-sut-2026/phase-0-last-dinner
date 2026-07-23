@@ -46,14 +46,6 @@ public class LoginController implements MenuController {
         this.accountService.clearPendingPasswordReset();
     }
 
-    public AccountResult resetPassword(
-            String answer,
-            String newPassword,
-            String newPasswordConfirm
-    ) {
-        return this.accountService.completePasswordReset(answer, newPassword, newPasswordConfirm);
-    }
-
     public AccountResult answerSecurityQuestion(String answer) {
         return this.accountService.verifyPasswordResetAnswer(answer);
     }

@@ -183,29 +183,6 @@ public class WallnutBowlingMiniGame extends MiniGame implements StageProgressMin
         type, position, userIndex, isCompleted(), isLoseConditionMet());
   }
 
-  public RollingWallnut placeWallnut(BowlingWallnutType type, Position position) {
-    if (type == null || !integration.isReady() || !canPlaceAt(position)) {
-      return null;
-    }
-
-    int listIndex = conveyorBelt.indexOf(type);
-
-    if (listIndex < 0) {
-      return null;
-    }
-
-    RollingWallnut wallnut = createRollingWallnut(type, position);
-
-    if (wallnut == null) {
-      return null;
-    }
-
-    conveyorBelt.remove(listIndex);
-    rollingWallnuts.add(wallnut);
-
-    return wallnut;
-  }
-
   private RollingWallnut createRollingWallnut(BowlingWallnutType type, Position position) {
     int normalZombieHealth = integration.getNormalZombieHealth();
 

@@ -316,14 +316,6 @@ public class Zombie implements Tickable {
         return this.behavior == null || this.behavior.acceptsCondition(this, condition, projectile);
     }
 
-    public void dropActiveArmor() {
-        ZombieArmor activeArmor = this.getActiveArmor();
-
-        if (activeArmor != null) {
-            activeArmor.drop();
-        }
-    }
-
     public ZombieArmor getActiveArmor() {
         if (this.armors == null) {
             return null;

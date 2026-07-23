@@ -117,13 +117,6 @@ public class PlantUpgradeService {
         return this.maximumLevel(definition);
     }
 
-    public boolean isAtMaximumLevel(PlantDefinition definition) {
-        if (definition == null) {
-            return false;
-        }
-        return this.getLevel(definition.getName()) >= this.maximumLevel(definition);
-    }
-
     public int requiredSeedPackets(int currentLevel) {
         return BASE_SEED_PACKET_COST * Math.max(1, currentLevel);
     }

@@ -48,10 +48,6 @@ public class GameStatusService {
         return this.plantFoodSystem == null ? 0 : this.plantFoodSystem.getPlantFoodAmount();
     }
 
-    public Board getMapStatus() {
-        return this.board;
-    }
-
     public List<PlantStatus> getPlantsStatus(List<Plant> selectedPlants) {
         List<PlantStatus> statuses = new ArrayList<>();
 

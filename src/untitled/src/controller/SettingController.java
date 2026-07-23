@@ -37,8 +37,6 @@ public class SettingController implements MenuController, SettingViewObserver {
         return difficultyConfig.getInverseMultiplier();
     }
 
-    public void changeDifficultyLevel() {}
-
     @Override
     public void changeMenu() {}
 

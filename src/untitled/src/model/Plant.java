@@ -198,18 +198,6 @@ public class Plant implements Tickable {
         }
     }
 
-    public void heal(int amount) {
-        if (amount <= 0 || this.isDead()) {
-            return;
-        }
-
-        this.health += amount;
-
-        if (this.health > this.maximumHealth) {
-            this.health = this.maximumHealth;
-        }
-    }
-
     public void healToFull() {
         if (this.isDead()) {
             return;
@@ -250,10 +238,6 @@ public class Plant implements Tickable {
         copy.setPosition(position);
         copy.setBoard(this.board);
         return copy;
-    }
-
-    public void disable() {
-        this.disabled = true;
     }
 
     public void transform() {

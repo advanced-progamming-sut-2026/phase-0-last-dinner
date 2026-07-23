@@ -25,6 +25,7 @@ import model.mechanism.PlantZombieGame;
 import model.plant.PlantDefinition;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantFactory;
+import model.plant.PlantUnlockService;
 import model.plant.PlantUpgradeService;
 import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
@@ -772,6 +773,10 @@ final class ApplicationPlantRuntime {
             restoredPlants.add(definition == null ? plant : plantFactory.create(definition));
         }
         user.setUnlockedPlants(restoredPlants);
+        PlantDefinition starterPlant = findPlantDefinition(plantDefinitions, "Peashooter");
+        if (starterPlant != null) {
+            PlantUnlockService.unlock(user, plantFactory.create(starterPlant));
+        }
     }
 
     private static PlantDefinition findPlantDefinition(

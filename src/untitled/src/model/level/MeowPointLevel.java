@@ -12,15 +12,12 @@ import model.mechanism.ZombieKillEvent;
 import model.mechanism.ZombieKillObserver;
 import model.plant.Projectile;
 import model.zombie.Zombie;
-import model.zombie.ZombieDefinition;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 
 @Getter
@@ -68,24 +65,6 @@ public class MeowPointLevel extends Level implements Tickable, ZombieKillObserve
         int ticksPerSecond = 10;
         this.quickKillTicksThreshold = (long) QUICK_KILL_SECONDS_THRESHOLD * ticksPerSecond;
         this.killStreakGapTicks = (long) KILL_STREAK_GAP_SECONDS * ticksPerSecond;
-    }
-
-    public List<ZombieDefinition> createDailyZombieOrder(
-            List<ZombieDefinition> definitions
-    ) {
-        List<ZombieDefinition> ordered = new ArrayList<>();
-        if (definitions == null) {
-            return ordered;
-        }
-
-        for (ZombieDefinition definition : definitions) {
-            if (definition != null) {
-                ordered.add(definition);
-            }
-        }
-
-        Collections.shuffle(ordered, new Random(this.dailySeed));
-        return ordered;
     }
 
     @Override

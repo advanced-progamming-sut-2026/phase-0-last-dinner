@@ -120,16 +120,6 @@ public class TravelLogView
         return false;
     }
 
-    public void showCurrentPage() {
-        if (observer == null) {
-            return;
-        }
-
-        showPage(
-                observer.onShowCurrentPageRequested()
-        );
-    }
-
     private void handleActiveMiniGameCommand(
             String input
     ) {

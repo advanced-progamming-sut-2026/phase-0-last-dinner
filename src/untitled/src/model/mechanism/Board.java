@@ -3,7 +3,6 @@ import lombok.Getter;
 import lombok.Setter;
 import model.Plant;
 import model.collection.ZombieEncounterListener;
-import model.plant.PlantCategory;
 import model.plant.Projectile;
 import model.zombie.Zombie;
 import view.GameEventListener;
@@ -203,23 +202,6 @@ public class Board {
             }
         }
         return plantsInRadius;
-    }
-    public List<Plant> getPlantsByCategory(PlantCategory category) {
-        List<Plant> plantsByCategory = new ArrayList<>();
-        if (category == null || this.tiles == null) {
-            return plantsByCategory;
-        }
-        for (Tile tile : this.tiles) {
-            if (tile == null || tile.getPlants() == null) {
-                continue;
-            }
-            for (Plant plant : tile.getPlants()) {
-                if (plant != null && plant.getCategories() != null && plant.getCategories().contains(category)) {
-                    plantsByCategory.add(plant);
-                }
-            }
-        }
-        return plantsByCategory;
     }
     public List<Plant> getPlantsByName(String name) {
         List<Plant> plantsByName = new ArrayList<>();

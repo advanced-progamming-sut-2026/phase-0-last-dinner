@@ -117,18 +117,6 @@ public class User {
         this.highestUnlockedMiniGameStages = new HashMap<>();
     }
 
-    public void increaseNextLevelPlantFood(){
-        if(this.nextLevelPlantFood >= 3)
-            this.nextLevelPlantFood = 2;
-        this.nextLevelPlantFood++;
-    }
-
-    public void decreaseNextLevelPlantFood(){
-        if(this.nextLevelPlantFood <= 0)
-            this.nextLevelPlantFood = 1;
-        this.nextLevelPlantFood--;
-    }
-
     public void initializeMissingFields() {
         boolean restoreTravelLogState = this.initializeGeneralFields();
         this.initializeQuestFields();

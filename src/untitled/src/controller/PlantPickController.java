@@ -233,10 +233,6 @@ public class PlantPickController implements MenuController, PlantPickViewObserve
         return this.boostedPlantNames;
     }
 
-    public int getSlotCount() {
-        return this.slotCount;
-    }
-
     public boolean isStarted() {
         return this.started;
     }

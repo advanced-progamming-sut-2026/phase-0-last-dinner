@@ -107,16 +107,6 @@ public class Tile {
         return true;
     }
 
-    public Plant removeTopPlant() {
-        if (this.plants == null || this.plants.isEmpty()) {
-            return null;
-        }
-
-        Plant plant = this.plants.remove(this.plants.size() - 1);
-        plant.setTerrainDisabled(false);
-        return plant;
-    }
-
     public boolean removeZombie(Zombie zombie) {
         if (zombie == null || this.zombies == null || !this.zombies.remove(zombie)) {
             return false;

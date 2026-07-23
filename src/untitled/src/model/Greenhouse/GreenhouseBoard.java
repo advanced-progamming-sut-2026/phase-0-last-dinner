@@ -83,11 +83,6 @@ public class GreenhouseBoard {
         return unlockedCount;
     }
 
-    public boolean areAllPotsUnlocked() {
-        return this.getUnlockedPotCount()
-                >= MAXIMUM_POT_COUNT;
-    }
-
     public Pot unlockNextPot() {
         this.ensurePotsInitialised();
 

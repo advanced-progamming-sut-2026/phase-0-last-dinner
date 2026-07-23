@@ -173,10 +173,6 @@ public class MidGameController implements MidGameViewObserver {
         return wave == null ? 0 : wave.getNumber();
     }
 
-    public int getPlantFoodCount() {
-        return game.getPlantFoodSystem().getPlantFoodAmount();
-    }
-
     private ZombieDefinition findZombieDefinition(String type) {
         ZombieDefinitionRepository repo = game.getZombieDefinitions();
         if (repo == null || type == null) return null;

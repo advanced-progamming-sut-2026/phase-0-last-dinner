@@ -176,10 +176,6 @@ public class SunSystem implements Tickable {
         this.automaticSunEnabled = automaticSunEnabled;
     }
 
-    public boolean isSkySunEnabled() {
-        return this.automaticSunEnabled;
-    }
-
     public void setSkySunEnabled(boolean skySunEnabled) {
         this.automaticSunEnabled = skySunEnabled;
     }
@@ -227,10 +223,6 @@ public class SunSystem implements Tickable {
         }
 
         return stolen;
-    }
-
-    public void cheatCode(int amount) {
-        this.addSun(amount);
     }
 
     private SunType chooseSunType() {

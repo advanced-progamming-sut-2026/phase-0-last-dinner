@@ -27,6 +27,7 @@ import model.minigame.zombotanyminigame.ZombotanyMiniGame;
 import model.plant.PlantDefinition;
 import model.plant.PlantDefinitionRepository;
 import model.plant.PlantFactory;
+import model.plant.PlantUnlockService;
 import model.plant.PlantUpgradeService;
 import model.zombie.Zombie;
 import model.zombie.ZombieChapter;
@@ -42,6 +43,16 @@ import java.util.Set;
 @Getter
 // system haye plant va zombie ro baraye yek bazi be ham vasl mikone
 public class PlantZombieGame {
+    private static final String[] ADVENTURE_PLANT_REWARDS = {
+            "Sunflower",
+            "Wall-nut",
+            "Potato Mine",
+            "Cabbage-pult",
+            "Iceberg Lettuce",
+            "Grave Buster",
+            "Bonk Choy",
+            "Repeater"
+    };
     private final PlantDefinitionRepository plantDefinitions;
     private final ZombieDefinitionRepository zombieDefinitions;
     private final PlantFactory plantFactory;
@@ -470,13 +481,27 @@ public class PlantZombieGame {
         if (this.questProgressTracker != null) {
             this.questProgressTracker.onLevelFinished(true);
         }
-        if (this.user != null && this.activeChapter != null) {
-            this.user.recordAdventureLevelCompletion(
+        if (this.user != null && this.activeChapter != null
+                && this.user.recordAdventureLevelCompletion(
                     this.activeChapter.getChapter(),
                     this.activeLevel.getLevelType()
-            );
+            )) {
+            this.unlockNextAdventurePlant();
         }
         this.finalizeMeowPoints();
+    }
+    private void unlockNextAdventurePlant() {
+        for (String plantName : ADVENTURE_PLANT_REWARDS) {
+            PlantDefinition definition = this.plantDefinitions.findByName(plantName);
+            if (definition == null) {
+                continue;
+            }
+            Plant plant = this.plantFactory.create(definition);
+            if (PlantUnlockService.unlock(this.user, plant)) {
+                this.user.addNews("New plant unlocked: " + definition.getName());
+                return;
+            }
+        }
     }
     private void finalizeMeowPoints() {
         if (!(this.activeLevel instanceof MeowPointLevel)) {

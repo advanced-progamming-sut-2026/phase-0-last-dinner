@@ -10,7 +10,6 @@ import model.mechanism.Tile;
 import model.mechanism.ZombieSpawner;
 import model.plant.PlantTag;
 import model.zombie.Zombie;
-import model.zombie.ZombieCondition;
 import model.zombie.ZombieDefinition;
 
 import java.util.ArrayList;
@@ -133,39 +132,6 @@ public class ChapterIceCaves extends Chapter{
     public void onWaveStart(Board board, model.mechanism.Wave wave) {
         this.spawnFrozenZombies(board);
         this.spawnIceWind(board);
-    }
-
-    public void slip(Zombie zombie) {
-        if (zombie == null || zombie.getBoard() == null || zombie.getPosition() == null) {
-            return;
-        }
-
-        if (zombie.getConditions() != null && zombie.getConditions().contains(ZombieCondition.FLYING)) {
-            return;
-        }
-
-        Board board = zombie.getBoard();
-        Tile currentTile = board.getTile(zombie.getPosition());
-
-        if (currentTile == null) {
-            return;
-        }
-
-        int rowDelta;
-        if (currentTile.getTerrainType() == TerrainType.SLIPPERY_UP) {
-            rowDelta = -1;
-        } else if (currentTile.getTerrainType() == TerrainType.SLIPPERY_DOWN) {
-            rowDelta = 1;
-        } else {
-            return;
-        }
-
-        Position destination = new Position(
-                zombie.getPosition().getX(),
-                zombie.getPosition().getY() + rowDelta
-        );
-
-        board.moveZombie(zombie, destination);
     }
 
 }
