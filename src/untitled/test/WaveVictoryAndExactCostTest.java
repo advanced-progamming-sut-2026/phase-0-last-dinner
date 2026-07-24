@@ -77,6 +77,27 @@ public class WaveVictoryAndExactCostTest {
     }
 
     @Test
+    public void mowerKilledWaveAllowsNextWaveToStart() {
+        ZombieDefinition definition = this.definition("Mower target", 100);
+        TestRepository repository = new TestRepository(Collections.singletonList(definition));
+        Board board = new Board();
+        Zombie zombie = new ZombieFactory(repository).create(definition, new Position(8, 0));
+        board.addZombie(zombie, zombie.getPosition());
+
+        Wave firstWave = new Wave(1, 100, false);
+        firstWave.addZombie(zombie);
+        Wave finalWave = new Wave(2, 100, true);
+        WaveManager manager = new WaveManager(Arrays.asList(firstWave, finalWave), null);
+
+        manager.onTick();
+        assertTrue(board.handleZombieAtHouse(zombie));
+        assertEquals(0.0, firstWave.getRemainingHealthPercentage(), 0.0);
+
+        manager.onTick();
+        assertEquals(finalWave, manager.getCurrentWave());
+    }
+
+    @Test
     public void spawnerUsesOnlyAnExactWaveCostCombination() {
         ZombieDefinition costFour = this.definition("Four", 4);
         ZombieDefinition costSix = this.definition("Six", 6);

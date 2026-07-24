@@ -85,7 +85,9 @@ public class Wave {
             }
 
             totalMaximumHealth += zombie.getMaximumHealth();
-            totalCurrentHealth += Math.max(0, zombie.getHealth());
+            if (!zombie.isDead()) {
+                totalCurrentHealth += Math.max(0, zombie.getHealth());
+            }
 
             if (zombie.getArmors() != null) {
                 for (ZombieArmor armor : zombie.getArmors()) {
@@ -95,7 +97,7 @@ public class Wave {
 
                     totalMaximumHealth += Math.max(0, armor.getDefinition().getBaseHealth());
 
-                    if (!armor.isDropped()) {
+                    if (!zombie.isDead() && !armor.isDropped()) {
                         totalCurrentHealth += Math.max(0, armor.getCurrentHealth());
                     }
                 }
