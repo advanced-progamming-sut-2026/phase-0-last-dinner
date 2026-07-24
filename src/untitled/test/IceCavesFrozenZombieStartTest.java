@@ -91,10 +91,9 @@ public class IceCavesFrozenZombieStartTest {
         assertEquals(TerrainType.CLASSIC, board.getTile(new Position(6, 0)).getTerrainType());
         assertFalse(zombie.isTerrainFrozen());
 
-        for (int tick = 0; tick < 4; tick++) {
-            zombie.onTick();
-        }
-        assertTrue(zombie.getPosition().getX() < 6);
+        double xBeforeMoving = zombie.getExactX();
+        zombie.onTick();
+        assertTrue(zombie.getExactX() < xBeforeMoving);
     }
 
     @Test

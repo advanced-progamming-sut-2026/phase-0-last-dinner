@@ -191,6 +191,14 @@ public class BeghouledMiniGame extends MiniGame implements StageProgressMiniGame
     if (upgradedCount <= 0) {
       return;
     }
+    for (int i = 0; i < availablePlantTypes.size(); i++) {
+      PlantDefinition definition = availablePlantTypes.get(i);
+      if (definition != null
+          && definition.getName() != null
+          && definition.getName().equalsIgnoreCase(upgradeOption.getSourcePlant().getName())) {
+        availablePlantTypes.set(i, upgradeOption.getTargetPlant());
+      }
+    }
     sunAmount -= upgradeOption.getSunCost();
     List<PlantMatch> upgradeMatches = findMatches(false);
     if (!upgradeMatches.isEmpty()) {

@@ -15,6 +15,7 @@ public class GameEngine {
     private boolean gameRunning;
     private GameEventListener listener;
     private Board board;
+    private Runnable gameEndObserver;
 
     public GameEngine() {
         this(null);
@@ -40,14 +41,15 @@ public class GameEngine {
             this.clock.advance(1);
 
             for (Tickable tickable : this.getScheduledTickables()) {
+                if (!this.gameRunning) {
+                    break;
+                }
                 if (tickable != null) {
                     tickable.onTick();
                 }
-            }
-
-            if (this.board != null && this.board.isBrainEaten()) {
-                this.endGame();
-                break;
+                if (this.board != null && this.board.isBrainEaten()) {
+                    this.endGame();
+                }
             }
 
             if (!this.gameRunning) {
@@ -62,9 +64,23 @@ public class GameEngine {
         }
     }
 
+    public void unregister(Tickable tickable) {
+        this.tickables.remove(tickable);
+    }
+
     public void endGame() {
+        if (!this.gameRunning) {
+            return;
+        }
         this.gameRunning = false;
+        if (this.gameEndObserver != null) {
+            this.gameEndObserver.run();
+        }
         this.fireEvent("Game ended.");
+    }
+
+    public void setGameEndObserver(Runnable gameEndObserver) {
+        this.gameEndObserver = gameEndObserver;
     }
 
     public void setBoard(Board board) {

@@ -12,7 +12,7 @@ final class ApplicationCommandRouter {
             return "Command is required";
         }
         try {
-            String result = executeGlobalCommand(application, input);
+            String result = executeGlobalCommand(application, input, tokens);
             if (result != null) {
                 return result;
             }
@@ -22,7 +22,11 @@ final class ApplicationCommandRouter {
         }
     }
 
-    private String executeGlobalCommand(ApplicationController application, String input) {
+    private String executeGlobalCommand(
+            ApplicationController application,
+            String input,
+            List<String> tokens
+    ) {
         if (application.isNewsCommand(input)) {
             return application.executeNewsCommand(input);
         }
@@ -41,7 +45,9 @@ final class ApplicationCommandRouter {
         if (application.isCollectionCommand(input)) {
             return application.executeCollectionCommand(input);
         }
-        if (application.isTravelLogCommand(input) || application.hasOpenMiniGame()) {
+        if (application.isTravelLogCommand(input)
+                || (application.hasOpenMiniGame()
+                && !"menu".equalsIgnoreCase(tokens.get(0)))) {
             return application.executeTravelLogCommand(input);
         }
         return null;

@@ -33,6 +33,8 @@ public class Board {
     private GameEventListener listener;
     @Setter
     private Consumer<List<Zombie>> lawnMowerObserver;
+    @Setter
+    private Consumer<Plant> plantRemovalObserver;
     // ta collection be zombie haye dide shode dastresi dashte bashe
     @Setter @Getter
     private ZombieEncounterListener zombieEncounterListener;
@@ -73,7 +75,7 @@ public class Board {
         if (zombie == null || zombie.isDead() || zombie.getPosition() == null) return false;
         LawnMower lawnMower = this.getLawnMower(zombie.getPosition().getY());
         if (lawnMower != null && lawnMower.canTrigger()) {
-            List<Zombie> killedZombies = lawnMower.trigger(this.getZombiesInLane(zombie.getPosition()));
+            List<Zombie> killedZombies = lawnMower.trigger(this);
             this.fireLawnMowerEvent(lawnMower.getRow(), killedZombies);
             if (this.lawnMowerObserver != null) this.lawnMowerObserver.accept(killedZombies);
             for (Zombie killedZombie : killedZombies) {
@@ -149,6 +151,7 @@ public class Board {
         Tile tile = this.getTile(plant.getPosition());
         if (tile == null || !tile.removePlant(plant)) return false;
         this.plantCoverSystem.removePlant(plant);
+        if (this.plantRemovalObserver != null) this.plantRemovalObserver.accept(plant);
         plant.setPosition(null);
         plant.setBoard(null);
         return true;

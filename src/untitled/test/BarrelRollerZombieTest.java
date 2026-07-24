@@ -116,7 +116,7 @@ public class BarrelRollerZombieTest {
         Zombie regular = application.getZombieFactory().create(regularDefinition, new Position(8, 3));
         game.getBoard().addZombie(regular, regular.getPosition());
 
-        game.advanceTime(3);
+        game.advanceTime(30);
         assertFalse(regular.isDead());
         assertEquals(new Position(7, 3), regular.getPosition());
         assertEquals(new Position(7, 3), barrel.getPosition());

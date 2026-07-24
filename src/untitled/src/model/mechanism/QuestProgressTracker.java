@@ -141,6 +141,7 @@ public class QuestProgressTracker {
             Position position = zombie.getPosition();
             if (position != null && position.getY() >= 0 && position.getY() < this.rowCount) {
                 this.mowerRows.add(position.getY());
+                this.firstColumnKillsByRow[position.getY()] = 0;
             }
         }
         if (killedCount > 0 && this.user != null) {
@@ -254,7 +255,7 @@ public class QuestProgressTracker {
         Position position = zombie.getPosition();
         if (position == null || position.getX() != 0
                 || position.getY() < 0 || position.getY() >= this.rowCount
-                || !this.mowerRows.contains(position.getY())) {
+                || this.mowerRows.contains(position.getY())) {
             return;
         }
         int row = position.getY();

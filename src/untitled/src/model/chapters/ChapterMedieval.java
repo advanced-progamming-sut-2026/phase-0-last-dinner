@@ -83,8 +83,9 @@ public class ChapterMedieval extends Chapter {
             boolean isEmptyGround = tile.getTerrainType() == TerrainType.CLASSIC
                     || tile.getTerrainType() == TerrainType.NECROMANCY;
             boolean hasNoPlant = tile.getPlants() == null || tile.getPlants().isEmpty();
+            boolean hasNoZombie = tile.getZombies() == null || tile.getZombies().isEmpty();
 
-            if (isEmptyGround && hasNoPlant) {
+            if (isEmptyGround && hasNoPlant && hasNoZombie) {
                 eligibleTiles.add(tile);
             }
         }

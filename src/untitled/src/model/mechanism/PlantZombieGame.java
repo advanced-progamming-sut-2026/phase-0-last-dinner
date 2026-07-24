@@ -82,6 +82,7 @@ public class PlantZombieGame {
     private final GreenhouseBoostService greenhouseBoostService;
     private DifficultyConfig difficultyConfig;
     private double pendingDifficultyTicks;
+    private final Tickable levelMonitor;
     public PlantZombieGame(
             PlantDefinitionRepository plantDefinitions,
             ZombieDefinitionRepository zombieDefinitions,
@@ -148,6 +149,9 @@ public class PlantZombieGame {
         this.combatSystem = new CombatSystem(this.board, this.lootSystem);
         this.zombieSpawner = new ZombieSpawner(this.zombieFactory, this.zombieDefinitions, this.board);
         this.waveManager = new WaveManager(null, this.zombieSpawner, this.engine);
+        this.levelMonitor = this::monitorActiveLevel;
+        this.engine.setGameEndObserver(this.levelMonitor::onTick);
+        this.board.setPlantRemovalObserver(plant -> this.recordDestroyedPlant(this.activeLevel));
         this.gameStatusService = new GameStatusService(
                 this.board,
                 this.waveManager,
@@ -215,7 +219,6 @@ public class PlantZombieGame {
             return false;
         }
         this.plantingSystem.pluck(position);
-        this.recordDestroyedPlant(this.activeLevel);
         return true;
     }
     public Zombie spawnZombie(String alias, int row) {
@@ -257,8 +260,13 @@ public class PlantZombieGame {
         this.pendingDifficultyTicks += tickCount * this.difficultyConfig.getMultiplier();
         int adjustedTickCount = (int) this.pendingDifficultyTicks;
         this.pendingDifficultyTicks -= adjustedTickCount;
-        this.engine.advanceTime(adjustedTickCount);
-        this.monitorActiveLevel();
+        for (int i = 0; i < adjustedTickCount && this.engine.isGameRunning(); i++) {
+            this.engine.advanceTime(1);
+            this.monitorActiveLevel();
+        }
+        if (adjustedTickCount == 0) {
+            this.monitorActiveLevel();
+        }
     }
     public void configureWaves(List<Wave> waves) {
         this.waveManager.configureWaves(waves);
@@ -282,6 +290,10 @@ public class PlantZombieGame {
         if (level == null) {
             return;
         }
+        if (this.activeLevel instanceof Tickable) {
+            this.engine.unregister((Tickable) this.activeLevel);
+        }
+        this.engine.unregister(this.levelMonitor);
         this.activeLevel = level;
         this.levelFinalized = false;
         if (this.activeChapter instanceof ChapterIceCaves) {
@@ -292,7 +304,6 @@ public class PlantZombieGame {
         level.setBoard(this.board);
         this.configureWaves(level.getWaves());
         this.combatSystem.setGameClock(this.engine.getClock());
-        this.combatSystem.setPlantDestroyedObserver(() -> this.recordDestroyedPlant(level));
         boolean daytime = !(level instanceof NightOpsLevel)
                 && !(this.activeChapter instanceof ChapterMedieval);
         this.sunSystem.setSkySunEnabled(daytime);
@@ -302,7 +313,7 @@ public class PlantZombieGame {
             this.engine.register((Tickable) level);
         }
         level.start();
-        this.engine.register(this::monitorActiveLevel);
+        this.engine.register(this.levelMonitor);
     }
     private void configureLevelDifficulty(Level level) {
         if (level instanceof MeowPointLevel) {

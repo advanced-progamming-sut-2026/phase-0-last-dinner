@@ -298,7 +298,7 @@ public class RuntimeEdgeCasesTest {
         PlantZombieGame game = Main.loadApplication().createGame();
         Zombie prospector = game.spawnZombie("ZombieProspector", 3);
 
-        game.advanceTime(200);
+        game.advanceTime(600);
 
         assertTrue(prospector.isDead());
         assertFalse(game.getBoard().getAllZombies().contains(prospector));

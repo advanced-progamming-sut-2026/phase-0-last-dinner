@@ -20,6 +20,8 @@ import model.zombie.behavior.CompositeZombieBehavior;
 
 @Getter
 public class Zombie implements Tickable {
+    private static final int TICKS_PER_SECOND = 10;
+
     private ZombieDefinition definition;
     @Setter
     private Position position;
@@ -100,7 +102,7 @@ public class Zombie implements Tickable {
         int direction = this.behavior == null
                 ? (this.hasCondition(ZombieCondition.HYPNOTIZED) ? 1 : -1)
                 : this.behavior.getMovementDirection(this);
-        this.exactX += direction * speed;
+        this.exactX += direction * speed / TICKS_PER_SECOND;
 
         if (this.exactX < 0) {
             if (this.board != null) {

@@ -21,22 +21,23 @@ public class LawnMower {
         this.row = row;
     }
 
-    public List<Zombie> trigger(List<Zombie> zombies) {
+    public List<Zombie> trigger(Board board) {
         List<Zombie> killedZombies = new ArrayList<>();
 
-        if (!this.canTrigger() || zombies == null) {
+        if (!this.canTrigger() || board == null) {
             return killedZombies;
         }
 
         this.active = true;
         this.used = true;
 
-        for (Zombie zombie : zombies) {
-            if (zombie == null || zombie.getPosition() == null || zombie.isDead()) {
-                continue;
-            }
-
-            if (zombie.getPosition().getY() == this.row) {
+        boolean killedInPass;
+        do {
+            killedInPass = false;
+            for (Zombie zombie : board.getZombiesInLane(new Position(0, this.row))) {
+                if (zombie == null || zombie.getPosition() == null || zombie.isDead()) {
+                    continue;
+                }
                 if (zombie.getDefinition() != null
                         && zombie.getDefinition().getType() == ZombieType.BOSS) {
                     continue;
@@ -44,8 +45,9 @@ public class LawnMower {
 
                 zombie.die();
                 killedZombies.add(zombie);
+                killedInPass = true;
             }
-        }
+        } while (killedInPass);
 
         this.active = false;
         return killedZombies;

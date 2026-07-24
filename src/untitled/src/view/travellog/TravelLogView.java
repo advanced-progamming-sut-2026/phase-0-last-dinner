@@ -123,6 +123,20 @@ public class TravelLogView
     private void handleActiveMiniGameCommand(
             String input
     ) {
+        Matcher gameMatcher =
+                TravelLogCommands
+                        .BACK_TO_GAME
+                        .getMatcher(input);
+
+        if (gameMatcher != null) {
+            activeMiniGameHandler = null;
+            activeMiniGameType = null;
+            System.out.println(
+                    "Returning to game menu."
+            );
+            return;
+        }
+
         Matcher backMatcher =
                 TravelLogCommands
                         .BACK_TO_MINIGAMES

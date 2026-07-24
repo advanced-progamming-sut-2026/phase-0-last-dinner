@@ -50,10 +50,9 @@ public class ChapterBigWaveBeach extends Chapter{
         }
 
         int range = 8 - this.minWaterColumn + 1;
-        int newWaterLevel = this.minWaterColumn + this.random.nextInt(range);
-
-        if (newWaterLevel == this.waterLevel) {
-            return;
+        int newWaterLevel = this.minWaterColumn + this.random.nextInt(range - 1);
+        if (newWaterLevel >= this.waterLevel) {
+            newWaterLevel++;
         }
 
         this.waterLevel = newWaterLevel;

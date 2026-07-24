@@ -152,6 +152,8 @@ final class ApplicationCommandParser {
         switch (value) {
             case "collection":
                 return MenuType.COLLECTION_MENU;
+            case "greenhouse":
+                return MenuType.GREENHOUSE_MENU;
             case "leaderboard":
                 return MenuType.LEADERBOARD_MENU;
             case "meowpoint":

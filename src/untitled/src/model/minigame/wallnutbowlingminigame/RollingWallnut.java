@@ -34,6 +34,8 @@ public class RollingWallnut implements Tickable {
 
     private int ticksSinceLastMove;
 
+    private boolean initialPositionChecked;
+
     private boolean moving;
 
     private boolean exploded;
@@ -103,6 +105,14 @@ public class RollingWallnut implements Tickable {
         }
 
         ticksSinceLastMove = 0;
+
+        if (!initialPositionChecked) {
+            initialPositionChecked = true;
+            if (integration.isReady() && integration.hasZombieAt(position)) {
+                collideWithZombie();
+                return;
+            }
+        }
 
         moveOneStep();
 

@@ -44,7 +44,7 @@ public class MergedGameplaySystemsTest {
                 ZombieChapter.ALL_CHAPTERS,
                 190,
                 100,
-                1.0,
+                10.0,
                 100,
                 1,
                 false,

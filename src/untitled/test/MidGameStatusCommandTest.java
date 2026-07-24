@@ -55,7 +55,7 @@ public class MidGameStatusCommandTest {
         zombie.addCondition(ZombieCondition.CHILLED, 32);
 
         String output = controller.executeCommand("zombies info");
-        assertTrue(output.contains("position: 2.815, 4"));
+        assertTrue(output.contains("position: 2.9815, 4"));
         assertTrue(output.contains("health: " + zombie.getHealth()));
         assertTrue(output.contains("cone: 270"));
         assertTrue(output.contains("chilled: 3.2s"));

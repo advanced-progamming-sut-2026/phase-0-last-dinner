@@ -57,6 +57,10 @@ final class ApplicationMenuRouter {
             return "Use start game from plant pick menu";
         }
         if (destination == MenuType.PLANT_PICK_MENU
+                && previousMenu == MenuType.MEOW_POINT_MENU) {
+            return application.startMeowPointSelection();
+        }
+        if (destination == MenuType.PLANT_PICK_MENU
                 && previousMenu == MenuType.CHAPTER_MENU
                 && application.getChapterController().getSelectedChapter() != null
                 && application.getChapterController().getSelectedLevel() == null) {
