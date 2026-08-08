@@ -1,0 +1,14 @@
+allprojects {
+  apply plugin: 'eclipse'
+  apply plugin: 'idea'
+
+  version = projectVersion
+
+  repositories {
+    mavenLocal()
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+    maven { url = 'https://jitpack.io' }
+  }
+}
