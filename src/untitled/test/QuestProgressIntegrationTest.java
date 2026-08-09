@@ -1,4 +1,4 @@
-import model.GameMenuRelated.Quest;
+import college.java.project.Main;import model.GameMenuRelated.Quest;
 import model.Plant;
 import model.User.User;
 import model.User.UserGender;

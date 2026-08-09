@@ -1,4 +1,4 @@
-import controller.MidGameController;
+import college.java.project.Main;import controller.MidGameController;
 import model.Plant;
 import model.mechanism.PlantStatus;
 import model.mechanism.PlantZombieGame;

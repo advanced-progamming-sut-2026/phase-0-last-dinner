@@ -2,7 +2,12 @@
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
-.kotlin
+.kotlin/
+.gradle/
+**/build/
+target/
+.idea/
+*.iml
 
 ### Eclipse ###
 .apt_generated

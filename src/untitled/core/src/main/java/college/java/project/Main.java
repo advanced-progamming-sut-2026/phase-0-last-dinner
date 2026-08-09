@@ -65,9 +65,13 @@ public final class Main extends Game {
         }
     }
 
+    public static Main loadApplication() {
+        return new Main();
+    }
+
     @Override
     public void create() {
-        setScreen(new FirstScreen());
+        setScreen(new LoginScreen());
     }
 
     public MiniGameFactory createMiniGameFactory() {

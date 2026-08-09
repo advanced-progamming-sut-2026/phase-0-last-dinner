@@ -6,13 +6,15 @@ plugins {
 [compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
 eclipse.project.name = appName + '-core'
 
+sourceSets {
+  test {
+    java.srcDir '../test'
+  }
+}
+
 dependencies {
+  api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
-  api "com.badlogicgames.gdx:gdx:$gdxVersion"
-  api "com.github.raeleus.TenPatch:tenpatch:$tenPatchVersion"
-
-  api "com.badlogicgames.gdx:gdx:$gdxVersion"
-
   api 'com.google.code.gson:gson:2.14.0'
 
   compileOnly 'org.projectlombok:lombok:1.18.42'
@@ -20,7 +22,10 @@ dependencies {
 
   testImplementation 'junit:junit:4.13.2'
 
-  if(enableGraalNative == 'true') {
+  implementation 'com.github.pizpizi:pvz-skin:v0.1.0'
+  implementation 'com.github.raeleus.TenPatch:tenpatch:5.2.3'
+
+  if (enableGraalNative == 'true') {
     implementation "io.github.berstanio:gdx-svmhelper-annotations:$graalHelperVersion"
   }
 }

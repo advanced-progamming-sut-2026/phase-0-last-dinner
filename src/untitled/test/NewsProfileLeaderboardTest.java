@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import controller.LeaderBoardController;
 import controller.NewsController;
 import controller.ProfileController;

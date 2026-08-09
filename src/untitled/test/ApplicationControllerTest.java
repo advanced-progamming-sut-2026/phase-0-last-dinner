@@ -11,6 +11,7 @@ import java.nio.file.Path;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+import college.java.project.Main;
 
 public class ApplicationControllerTest {
     private Path storagePath;

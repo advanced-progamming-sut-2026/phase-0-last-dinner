@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import controller.PlantPickController;
 import model.Plant;
 import model.User.User;

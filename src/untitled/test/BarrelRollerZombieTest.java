@@ -1,4 +1,4 @@
-import model.mechanism.Board;
+import college.java.project.Main;import model.mechanism.Board;
 import model.mechanism.PlantZombieGame;
 import model.mechanism.Position;
 import model.plant.Projectile;

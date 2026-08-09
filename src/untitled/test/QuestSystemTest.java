@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import controller.TravelLogController;
 import model.GameMenuRelated.Page;
 import model.GameMenuRelated.PageName;

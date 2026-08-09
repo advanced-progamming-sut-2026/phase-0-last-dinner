@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import model.GameMenuRelated.Quest;
 import model.GameMenuRelated.QuestObj;
 import model.Greenhouse.Greenhouse;

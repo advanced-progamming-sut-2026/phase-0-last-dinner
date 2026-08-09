@@ -1,4 +1,4 @@
-import model.Menu.GameMenuContext;
+import college.java.project.Main;import model.Menu.GameMenuContext;
 import model.Menu.MenuType;
 import org.junit.Test;
 

@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import model.Greenhouse.GreenhouseBoostService;
 import model.Menu.MenuType;
 import model.User.User;

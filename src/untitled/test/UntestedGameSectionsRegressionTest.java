@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import model.Plant;
 import model.GameMenuRelated.Quest;
 import model.User.UserRepository;

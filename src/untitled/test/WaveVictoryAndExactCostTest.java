@@ -1,4 +1,4 @@
-import model.User.User;
+import college.java.project.Main;import model.User.User;
 import model.level.NormalLevel;
 import model.level.Level;
 import model.level.LevelFactory;

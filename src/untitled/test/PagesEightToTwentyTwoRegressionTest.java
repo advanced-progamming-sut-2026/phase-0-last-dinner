@@ -1,4 +1,4 @@
-import controller.ApplicationController;
+import college.java.project.Main;import controller.ApplicationController;
 import controller.TravelLogController;
 import model.User.User;
 import model.User.UserGender;
