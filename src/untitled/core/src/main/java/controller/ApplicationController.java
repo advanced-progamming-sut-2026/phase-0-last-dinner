@@ -146,26 +146,17 @@ public class ApplicationController implements CommandHandler {
     public void close() {
         this.accountService.save();
     }
-
-<<<<<<< HEAD
-    // GUI-facing wrappers around Signup/Login so graphical screens don't need to build
-    // console command strings ("login -u ... -p ...") just to talk to the controllers.
-=======
->>>>>>> sep-work
     public AccountResult registerUser(String username, String password, String passwordConfirm, String nickname,
                                       String email, String gender, int securityQuestionNumber, String securityAnswer,
                                       String securityAnswerConfirm) {
         AccountResult registrationResult = this.signupController.register(username, password, passwordConfirm, nickname,
             email, gender);
 
-<<<<<<< HEAD
         if (registrationResult.getStatus() != AccountStatus.SECURITY_QUESTION_REQUIRED) {
             return registrationResult;
         }
-=======
         if (registrationResult.getStatus() != AccountStatus.SECURITY_QUESTION_REQUIRED)
             return registrationResult;
->>>>>>> sep-work
 
         return this.signupController.pickQuestion(securityQuestionNumber, securityAnswer, securityAnswerConfirm);
     }
@@ -251,14 +242,11 @@ public class ApplicationController implements CommandHandler {
         String username = this.valueAfter(tokens, "-u", 1);
         String password = this.valueAfter(tokens, "-p", 1);
 
-<<<<<<< HEAD
         if (this.hasMissingValue(username, password)) {
             return "Login command is incomplete";
         }
-=======
         if (this.hasMissingValue(username, password))
             return "Login command is incomplete";
->>>>>>> sep-work
 
         AccountResult result = this.loginUser(username, password,
             this.containsIgnoreCase(tokens, "-stay-logged-in"));

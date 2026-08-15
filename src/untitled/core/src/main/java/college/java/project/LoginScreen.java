@@ -152,6 +152,7 @@ public final class LoginScreen implements Screen {
         }
 
         showMessage(result.getMessage(), Color.GREEN);
+        this.game.showMainMenuScreen();
     }
 
     private void showMessage(String message, Color color) {

@@ -134,6 +134,38 @@ public final class Main extends Game {
 
         return game;
     }
+    public void showMainMenuScreen() {
+        changeScreen(new view.MainMenuScreen(this.applicationController, new view.MainMenuScreen.Navigator() {
+            @Override
+            public void openGameMenu() {
+                // TODO: هنوز صفحه‌ی گرافیکی Game Menu ساخته نشده، فعلاً فقط از طریق ApplicationController.execute state عوض می‌شه
+            }
+
+            @Override
+            public void openSettingsMenu() {
+                showSettingsMenuScreen();
+            }
+
+            @Override
+            public void openNewsMenu() {
+                // TODO: هنوز صفحه‌ی گرافیکی News ساخته نشده
+            }
+
+            @Override
+            public void openProfileMenu() {
+                // TODO: هنوز صفحه‌ی گرافیکی Profile ساخته نشده
+            }
+
+            @Override
+            public void onLoggedOut() {
+                showLoginScreen();
+            }
+        }));
+    }
+
+    public void showSettingsMenuScreen() {
+        changeScreen(new view.SettingsMenuScreen(this.applicationController, this::showMainMenuScreen));
+    }
 
     private void transferStoredPlantFood(User user, PlantZombieGame game) {
         int storedPlantFood = Math.max(0, Math.min(3, user.getNextLevelPlantFood()));
