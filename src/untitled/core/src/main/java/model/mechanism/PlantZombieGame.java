@@ -165,6 +165,9 @@ public class PlantZombieGame {
         this.pendingDifficultyTicks = 0;
         this.zombieSpawner.setDifficultyConfig(this.difficultyConfig);
         this.sunSystem.setSpawnRateMultiplier(this.difficultyConfig.getInverseMultiplier());
+        this.registerCoreSystems();
+    }
+    private void registerCoreSystems() {
         this.engine.register(this.sunSystem);
         this.engine.register(this.cooldownManager);
         this.engine.register(this.combatSystem);
