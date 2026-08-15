@@ -60,7 +60,7 @@ public final class PamAnimationActor extends Actor {
         Color color = this.getColor();
         batch.setColor(color.r, color.g, color.b, color.a * parentAlpha);
 
-        float scale = Math.min(
+        float baseScale = Math.min(
                 this.getWidth() / this.canvasWidth,
                 this.getHeight() / this.canvasHeight
         );
@@ -71,7 +71,11 @@ public final class PamAnimationActor extends Actor {
         );
         Matrix4 scaledTransform = new Matrix4(previousTransform)
                 .translate(centerX, centerY, 0f)
-                .scale(scale, scale, 1f)
+                .scale(
+                        baseScale * this.getScaleX(),
+                        baseScale * this.getScaleY(),
+                        1f
+                )
                 .translate(-centerX, -centerY, 0f);
 
         batch.flush();
@@ -94,6 +98,9 @@ public final class PamAnimationActor extends Actor {
                 batchBlue,
                 batchAlpha
         );
+    }
+
+    public void applyVisualProfile(PlantCardVisualProfile visualProfile) {
     }
 
     public void setAnimation(String pamPath, String clipName) {
