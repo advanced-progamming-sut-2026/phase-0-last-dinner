@@ -22,7 +22,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.Scaling;
-import com.badlogic.gdx.utils.viewport.ScreenViewport;
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import controller.ApplicationController;
 import pvz.skin.PvzSkin;
 
@@ -51,6 +51,8 @@ public class MainMenuScreen implements Screen {
         "Assets/Exports/ATLASIMAGE_ATLAS_UI_MAINMENULOGO_768_00/pvz2_logo_horizontal.png";
     private static final float ICON_HEIGHT = 72f;
     private static final float LOGO_WIDTH = 420f;
+    private static final float VIRTUAL_WIDTH = 1280f;
+    private static final float VIRTUAL_HEIGHT = 720f;
 
     private final ApplicationController controller;
     private final Navigator navigator;
@@ -68,7 +70,7 @@ public class MainMenuScreen implements Screen {
 
     @Override
     public void show() {
-        this.stage = new Stage(new ScreenViewport());
+        this.stage = new Stage(new ExtendViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
         Gdx.input.setInputProcessor(this.stage);
         Skin skin = PvzSkin.get();
 
@@ -80,7 +82,6 @@ public class MainMenuScreen implements Screen {
         root.pad(24);
         this.stage.addActor(root);
 
-        // Top-left corner: profile + settings icons side by side.
         ImageButton profileButton = this.createIconButton(PROFILE_ICON_PATH, ICON_HEIGHT);
         ImageButton settingsButton = this.createIconButton(SETTINGS_ICON_PATH, ICON_HEIGHT);
         this.attachCommand(profileButton, "menu enter profile", this.navigator::openProfileMenu);
@@ -103,13 +104,13 @@ public class MainMenuScreen implements Screen {
             }
         });
 
-        // Checked early so we know whether to attach the unread-news badge below.
-        String menuStatus = this.controller.execute("menu show current");
-        boolean hasUnreadNews = menuStatus != null && menuStatus.contains("[new news]");
-        Actor newsIcon = this.createNewsIcon(hasUnreadNews);
+        int unreadNewsCount = this.controller.getOrCreateNewsController().getUnreadNewsCount();
+
+        Actor newsIcon = this.createNewsIcon(unreadNewsCount);
+
         Image logo = this.createImageAspect(LOGO_PATH, LOGO_WIDTH);
 
-        this.statusLabel = new Label(hasUnreadNews ? "You have unread news!" : "", skin, "secondary");
+        this.statusLabel = new Label(unreadNewsCount > 0 ? "You have unread news!" : "", skin, "secondary");
         TextButton playButton = this.menuButton("Play", skin, "green", "menu enter game", this.navigator::openGameMenu);
 
         Table centerGroup = new Table();
@@ -180,21 +181,26 @@ public class MainMenuScreen implements Screen {
         return button;
     }
 
-    private Actor createNewsIcon(boolean hasUnreadNews) {
+    private Actor createNewsIcon(int unreadNewsCount) {
         ImageButton newsButton = this.createIconButton(NEWS_ICON_PATH, ICON_HEIGHT);
-        this.attachCommand(newsButton, "menu enter news", this.navigator::openNewsMenu);
-        if (!hasUnreadNews) {
+        newsButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                openNewsDialog();
+            }
+        });
+        if (unreadNewsCount <= 0) {
             return newsButton;
         }
 
         float badgeSize = 22f;
         Image badgeCircle = new Image(new TextureRegionDrawable(new TextureRegion(this.createBadgeTexture((int) badgeSize))));
-        Label exclamationMark = new Label("!", PvzSkin.get(), "default");
-        exclamationMark.setColor(Color.WHITE);
-        exclamationMark.setFontScale(0.85f);
-        exclamationMark.setAlignment(Align.center);
+        Label countLabel = new Label(unreadNewsCount > 9 ? "9+" : String.valueOf(unreadNewsCount), PvzSkin.get(), "default");
+        countLabel.setColor(Color.WHITE);
+        countLabel.setFontScale(0.75f);
+        countLabel.setAlignment(Align.center);
 
-        Stack badge = new Stack(badgeCircle, exclamationMark);
+        Stack badge = new Stack(badgeCircle, countLabel);
         Container<Stack> badgeContainer = new Container<>(badge);
         badgeContainer.size(badgeSize, badgeSize);
         badgeContainer.align(Align.topRight);
@@ -203,6 +209,10 @@ public class MainMenuScreen implements Screen {
         newsWithBadge.add(newsButton);
         newsWithBadge.add(badgeContainer);
         return newsWithBadge;
+    }
+
+    private void openNewsDialog() {
+        new NewsDialog(this.controller, PvzSkin.get()).open(this.stage);
     }
 
     private Texture createBadgeTexture(int diameter) {
