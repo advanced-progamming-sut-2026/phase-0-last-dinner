@@ -147,6 +147,59 @@ public class ApplicationController implements CommandHandler {
         this.accountService.save();
     }
 
+    // GUI-facing wrappers around Signup/Login so graphical screens don't need to build
+    // console command strings ("login -u ... -p ...") just to talk to the controllers.
+    public AccountResult registerUser(String username, String password, String passwordConfirm, String nickname,
+                                      String email, String gender, int securityQuestionNumber, String securityAnswer,
+                                      String securityAnswerConfirm) {
+        AccountResult registrationResult = this.signupController.register(username, password, passwordConfirm, nickname,
+            email, gender);
+
+        if (registrationResult.getStatus() != AccountStatus.SECURITY_QUESTION_REQUIRED) {
+            return registrationResult;
+        }
+
+        return this.signupController.pickQuestion(securityQuestionNumber, securityAnswer, securityAnswerConfirm);
+    }
+
+    public List<String> getSecurityQuestions() {
+        return this.signupController.getSecurityQuestions();
+    }
+
+    public void cancelRegistration() {
+        this.signupController.cancelPendingRegistration();
+    }
+
+    public AccountResult loginUser(String username, String password, boolean stayLoggedIn) {
+        this.loginController.cancelPendingPasswordRecovery();
+
+        AccountResult result = this.loginController.login(username, password, stayLoggedIn);
+
+        if (result.isSuccessful()) {
+            this.currentUser = result.getUser();
+            this.restoreUnlockedPlantRuntimeData();
+            this.clearUserConnections();
+        }
+
+        return result;
+    }
+
+    public AccountResult beginPasswordRecovery(String username, String email) {
+        return this.loginController.beginPasswordRecovery(username, email);
+    }
+
+    public AccountResult answerPasswordRecoveryQuestion(String answer) {
+        return this.loginController.answerSecurityQuestion(answer);
+    }
+
+    public AccountResult completePasswordRecovery(String password, String passwordConfirm) {
+        return this.loginController.setNewPassword(password, passwordConfirm);
+    }
+
+    public void cancelPasswordRecovery() {
+        this.loginController.cancelPendingPasswordRecovery();
+    }
+
     boolean hasOpenMiniGame() {
         return this.menuContext.getCurrentMenu() == MenuType.TRAVEL_LOG_MENU && this.travelLogView != null
             && this.travelLogView.isMiniGameOpen();
@@ -187,19 +240,16 @@ public class ApplicationController implements CommandHandler {
     }
 
     private String login(List<String> tokens) {
-        this.loginController.cancelPendingPasswordRecovery();
         String username = this.valueAfter(tokens, "-u", 1);
         String password = this.valueAfter(tokens, "-p", 1);
+
         if (this.hasMissingValue(username, password)) {
             return "Login command is incomplete";
         }
-        AccountResult result = this.loginController.login(
-            username, password, this.containsIgnoreCase(tokens, "-stay-logged-in"));
-        if (result.isSuccessful()) {
-            this.currentUser = result.getUser();
-            this.restoreUnlockedPlantRuntimeData();
-            this.clearUserConnections();
-        }
+
+        AccountResult result = this.loginUser(username, password,
+            this.containsIgnoreCase(tokens, "-stay-logged-in"));
+
         return result.getMessage();
     }
 
@@ -459,10 +509,12 @@ public class ApplicationController implements CommandHandler {
         this.accountService.save();
         return result;
     }
+
     public SettingView getOrCreateSettingView() {
         this.ensureSettingConnected();
         return this.settingView;
     }
+
     private void ensureSettingConnected() {
         if (this.settingView != null && this.settingViewUser == this.currentUser) {
             return;
