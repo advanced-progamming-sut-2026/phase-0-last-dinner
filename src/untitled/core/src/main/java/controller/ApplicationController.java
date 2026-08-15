@@ -84,6 +84,7 @@ public class ApplicationController implements CommandHandler {
     private CollectionView collectionView;
     private User collectionViewUser;
     private NewsView newsView;
+    private NewsController newsController;
     private User newsViewUser;
     private ProfileView profileView;
     private User profileViewUser;
@@ -112,7 +113,7 @@ public class ApplicationController implements CommandHandler {
         this.signupController = new SignupController(this.accountService, this.menuContext);
         this.loginController = new LoginController(this.accountService, this.menuContext);
         this.accountCommandHandler = new ApplicationAccountCommandHandler(
-                this.commandParser, this.signupController, this.loginController);
+            this.commandParser, this.signupController, this.loginController);
         this.mainController = new MainController(this.accountService, this.menuContext);
         this.chapterController = new ChapterController(this.loginController);
         this.gameView = new GameView();
@@ -148,7 +149,7 @@ public class ApplicationController implements CommandHandler {
 
     boolean hasOpenMiniGame() {
         return this.menuContext.getCurrentMenu() == MenuType.TRAVEL_LOG_MENU && this.travelLogView != null
-                && this.travelLogView.isMiniGameOpen();
+            && this.travelLogView.isMiniGameOpen();
     }
 
     String startMeowPointSelection() {
@@ -193,7 +194,7 @@ public class ApplicationController implements CommandHandler {
             return "Login command is incomplete";
         }
         AccountResult result = this.loginController.login(
-                username, password, this.containsIgnoreCase(tokens, "-stay-logged-in"));
+            username, password, this.containsIgnoreCase(tokens, "-stay-logged-in"));
         if (result.isSuccessful()) {
             this.currentUser = result.getUser();
             this.restoreUnlockedPlantRuntimeData();
@@ -315,7 +316,7 @@ public class ApplicationController implements CommandHandler {
         this.currentUser.initializeMissingFields();
         this.travelLogView = new TravelLogView();
         new TravelLogController(this.travelLogView, this.currentUser.getTravelLog(),
-                this.currentUser, this.plantDefinitions);
+            this.currentUser, this.plantDefinitions);
         this.travelLogViewUser = this.currentUser;
     }
 
@@ -354,7 +355,7 @@ public class ApplicationController implements CommandHandler {
         this.currentUser.initializeMissingFields();
         this.collectionView = new CollectionView();
         new CollectionController(this.collectionView, this.currentUser,
-                this.plantDefinitions, this.zombieDefinitions);
+            this.plantDefinitions, this.zombieDefinitions);
         this.collectionViewUser = this.currentUser;
     }
 
@@ -380,8 +381,18 @@ public class ApplicationController implements CommandHandler {
             return;
         }
         this.newsView = new NewsView();
-        new NewsController(this.newsView, this.currentUser);
+        this.newsController = new NewsController(this.newsView, this.currentUser);
         this.newsViewUser = this.currentUser;
+    }
+
+    // barresi UI graphical (masalan NewsDialog) mostaghim az in estefade mikone,
+    // chon NewsView.handleCommand faghat toye console print mikone va chizi barnemigardune
+    public NewsController getOrCreateNewsController() {
+        if (this.currentUser == null) {
+            return new NewsController();
+        }
+        this.ensureNewsConnected();
+        return this.newsController;
     }
 
     boolean isProfileCommand(String input) {
@@ -444,11 +455,14 @@ public class ApplicationController implements CommandHandler {
             return "Settings commands are only available in settings menu.";
         }
         this.ensureSettingConnected();
-        this.settingView.handleCommand(input);
+        String result = this.settingView.handleCommand(input);
         this.accountService.save();
-        return "";
+        return result;
     }
-
+    public SettingView getOrCreateSettingView() {
+        this.ensureSettingConnected();
+        return this.settingView;
+    }
     private void ensureSettingConnected() {
         if (this.settingView != null && this.settingViewUser == this.currentUser) {
             return;
@@ -464,7 +478,7 @@ public class ApplicationController implements CommandHandler {
         }
         MenuType currentMenu = this.menuContext.getCurrentMenu();
         if (currentMenu != MenuType.MAIN_MENU && currentMenu != MenuType.GAME_MENU
-                && currentMenu != MenuType.LEADERBOARD_MENU) {
+            && currentMenu != MenuType.LEADERBOARD_MENU) {
             return "Leaderboard is only available from main or game menu.";
         }
         LeaderBoardView view = new LeaderBoardView();
@@ -498,15 +512,15 @@ public class ApplicationController implements CommandHandler {
         this.restoreUnlockedPlantRuntimeData();
         this.plantPickView = new PlantPickView();
         this.plantPickController = new PlantPickController(this.plantPickView, this.currentUser,
-                this.plantDefinitions, null, PlantPickController.DEFAULT_SLOT_COUNT);
+            this.plantDefinitions, null, PlantPickController.DEFAULT_SLOT_COUNT);
         this.plantPickViewUser = this.currentUser;
     }
 
     private void startSelectedGame() {
         ApplicationStartedGame startedGame = ApplicationGameStarter.start(this.currentUser, this.plantDefinitions,
-                this.zombieDefinitions, this.plantPickController, this.pendingLevelType,
-                this.chapterController.getSelectedChapter(), this.chapterController.getSelectedLevel(),
-                this.accountService, BASE_WAVE_DIFFICULTY);
+            this.zombieDefinitions, this.plantPickController, this.pendingLevelType,
+            this.chapterController.getSelectedChapter(), this.chapterController.getSelectedLevel(),
+            this.accountService, BASE_WAVE_DIFFICULTY);
         this.currentGame = startedGame.getGame();
         this.midGameView = startedGame.getView();
         this.menuContext.enterMenu(MenuType.MID_GAME_MENU);
@@ -538,6 +552,7 @@ public class ApplicationController implements CommandHandler {
         this.collectionView = null;
         this.collectionViewUser = null;
         this.newsView = null;
+        this.newsController = null;
         this.newsViewUser = null;
         this.profileView = null;
         this.profileViewUser = null;
@@ -562,9 +577,9 @@ final class ApplicationAccountCommandHandler {
     private final LoginController loginController;
 
     ApplicationAccountCommandHandler(
-            ApplicationCommandParser commandParser,
-            SignupController signupController,
-            LoginController loginController
+        ApplicationCommandParser commandParser,
+        SignupController signupController,
+        LoginController loginController
     ) {
         this.commandParser = commandParser;
         this.signupController = signupController;
@@ -606,7 +621,7 @@ final class ApplicationAccountCommandHandler {
             return "Register command is incomplete";
         }
         AccountResult result = this.signupController.register(
-                username, password, passwordConfirm, nickname, email, gender
+            username, password, passwordConfirm, nickname, email, gender
         );
         if (result.getStatus() == AccountStatus.SECURITY_QUESTION_REQUIRED) {
             return this.formatQuestions(result.getMessage());
@@ -638,8 +653,8 @@ final class ApplicationAccountCommandHandler {
         }
         AccountResult result = this.loginController.beginPasswordRecovery(username, email);
         return result.isSuccessful()
-                ? result.getMessage() + System.lineSeparator() + result.getSecurityQuestion()
-                : result.getMessage();
+            ? result.getMessage() + System.lineSeparator() + result.getSecurityQuestion()
+            : result.getMessage();
     }
 
     private String answerSecurityQuestion(List<String> tokens) {
@@ -780,15 +795,15 @@ final class ApplicationPlantRuntime {
     }
 
     private static PlantDefinition findPlantDefinition(
-            PlantDefinitionRepository plantDefinitions,
-            String plantName
+        PlantDefinitionRepository plantDefinitions,
+        String plantName
     ) {
         if (plantName == null || plantDefinitions.findAll() == null) {
             return null;
         }
         for (PlantDefinition definition : plantDefinitions.findAll()) {
             if (definition != null && definition.getName() != null
-                    && definition.getName().equalsIgnoreCase(plantName.trim())) {
+                && definition.getName().equalsIgnoreCase(plantName.trim())) {
                 return definition;
             }
         }
@@ -808,33 +823,33 @@ final class ApplicationGameStarter {
         user.initializeMissingFields();
         user.setGamesPlayed(user.getGamesPlayed() + 1);
         Chapter chapter = pendingLevelType == LevelType.MEOW_POINT
-                ? null
-                : ApplicationPlantRuntime.createChapter(selectedChapter);
+            ? null
+            : ApplicationPlantRuntime.createChapter(selectedChapter);
         Board board = chapter == null ? new Board() : chapter.buildBoard();
         PlantZombieGame game = new PlantZombieGame(
-                plantDefinitions,
-                zombieDefinitions,
-                new ZombieFactory(zombieDefinitions),
-                user.getPlantUpgradeService(),
-                new GreenhouseBoostService(user.getGreenhouse()),
-                user,
-                board
+            plantDefinitions,
+            zombieDefinitions,
+            new ZombieFactory(zombieDefinitions),
+            user.getPlantUpgradeService(),
+            new GreenhouseBoostService(user.getGreenhouse()),
+            user,
+            board
         );
         if (plantPickController != null) {
             game.configurePlantSelection(
-                    plantPickController.getSelectedPlants(),
-                    plantPickController.getBoostedPlantNames()
+                plantPickController.getSelectedPlants(),
+                plantPickController.getBoostedPlantNames()
             );
         }
         LevelType levelType = pendingLevelType != null
-                ? pendingLevelType
-                : selectedLevel == null ? LevelType.NORMAL : selectedLevel;
+            ? pendingLevelType
+            : selectedLevel == null ? LevelType.NORMAL : selectedLevel;
         Level level = new LevelFactory().create(
-                levelType,
-                null,
-                user.getUnlockedPlants(),
-                baseWaveDifficulty,
-                game.getEngine().getClock()
+            levelType,
+            null,
+            user.getUnlockedPlants(),
+            baseWaveDifficulty,
+            game.getEngine().getClock()
         );
         game.configureChapter(chapter);
         game.configureLevel(level);

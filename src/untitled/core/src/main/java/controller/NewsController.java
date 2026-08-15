@@ -58,6 +58,10 @@ public class NewsController implements MenuController, NewsViewObserver {
         return this.user != null && this.user.hasUnreadNews();
     }
 
+    public int getUnreadNewsCount() {
+        return this.user == null ? 0 : this.user.getUnreadNews().size();
+    }
+
     @Override
     public List<String> onShowUnreadNewsRequested() {
         return this.showUnreadNews();

@@ -3,28 +3,29 @@ package view;
 import java.util.regex.Matcher;
 
 public class SettingView implements GameEventListener {
+    private static final int DEFAULT_DIFFICULTY = 3;
     private SettingViewObserver observer;
 
     public void setObserver(SettingViewObserver observer) {
         this.observer = observer;
     }
 
-    public void handleCommand(String input) {
+    public String handleCommand(String input) {
         if (observer == null) {
-            System.out.println("Setting controller is not connected.");
-            return;
+            return "Setting controller is not connected.";
         }
 
-        Matcher matcher;
-
-        matcher = SettingCommand.CHANGE_DIFFICULTY.getMatcher(input);
+        Matcher matcher = SettingCommand.CHANGE_DIFFICULTY.getMatcher(input);
         if (matcher != null) {
             int level = Integer.parseInt(matcher.group("level"));
-            System.out.println(observer.onChangeDifficultyRequested(level));
-            return;
+            return observer.onChangeDifficultyRequested(level);
         }
 
-        System.out.println("Invalid settings command.");
+        return "Invalid settings command.";
+    }
+
+    public int getCurrentDifficulty() {
+        return observer != null ? observer.getCurrentDifficulty() : DEFAULT_DIFFICULTY;
     }
 
     @Override
