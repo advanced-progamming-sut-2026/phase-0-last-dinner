@@ -1,6 +1,7 @@
 package college.java.project;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
@@ -51,6 +52,8 @@ public final class RegisterScreen implements Screen {
     private final Label messageLabel;
 
     private final TextButton passwordToggleButton;
+
+    private boolean securityStepVisible;
 
     public RegisterScreen(Main game) {
         if (game == null)
@@ -136,8 +139,7 @@ public final class RegisterScreen implements Screen {
         this.backButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                signupController.cancelPendingRegistration();
-                game.showLoginScreen();
+                returnToLogin();
             }
         });
 
@@ -151,8 +153,7 @@ public final class RegisterScreen implements Screen {
         this.securityBackButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                signupController.cancelPendingRegistration();
-                showInformationStep();
+                returnToInformationStep();
             }
         });
 
@@ -194,6 +195,9 @@ public final class RegisterScreen implements Screen {
 
     private void showInformationStep() {
         prepareStage();
+
+        this.securityStepVisible = false;
+        resetPasswordVisibility();
 
         Label title = new Label("CREATE ACCOUNT", this.skin, "big_outline");
         Label subtitle = new Label("ENTER YOUR INFORMATION", this.skin, "medium");
@@ -239,6 +243,8 @@ public final class RegisterScreen implements Screen {
 
     private void showSecurityStep() {
         prepareStage();
+
+        this.securityStepVisible = true;
 
         Label title = new Label("SECURITY QUESTION", this.skin, "big_outline");
         Label subtitle = new Label("SELECT ONE QUESTION", this.skin, "medium");
@@ -307,6 +313,23 @@ public final class RegisterScreen implements Screen {
         this.messageLabel.addAction(Actions.sequence(Actions.delay(3f), Actions.fadeOut(0.4f)));
     }
 
+    private void resetPasswordVisibility() {
+        this.passwordToggleButton.setChecked(false);
+        this.passwordToggleButton.setText("SHOW");
+        this.passwordField.setPasswordMode(true);
+        this.passwordConfirmField.setPasswordMode(true);
+    }
+
+    private void returnToLogin() {
+        this.signupController.cancelPendingRegistration();
+        this.game.showLoginScreen();
+    }
+
+    private void returnToInformationStep() {
+        this.signupController.cancelPendingRegistration();
+        showInformationStep();
+    }
+
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this.stage);
@@ -315,6 +338,15 @@ public final class RegisterScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE)) {
+            if (this.securityStepVisible)
+                returnToInformationStep();
+            else
+                returnToLogin();
+
+            return;
+        }
+
         ScreenUtils.clear(0.015f, 0.035f, 0.06f, 1f);
         this.stage.act(Math.min(delta, 1f / 30f));
         this.stage.draw();

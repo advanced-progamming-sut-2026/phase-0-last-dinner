@@ -1,6 +1,7 @@
 package college.java.project;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
@@ -172,22 +173,14 @@ public final class LoginScreen implements Screen {
 
     private void openPasswordRecovery() {
         this.loginController.cancelPendingPasswordRecovery();
-        this.recoveryUsernameField.setText(this.usernameField.getText());
-        this.recoveryEmailField.setText("");
-        this.recoveryAnswerField.setText("");
-        this.newPasswordField.setText("");
-        this.newPasswordConfirmField.setText("");
+        resetRecoveryFields();
+        this.recoveryUsernameField.setText(this.usernameField.getText().trim());
 
         this.recoveryOverlay = new Table();
         this.recoveryOverlay.setFillParent(true);
         this.recoveryOverlay.setTouchable(Touchable.enabled);
         this.recoveryOverlay.setBackground(this.skin.getDrawable("modal_background"));
         this.stage.addActor(this.recoveryOverlay);
-
-        this.recoveryPasswordToggleButton.setChecked(false);
-        this.recoveryPasswordToggleButton.setText("SHOW");
-        this.newPasswordField.setPasswordMode(true);
-        this.newPasswordConfirmField.setPasswordMode(true);
 
         showRecoveryIdentityStep();
     }
@@ -338,6 +331,8 @@ public final class LoginScreen implements Screen {
     private void closePasswordRecovery() {
         this.loginController.cancelPendingPasswordRecovery();
 
+        resetRecoveryFields();
+
         if (this.recoveryOverlay != null) {
             this.recoveryOverlay.remove();
             this.recoveryOverlay = null;
@@ -397,6 +392,22 @@ public final class LoginScreen implements Screen {
         this.stage.addActor(root);
     }
 
+    private void resetRecoveryFields() {
+        this.recoveryUsernameField.setText("");
+        this.recoveryEmailField.setText("");
+        this.recoveryAnswerField.setText("");
+        this.newPasswordField.setText("");
+        this.newPasswordConfirmField.setText("");
+
+        this.recoveryMessageLabel.clearActions();
+        this.recoveryMessageLabel.setText("");
+
+        this.recoveryPasswordToggleButton.setChecked(false);
+        this.recoveryPasswordToggleButton.setText("SHOW");
+        this.newPasswordField.setPasswordMode(true);
+        this.newPasswordConfirmField.setPasswordMode(true);
+    }
+
     @Override
     public void show() {
         Gdx.input.setInputProcessor(this.stage);
@@ -405,8 +416,12 @@ public final class LoginScreen implements Screen {
 
     @Override
     public void render(float delta) {
-        ScreenUtils.clear(0.015f, 0.035f, 0.06f, 1f);
+        if (Gdx.input.isKeyJustPressed(Input.Keys.ESCAPE) && this.recoveryOverlay != null) {
+            closePasswordRecovery();
+            return;
+        }
 
+        ScreenUtils.clear(0.015f, 0.035f, 0.06f, 1f);
         this.stage.act(Math.min(delta, 1f / 30f));
         this.stage.draw();
     }
