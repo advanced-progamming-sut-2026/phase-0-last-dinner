@@ -1,6 +1,7 @@
 package college.java.project;
 
 import com.badlogic.gdx.Game;
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
 import controller.ApplicationController;
 import controller.CollectionController;
@@ -19,6 +20,10 @@ import model.zombie.ZombieDefinitionRepository;
 import model.zombie.ZombieFactory;
 
 import java.io.IOException;
+import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import pvz.skin.PvzSkin;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.Texture.TextureFilter;
 
 @Getter
 public final class Main extends Game {
@@ -33,35 +38,25 @@ public final class Main extends Game {
     private final PlantUpgradeService plantUpgradeService;
     private final CollectionController collectionController;
 
+    private Skin skin;
+
+    private Texture authBackground;
+
     public Main() {
         try {
-            this.plantDefinitions =
-                CsvPlantDefinitionRepository.fromClasspath(PLANTS_RESOURCE);
+            this.plantDefinitions = CsvPlantDefinitionRepository.fromClasspath(PLANTS_RESOURCE);
 
-            this.zombieDefinitions =
-                JsonZombieDefinitionRepository.fromClasspath(
-                    ZOMBIES_RESOURCE,
-                    ARMOR_RESOURCE
-                );
+            this.zombieDefinitions = JsonZombieDefinitionRepository.fromClasspath(ZOMBIES_RESOURCE, ARMOR_RESOURCE);
 
             this.zombieFactory = new ZombieFactory(this.zombieDefinitions);
             this.plantUpgradeService = new PlantUpgradeService();
 
-            this.collectionController = new CollectionController(
-                this.plantDefinitions,
-                this.plantUpgradeService
-            );
+            this.collectionController = new CollectionController(this.plantDefinitions, this.plantUpgradeService);
 
-            this.applicationController = new ApplicationController(
-                new UserRepository(),
-                this.plantDefinitions,
-                this.zombieDefinitions
-            );
+            this.applicationController = new ApplicationController(new UserRepository(), this.plantDefinitions,
+                this.zombieDefinitions);
         } catch (IOException e) {
-            throw new IllegalStateException(
-                "Could not load bundled plant and zombie definitions",
-                e
-            );
+            throw new IllegalStateException("Could not load bundled plant and zombie definitions", e);
         }
     }
 
@@ -71,7 +66,28 @@ public final class Main extends Game {
 
     @Override
     public void create() {
-        setScreen(new LoginScreen());
+        this.skin = PvzSkin.get();
+        this.authBackground = new Texture(Gdx.files.internal("ui/auth_background.png"));
+        this.authBackground.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        showLoginScreen();
+    }
+
+    public void showLoginScreen() {
+        changeScreen(new LoginScreen(this));
+    }
+
+    public void showRegisterScreen() {
+        changeScreen(new RegisterScreen(this));
+    }
+
+    private void changeScreen(Screen nextScreen) {
+        Gdx.app.postRunnable(() -> {
+            Screen previousScreen = getScreen();
+            setScreen(nextScreen);
+
+            if (previousScreen != null)
+                previousScreen.dispose();
+        });
     }
 
     public MiniGameFactory createMiniGameFactory() {
@@ -101,26 +117,16 @@ public final class Main extends Game {
         user.initializeMissingFields();
         user.setGamesPlayed(user.getGamesPlayed() + 1);
 
-        GreenhouseBoostService boostService =
-            new GreenhouseBoostService(user.getGreenhouse());
+        GreenhouseBoostService boostService = new GreenhouseBoostService(user.getGreenhouse());
 
-        PlantUpgradeService userUpgradeService =
-            user.getPlantUpgradeService();
+        PlantUpgradeService userUpgradeService = user.getPlantUpgradeService();
 
-        PlantZombieGame game = new PlantZombieGame(
-            this.plantDefinitions,
-            this.zombieDefinitions,
-            this.zombieFactory,
-            userUpgradeService,
-            boostService,
-            user
-        );
+        PlantZombieGame game = new PlantZombieGame(this.plantDefinitions, this.zombieDefinitions, this.zombieFactory,
+            userUpgradeService, boostService, user);
 
         game.getBoard().setZombieEncounterListener(definition -> {
-            if (definition != null
-                && user.recordEncounteredZombie(definition.getAlias())) {
+            if (definition != null && user.recordEncounteredZombie(definition.getAlias()))
                 this.applicationController.save();
-            }
         });
 
         transferStoredPlantFood(user, game);
@@ -129,35 +135,25 @@ public final class Main extends Game {
         return game;
     }
 
-    private void transferStoredPlantFood(
-        User user,
-        PlantZombieGame game
-    ) {
-        int storedPlantFood = Math.max(
-            0,
-            Math.min(3, user.getNextLevelPlantFood())
-        );
+    private void transferStoredPlantFood(User user, PlantZombieGame game) {
+        int storedPlantFood = Math.max(0, Math.min(3, user.getNextLevelPlantFood()));
 
         int transferredPlantFood = 0;
 
         for (int i = 0; i < storedPlantFood; i++) {
-            if (!game.getPlantFoodSystem().addPlantFood()) {
+            if (!game.getPlantFoodSystem().addPlantFood())
                 break;
-            }
 
             transferredPlantFood++;
         }
 
-        user.setNextLevelPlantFood(
-            storedPlantFood - transferredPlantFood
-        );
+        user.setNextLevelPlantFood(storedPlantFood - transferredPlantFood);
     }
 
     @Override
     public void pause() {
-        if (this.applicationController != null) {
+        if (this.applicationController != null)
             this.applicationController.save();
-        }
 
         super.pause();
     }
@@ -166,14 +162,18 @@ public final class Main extends Game {
     public void dispose() {
         Screen currentScreen = getScreen();
 
-        if (this.applicationController != null) {
+        if (this.applicationController != null)
             this.applicationController.close();
-        }
 
         super.dispose();
 
-        if (currentScreen != null) {
+        if (currentScreen != null)
             currentScreen.dispose();
-        }
+
+        if (this.skin != null)
+            this.skin.dispose();
+
+        if (this.authBackground != null)
+            this.authBackground.dispose();
     }
 }
