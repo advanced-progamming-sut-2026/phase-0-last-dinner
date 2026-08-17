@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
+/** Visual-preview data source that exposes every repository zombie as encountered. */
 public final class PreviewZombieCollectionDataSource implements ZombieCollectionDataSource {
     private final ZombieDefinitionRepository definitions;
 

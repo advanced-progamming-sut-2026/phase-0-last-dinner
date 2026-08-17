@@ -5,7 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 
-
+/** Original PvZ2 Almanac packet artwork used by the zombie Collection grid. */
 public final class ZombiePacketCatalog {
     private static final Map<String, PacketVisual> PACKETS = createPackets();
 
@@ -14,6 +14,19 @@ public final class ZombiePacketCatalog {
 
     public static PacketVisual findPacket(String zombieAlias) {
         return PACKETS.get(normalize(zombieAlias));
+    }
+
+    public static PacketVisual findGameplayPacket(String zombieAlias, boolean hasLiveArmor) {
+        PacketVisual original = findPacket(zombieAlias);
+        if (hasLiveArmor) {
+            return original;
+        }
+        String baseAlias = unarmoredAlias(zombieAlias);
+        if (baseAlias == null) {
+            return original;
+        }
+        PacketVisual base = findPacket(baseAlias);
+        return base == null ? original : base;
     }
 
     public static Map<String, PacketVisual> allPackets() {
@@ -80,6 +93,7 @@ public final class ZombiePacketCatalog {
         add(packets, "ZombieBeachOctopus", "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_OCTOPUS");
         add(packets, "ZombieBeachGargantuar", "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_GARGANTUAR");
         add(packets, "ZombieBeachImpDefault", "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_IMP");
+        // The original atlas names this swimmer visual Beach Fem rather than Fast Swimmer.
         add(packets, "ZombieBeachFastSwimmer", "IMAGE_UI_ALMANAC_PACKETS_ZOMBIES_BEACH_FEM");
     }
 
@@ -143,6 +157,23 @@ public final class ZombiePacketCatalog {
         return value == null
                 ? ""
                 : value.replaceAll("[^A-Za-z0-9]", "").toLowerCase(Locale.ROOT);
+    }
+
+    private static String unarmoredAlias(String alias) {
+        return switch (normalize(alias)) {
+            case "zombietutorialarmor1default", "zombietutorialarmor2default",
+                    "zombietutorialarmor4default" -> "ZombieTutorialDefault";
+            case "zombiearmor1", "zombiearmor2", "zombiearmor4" -> "ZombieDefault";
+            case "zombiemummyarmor1default", "zombiemummyarmor2default",
+                    "zombiemummyarmor4default" -> "ZombieMummyDefault";
+            case "zombieiceagearmor1default", "zombieiceagearmor2default",
+                    "zombieiceagearmor3default" -> "ZombieIceageDefault";
+            case "zombiebeacharmor1default", "zombiebeacharmor2default" -> "ZombieBeachDefault";
+            case "zombiedarkarmor1default", "zombiedarkarmor2default",
+                    "zombiedarkarmor3default", "zombiedarkarmor4default",
+                    "zombiedarkarmor3" -> "ZombieDarkDefault";
+            default -> null;
+        };
     }
 
     public static final class PacketVisual {

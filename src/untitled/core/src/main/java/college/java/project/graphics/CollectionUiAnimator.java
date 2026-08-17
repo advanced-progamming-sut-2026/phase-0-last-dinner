@@ -6,11 +6,12 @@ import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Stage;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 
-
+/** Small graphics-only motion helpers used by the Collection/Almanac UI. */
 final class CollectionUiAnimator {
     private static final float HOVER_SCALE = 1.045f;
     private static final float ENTER_DURATION = 0.09f;
     private static final float EXIT_DURATION = 0.08f;
+    private static final float CLICK_SCALE = 0.975f;
 
     private CollectionUiAnimator() {
     }
@@ -39,6 +40,19 @@ final class CollectionUiAnimator {
                 actor.addAction(Actions.scaleTo(1f, 1f, EXIT_DURATION));
             }
         });
+    }
+
+
+    static void playClickPulse(Actor actor) {
+        if (actor == null) {
+            return;
+        }
+        actor.clearActions();
+        actor.setOrigin(actor.getWidth() / 2f, actor.getHeight() / 2f);
+        actor.addAction(Actions.sequence(
+                Actions.scaleTo(CLICK_SCALE, CLICK_SCALE, 0.045f),
+                Actions.scaleTo(1f, 1f, 0.075f)
+        ));
     }
 
     static void showPopup(Actor popup) {

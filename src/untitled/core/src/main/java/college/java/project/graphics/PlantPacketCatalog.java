@@ -11,7 +11,11 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-
+/**
+ * Maps project plant names to the original PvZ2 seed-packet resources present in
+ * RESOURCES.json. Names are normalized so spelling punctuation/case differences in
+ * the model do not leak into the graphical layer.
+ */
 public final class PlantPacketCatalog {
     private static final String EMPTY_PACKET = "IMAGE_UI_PACKETS_EMPTY_PACKET";
 
@@ -49,6 +53,8 @@ public final class PlantPacketCatalog {
 
         Set<PlantCategory> categories = safeCategories(state);
         Set<PlantTag> tags = safeTags(state);
+
+        // elemental va special tag ha vaghti mint family asli hast olaviat daran
         if (tags.contains(PlantTag.FIRE)) {
             return family(FAMILY_FIRE);
         }
@@ -118,6 +124,7 @@ public final class PlantPacketCatalog {
         packet(packets, "Repeater", "IMAGE_UI_PACKETS_REPEATER");
         packet(packets, "Threepeater", "IMAGE_UI_PACKETS_THREEPEATER");
         packet(packets, "Snow Pea", "IMAGE_UI_PACKETS_SNOWPEA");
+        // rotobaga to resource haye asli pvz2 ba name xshot zakhire shode
         packet(packets, "Rotobaga", "IMAGE_UI_PACKETS_XSHOT");
         packet(packets, "Pea Pod", "IMAGE_UI_PACKETS_PEAPOD");
         packet(packets, "Split Pea", "IMAGE_UI_PACKETS_SPLITPEA");
@@ -169,6 +176,7 @@ public final class PlantPacketCatalog {
         packet(packets, "Torchwood", "IMAGE_UI_PACKETS_TORCHWOOD");
         packet(packets, "Magnet-shroom", "IMAGE_UI_PACKETS_MAGNETSHROOM");
         packet(packets, "Hypno-shroom", "IMAGE_UI_PACKETS_HYPNOSHROOM");
+        // cattail/nekotail packet to resource haye feli peyda nashod; fallback amn mimone
         packet(packets, "Cat-tail", EMPTY_PACKET);
         packet(packets, "Imitater", "IMAGE_UI_PACKETS_IMITATER");
         packet(packets, "Ice-shroom", "IMAGE_UI_PACKETS_ICESHROOM");
@@ -185,6 +193,7 @@ public final class PlantPacketCatalog {
         packet(packets, "Enforce-mint", "IMAGE_UI_PACKETS_ENFORCEMINT");
         packet(packets, "Reinforce-mint", "IMAGE_UI_PACKETS_REINFORCEMINT");
         packet(packets, "Enchant-mint", "IMAGE_UI_PACKETS_ENCHANTMINT");
+        // alias haye project az spear-mint packet asli mojood estefade mikonan
         packet(packets, "Pierce-mint", "IMAGE_UI_PACKETS_SPEARMINT");
         packet(packets, "catTail-mint", "IMAGE_UI_PACKETS_SPEARMINT");
     }

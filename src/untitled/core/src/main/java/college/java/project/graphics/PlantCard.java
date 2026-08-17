@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.ui.Cell;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.ProgressBar;
@@ -53,6 +54,9 @@ public final class PlantCard extends Table {
     private static final String FAMILY_BADGE = "image_ui_generic_leaf_backdrop";
     private static final String PACKET_READY = "IMAGE_UI_PACKETS_READY";
     private static final String PACKET_SELECT = "IMAGE_UI_PACKETS_SELECT";
+    private static final String PACKET_BOOST = "IMAGE_UI_PACKETS_BOOST";
+    private static final String SUN_COST_ICON =
+            "IMAGE_UI_ALMANAC_ALMANAC_STAT_ICON_SUNCOST";
     private static final String PACKET_LOCK_SMALL = "IMAGE_UI_PACKETS_LOCK_SMALL";
 
     private static final Color OUTER_BORDER = new Color(0.15f, 0.09f, 0.04f, 1f);
@@ -61,8 +65,8 @@ public final class PlantCard extends Table {
     private static final Color INNER_RIM = new Color(0.10f, 0.08f, 0.05f, 1f);
     private static final Color TEAL_BACKGROUND = new Color(0.10f, 0.40f, 0.38f, 1f);
     private static final Color BOOST_BACKGROUND = new Color(0.38f, 0.48f, 0.10f, 1f);
-    private static final Color BOOST_OVERLAY = new Color(0.95f, 0.72f, 0.10f, 0.20f);
-    private static final Color LOCK_DIM = new Color(0f, 0f, 0f, 0.30f);
+    private static final Color BOOST_OVERLAY = new Color(0.95f, 0.72f, 0.10f, 0.36f);
+    private static final Color LOCK_DIM = new Color(0f, 0f, 0f, 0.38f);
     private static final Color LOCKED_ART = new Color(0.48f, 0.48f, 0.50f, 1f);
 
     private final Skin skin;
@@ -82,10 +86,19 @@ public final class PlantCard extends Table {
     private final Image lockIcon;
     private final Table pictureSurface;
     private final Table boostOverlay;
+    private final Table sunCostLayer;
+    private final Stack seedProgressPanel;
+    private final Table gameplayDimOverlay;
+    private final Table gameplayStatusLayer;
+    private Cell<Stack> seedProgressCell;
     private final Drawable packetFrameDrawable;
+    private final Drawable boostFrameDrawable;
+    private Image packetFrameImage;
     private final boolean upgradeAvailable;
     private boolean selected;
     private boolean boosted;
+    private boolean seedProgressVisible = true;
+    private boolean gameplayMode;
     private PlantCardActionListener actionListener;
 
     public PlantCard(
@@ -135,7 +148,6 @@ public final class PlantCard extends Table {
         this.validateArguments(skin, plantState);
 
         this.skin = skin;
-        this.setTouchable(Touchable.enabled);
         this.textureBank = textureBank;
         this.plantState = plantState;
         this.plantName = plantState.getName();
@@ -145,28 +157,33 @@ public final class PlantCard extends Table {
                 ? this.createAnimation(pamPlayer, animationInfo, visualProfile)
                 : null;
         this.levelLabel = this.createOverlayLabel(
-                "LVL " + plantState.getCurrentLevel(),
+                "LVL" + plantState.getCurrentLevel(),
                 0.56f
         );
         this.seedPacketLabel = this.createOverlayLabel(
                 this.seedPacketText(plantState),
                 0.55f
         );
-        this.sunCostLabel = new Label(
+        this.sunCostLabel = this.createOverlayLabel(
                 Integer.toString(plantState.getSunCost()),
-                skin,
-                "secondary"
+                0.58f
         );
-        this.availabilityLabel = new Label("", skin, "secondary");
+        this.availabilityLabel = new Label("", skin, "medium_outline");
         this.seedPacketBar = this.createSeedPacketBar(plantState);
         this.selectionFrame = this.createResourceImage(PACKET_SELECT, SELECTION_FRAME);
         this.selectionFrame.setScaling(Scaling.stretch);
+        this.selectionFrame.setColor(PvzVisualTheme.SELECT_GLOW);
         this.boostIcon = new Image(skin.getDrawable(BOOST_ICON));
         this.upgradeIcon = new Image(skin.getDrawable(UPGRADE_ICON));
         this.lockIcon = this.createResourceImage(PACKET_LOCK_SMALL, LOCK_ICON);
         this.pictureSurface = new Table();
         this.boostOverlay = new Table();
         this.packetFrameDrawable = this.packetDrawable(PACKET_READY);
+        this.boostFrameDrawable = this.packetDrawable(PACKET_BOOST);
+        this.sunCostLayer = this.createSunCostLayer();
+        this.seedProgressPanel = this.createSeedPacketProgress();
+        this.gameplayDimOverlay = this.createGameplayDimOverlay();
+        this.gameplayStatusLayer = this.createGameplayStatusLayer();
 
         this.configureOverlayActors();
         this.buildLayout();
@@ -182,7 +199,7 @@ public final class PlantCard extends Table {
 
     @Override
     public float getPrefHeight() {
-        return CARD_HEIGHT;
+        return this.seedProgressVisible ? CARD_HEIGHT : PREVIEW_HEIGHT;
     }
 
     public String getPlantName() {
@@ -240,24 +257,55 @@ public final class PlantCard extends Table {
         this.updatePictureBackground();
     }
 
+    public void setSunCostVisible(boolean visible) {
+        this.sunCostLayer.setVisible(visible);
+        this.sunCostLayer.invalidateHierarchy();
+        this.invalidateHierarchy();
+    }
+
+    public void setSeedProgressVisible(boolean visible) {
+        this.seedProgressVisible = visible;
+        this.seedProgressPanel.setVisible(visible);
+        if (this.seedProgressCell != null) {
+            this.seedProgressCell.height(visible ? SEED_BAR_HEIGHT : 0f);
+            this.seedProgressCell.padTop(visible ? 2f : 0f);
+        }
+        this.setHeight(this.getPrefHeight());
+        this.invalidateHierarchy();
+    }
+
+    public void setGameplayMode(boolean enabled) {
+        this.gameplayMode = enabled;
+        this.gameplayStatusLayer.setVisible(enabled);
+        if (!enabled) {
+            this.gameplayDimOverlay.setVisible(false);
+            this.availabilityLabel.setText("");
+        }
+    }
+
+    public boolean isGameplayMode() {
+        return this.gameplayMode;
+    }
+
     public void updateGameplayStatus(PlantStatus status) {
         if (status == null) {
             this.availabilityLabel.setText("");
+            this.gameplayDimOverlay.setVisible(false);
             return;
         }
 
         if (status.isAvailable()) {
-            this.availabilityLabel.setText("Ready");
+            this.availabilityLabel.setText("");
+            this.gameplayDimOverlay.setVisible(false);
             return;
         }
 
+        this.gameplayDimOverlay.setVisible(this.gameplayMode);
         double remainingSeconds = status.getRemainingSeconds();
         if (remainingSeconds > 0) {
-            this.availabilityLabel.setText(
-                    "Cooldown " + this.formatSeconds(remainingSeconds)
-            );
+            this.availabilityLabel.setText(this.formatSeconds(remainingSeconds));
         } else {
-            this.availabilityLabel.setText("Not enough sun");
+            this.availabilityLabel.setText("SUN");
         }
     }
 
@@ -280,6 +328,10 @@ public final class PlantCard extends Table {
     private void configureOverlayActors() {
         this.selectionFrame.setVisible(false);
         this.selectionFrame.setTouchable(Touchable.disabled);
+        this.sunCostLayer.setVisible(false);
+        this.gameplayDimOverlay.setVisible(false);
+        this.gameplayStatusLayer.setVisible(false);
+        this.sunCostLayer.setTouchable(Touchable.disabled);
         this.boostIcon.setVisible(false);
         this.boostOverlay.setVisible(false);
         this.boostOverlay.setTouchable(Touchable.disabled);
@@ -296,7 +348,7 @@ public final class PlantCard extends Table {
         this.add(this.createPreview())
                 .size(PREVIEW_WIDTH, PREVIEW_HEIGHT);
         this.row();
-        this.add(this.createSeedPacketProgress())
+        this.seedProgressCell = this.add(this.seedProgressPanel)
                 .size(PREVIEW_WIDTH, SEED_BAR_HEIGHT)
                 .padTop(2f);
     }
@@ -305,10 +357,10 @@ public final class PlantCard extends Table {
         Stack preview = new Stack();
 
         if (this.packetFrameDrawable != null) {
-            Image packetFrame = new Image(this.packetFrameDrawable);
-            packetFrame.setScaling(Scaling.stretch);
-            packetFrame.setTouchable(Touchable.disabled);
-            preview.add(packetFrame);
+            this.packetFrameImage = new Image(this.packetFrameDrawable);
+            this.packetFrameImage.setScaling(Scaling.stretch);
+            this.packetFrameImage.setTouchable(Touchable.disabled);
+            preview.add(this.packetFrameImage);
 
             this.pictureSurface.setClip(true);
             this.addPlantContent(this.pictureSurface);
@@ -322,6 +374,9 @@ public final class PlantCard extends Table {
         preview.add(this.createLevelLayer());
         preview.add(this.createBoostLayer());
         preview.add(this.createUpgradeLayer());
+        preview.add(this.sunCostLayer);
+        preview.add(this.gameplayDimOverlay);
+        preview.add(this.gameplayStatusLayer);
 
         if (!this.plantState.isUnlocked()) {
             preview.add(this.createLockDimLayer());
@@ -412,6 +467,7 @@ public final class PlantCard extends Table {
                     return new TextureRegionDrawable(region);
                 }
             } catch (RuntimeException ignored) {
+                // Age atlas load nashod, az skin fallback estefade mishe.
             }
         }
 
@@ -496,6 +552,51 @@ public final class PlantCard extends Table {
         return layer;
     }
 
+
+
+    private Table createGameplayDimOverlay() {
+        Table overlay = new Table();
+        overlay.setBackground(this.skin.newDrawable(
+                WHITE_PIXEL,
+                new Color(0f, 0f, 0f, 0.52f)
+        ));
+        overlay.setTouchable(Touchable.disabled);
+        return overlay;
+    }
+
+    private Table createGameplayStatusLayer() {
+        Table layer = new Table();
+        layer.center();
+        this.availabilityLabel.setAlignment(Align.center);
+        this.availabilityLabel.setFontScale(0.64f);
+        layer.add(this.availabilityLabel).growX().padTop(6f);
+        layer.setTouchable(Touchable.disabled);
+        return layer;
+    }
+
+    private Table createSunCostLayer() {
+        Table layer = new Table();
+        layer.bottom().right();
+
+        Table badge = new Table();
+        badge.setBackground(this.skin.newDrawable(
+                WHITE_PIXEL,
+                new Color(0f, 0f, 0f, 0.58f)
+        ));
+        badge.pad(1f, 3f, 1f, 3f);
+
+        Drawable sunDrawable = this.packetDrawable(SUN_COST_ICON);
+        if (sunDrawable != null) {
+            Image sun = new Image(sunDrawable);
+            sun.setScaling(Scaling.fit);
+            sun.setTouchable(Touchable.disabled);
+            badge.add(sun).size(19f);
+        }
+        badge.add(this.sunCostLabel).padLeft(2f);
+        layer.add(badge).padRight(4f).padBottom(3f);
+        return layer;
+    }
+
     private Table createUpgradeLayer() {
         Table layer = new Table();
         layer.top().right();
@@ -517,9 +618,8 @@ public final class PlantCard extends Table {
         Table layer = new Table();
         layer.right();
         layer.add(this.lockIcon)
-                .size(30f, 40f)
-                .padRight(23f)
-                .padTop(4f);
+                .size(40f, 52f)
+                .padRight(8f);
         return layer;
     }
 
@@ -611,8 +711,16 @@ public final class PlantCard extends Table {
     }
 
     private void updatePictureBackground() {
+        if (this.packetFrameImage != null) {
+            Drawable frame = this.boosted && this.boostFrameDrawable != null
+                    ? this.boostFrameDrawable
+                    : this.packetFrameDrawable;
+            if (frame != null) {
+                this.packetFrameImage.setDrawable(frame);
+            }
+        }
         if (this.boostOverlay != null) {
-            this.boostOverlay.setVisible(this.boosted);
+            this.boostOverlay.setVisible(this.boosted && this.boostFrameDrawable == null);
         }
         if (this.pictureSurface == null || this.packetFrameDrawable != null) {
             return;
@@ -626,6 +734,7 @@ public final class PlantCard extends Table {
         this.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                CollectionUiAnimator.playClickPulse(PlantCard.this);
                 if (actionListener != null) {
                     actionListener.onPlantCardClicked(PlantCard.this);
                 }
@@ -670,7 +779,7 @@ public final class PlantCard extends Table {
 
     private String seedPacketText(PlantCollectionState state) {
         if (state.getCurrentLevel() >= state.getMaximumLevel()) {
-            return "MAX";
+            return "Max Level";
         }
 
         return state.getSeedPackets() + "/" + state.getRequiredSeedPackets();

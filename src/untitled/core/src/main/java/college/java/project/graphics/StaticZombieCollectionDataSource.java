@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-
+/** Preview/test data source. It does not mutate model state. */
 public final class StaticZombieCollectionDataSource implements ZombieCollectionDataSource {
     private final List<ZombieCollectionState> zombies;
     private final int mintCount;

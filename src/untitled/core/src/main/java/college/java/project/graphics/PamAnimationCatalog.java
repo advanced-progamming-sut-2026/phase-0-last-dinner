@@ -100,16 +100,24 @@ public final class PamAnimationCatalog {
         }
 
         Set<String> clips = new LinkedHashSet<>();
+        Map<String, Float> clipDurations = new HashMap<>();
         JsonObject clipObject = animation.getAsJsonObject("clips");
         if (clipObject != null) {
-            clips.addAll(clipObject.keySet());
+            for (Map.Entry<String, JsonElement> entry : clipObject.entrySet()) {
+                clips.add(entry.getKey());
+                if (entry.getValue() != null && entry.getValue().isJsonPrimitive()
+                        && entry.getValue().getAsJsonPrimitive().isNumber()) {
+                    clipDurations.put(entry.getKey(), Math.max(0f, entry.getValue().getAsFloat()));
+                }
+            }
         }
         return new AnimationInfo(
                 name,
                 path.replace('\\', '/'),
                 canvas.get(0).getAsFloat(),
                 canvas.get(1).getAsFloat(),
-                clips
+                clips,
+                clipDurations
         );
     }
 
@@ -149,19 +157,22 @@ public final class PamAnimationCatalog {
         private final float canvasWidth;
         private final float canvasHeight;
         private final Set<String> clips;
+        private final Map<String, Float> clipDurations;
 
         private AnimationInfo(
                 String name,
                 String path,
                 float canvasWidth,
                 float canvasHeight,
-                Set<String> clips
+                Set<String> clips,
+                Map<String, Float> clipDurations
         ) {
             this.name = name;
             this.path = path;
             this.canvasWidth = canvasWidth;
             this.canvasHeight = canvasHeight;
             this.clips = clips;
+            this.clipDurations = clipDurations == null ? Map.of() : Map.copyOf(clipDurations);
         }
 
         public String getName() {
@@ -184,11 +195,62 @@ public final class PamAnimationCatalog {
             return clipName != null && this.clips.contains(clipName);
         }
 
+        public String findClip(String... candidates) {
+            if (candidates == null) {
+                return null;
+            }
+            for (String candidate : candidates) {
+                String exact = this.findExactIgnoreCase(candidate);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return null;
+        }
+
         public String getIdleClip() {
             if (this.clips.contains("idle")) {
                 return "idle";
             }
             return this.findIdleVariant();
+        }
+
+
+        public float getClipDuration(String clipName, float fallbackSeconds) {
+            if (clipName == null) {
+                return Math.max(0f, fallbackSeconds);
+            }
+            Float duration = this.clipDurations.get(clipName);
+            return duration == null || duration <= 0f
+                    ? Math.max(0f, fallbackSeconds)
+                    : duration;
+        }
+
+        public String getUnarmedClip() {
+            for (String wanted : new String[] {"plant_idle", "plant", "recover"}) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return null;
+        }
+
+        public String getRecoverClip() {
+            return this.findExactIgnoreCase("recover");
+        }
+
+        public String getBowlingShotClip(int bulbIndex) {
+            int safe = Math.max(0, Math.min(2, bulbIndex));
+            String wanted = safe == 2 ? "special3" : safe == 1 ? "special2" : "special";
+            String exact = this.findExactIgnoreCase(wanted);
+            return exact == null ? this.getAttackClip() : exact;
+        }
+
+        public String getBowlingReloadClip(int bulbIndex) {
+            int safe = Math.max(0, Math.min(2, bulbIndex));
+            String wanted = safe == 2 ? "reload3" : safe == 1 ? "reload2" : "reload";
+            return this.findExactIgnoreCase(wanted);
         }
 
         public String getPreviewClip() {
@@ -203,6 +265,113 @@ public final class PamAnimationCatalog {
                 return "attack1";
             }
             return null;
+        }
+
+        public String getAttackClip() {
+            for (String wanted : new String[] {
+                    "attack", "attack1", "attack2", "bite", "jump_down_right", "special"
+            }) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            String candidate = null;
+            for (String clip : this.clips) {
+                if (clip == null) {
+                    continue;
+                }
+                String lower = clip.toLowerCase(Locale.ROOT);
+                if ((!lower.startsWith("attack") && !lower.startsWith("bite"))
+                        || lower.contains("plantfood")
+                        || lower.contains("idle")) {
+                    continue;
+                }
+                candidate = shorter(candidate, clip);
+            }
+            return candidate;
+        }
+
+        public String getTriggeredRemovalClip() {
+            for (String wanted : new String[] {
+                    "jump_down_right", "jump_down_left", "attack", "bite", "special"
+            }) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return getAttackClip();
+        }
+
+        public String getSunProductionClip() {
+            for (String wanted : new String[] {"special", "produce", "production", "sun"}) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            String candidate = null;
+            for (String clip : this.clips) {
+                if (clip == null) {
+                    continue;
+                }
+                String lower = clip.toLowerCase(Locale.ROOT);
+                if (lower.startsWith("special_") || lower.startsWith("produce")) {
+                    candidate = shorter(candidate, clip);
+                }
+            }
+            return candidate;
+        }
+
+        public String getIntroClip() {
+            for (String wanted : new String[] {"intro", "plant", "recover"}) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return null;
+        }
+
+        public String getDamageClip(int stage) {
+            int safeStage = Math.max(1, Math.min(3, stage));
+            for (int index = safeStage; index >= 1; index--) {
+                String[] wanted = index == 1
+                        ? new String[] {"damage", "idle_damage1", "idle_damage"}
+                        : new String[] {"damage" + index, "idle_damage" + index};
+                for (String candidate : wanted) {
+                    String exact = this.findExactIgnoreCase(candidate);
+                    if (exact != null) {
+                        return exact;
+                    }
+                }
+            }
+            return null;
+        }
+
+        public String getPlantFoodClip() {
+            for (String wanted : new String[] {"plantfood", "pf", "plantfood_on", "idle_plantfood"}) {
+                String exact = this.findExactIgnoreCase(wanted);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            String candidate = null;
+            for (String clip : this.clips) {
+                if (clip == null) {
+                    continue;
+                }
+                String lower = clip.toLowerCase(Locale.ROOT);
+                if (!lower.startsWith("plantfood")
+                        || lower.contains("_on")
+                        || lower.contains("_off")
+                        || lower.contains("idle")) {
+                    continue;
+                }
+                candidate = shorter(candidate, clip);
+            }
+            return candidate;
         }
 
         private String findIdleVariant() {

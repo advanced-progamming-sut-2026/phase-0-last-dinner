@@ -6,6 +6,8 @@ import com.badlogic.gdx.math.Matrix4;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import pvz.libpvz.pam.PamPlayer;
 
+import java.util.Map;
+
 public final class PamAnimationActor extends Actor {
     private final PamPlayer pamPlayer;
     private final float canvasWidth;
@@ -14,6 +16,7 @@ public final class PamAnimationActor extends Actor {
     private String clipName;
     private boolean looping;
     private float stateTime;
+    private Map<String, Boolean> partsVisibility = Map.of();
 
     public PamAnimationActor(
             PamPlayer pamPlayer,
@@ -66,9 +69,7 @@ public final class PamAnimationActor extends Actor {
         );
         float centerX = this.getX() + this.getWidth() / 2f;
         float centerY = this.getY() + this.getHeight() / 2f;
-        Matrix4 previousTransform = new Matrix4(
-                batch.getTransformMatrix()
-        );
+        Matrix4 previousTransform = new Matrix4(batch.getTransformMatrix());
         Matrix4 scaledTransform = new Matrix4(previousTransform)
                 .translate(centerX, centerY, 0f)
                 .scale(
@@ -78,29 +79,42 @@ public final class PamAnimationActor extends Actor {
                 )
                 .translate(-centerX, -centerY, 0f);
 
-        batch.flush();
-        batch.setTransformMatrix(scaledTransform);
-        this.pamPlayer.draw(
-                batch,
-                this.pamPath,
-                this.clipName,
-                this.stateTime,
-                centerX,
-                centerY,
-                this.looping
-        );
-        batch.flush();
-        batch.setTransformMatrix(previousTransform);
-
-        batch.setColor(
-                batchRed,
-                batchGreen,
-                batchBlue,
-                batchAlpha
-        );
+        try {
+            batch.flush();
+            batch.setTransformMatrix(scaledTransform);
+            if (this.partsVisibility.isEmpty()) {
+                this.pamPlayer.draw(
+                        batch,
+                        this.pamPath,
+                        this.clipName,
+                        this.stateTime,
+                        centerX,
+                        centerY,
+                        this.looping
+                );
+            } else {
+                this.pamPlayer.draw(
+                        batch,
+                        this.pamPath,
+                        this.clipName,
+                        this.stateTime,
+                        centerX,
+                        centerY,
+                        this.looping,
+                        this.partsVisibility
+                );
+            }
+            batch.flush();
+        } catch (RuntimeException ignored) {
+            // frame kharab faghat hamin frame ro skip mikone; frame badi dobare test mishe.
+        } finally {
+            batch.setTransformMatrix(previousTransform);
+            batch.setColor(batchRed, batchGreen, batchBlue, batchAlpha);
+        }
     }
 
     public void applyVisualProfile(PlantCardVisualProfile visualProfile) {
+        // Packet artwork is preferred for collection cards; keep PAM fallback neutral.
     }
 
     public void setAnimation(String pamPath, String clipName) {
@@ -116,5 +130,34 @@ public final class PamAnimationActor extends Actor {
 
     public void setLooping(boolean looping) {
         this.looping = looping;
+    }
+
+    public void setPartsVisibility(Map<String, Boolean> partsVisibility) {
+        this.partsVisibility = partsVisibility == null ? Map.of() : Map.copyOf(partsVisibility);
+    }
+
+    public float getStateTime() {
+        return this.stateTime;
+    }
+
+    /** Seek within the current clip without changing its path or looping mode. */
+    public void setStateTime(float stateTime) {
+        this.stateTime = Math.max(0f, stateTime);
+    }
+
+    public String getPamPath() {
+        return this.pamPath;
+    }
+
+    public String getClipName() {
+        return this.clipName;
+    }
+
+    public float getCanvasWidth() {
+        return this.canvasWidth;
+    }
+
+    public float getCanvasHeight() {
+        return this.canvasHeight;
     }
 }

@@ -33,11 +33,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-
+/** Complete PvZ2-style Plants tab for the graphical Collection menu. */
 @SuppressWarnings("PMD.ExcessiveClassLength")
 public final class PlantCollectionScreen implements Screen {
-    public static final float WORLD_WIDTH = 1920f;
-    public static final float WORLD_HEIGHT = 1080f;
+    public static final float WORLD_WIDTH = PvzVisualTheme.WORLD_WIDTH;
+    public static final float WORLD_HEIGHT = PvzVisualTheme.WORLD_HEIGHT;
     private static final int GRID_COLUMNS = 10;
     private static final int DEBUG_COIN_INCREMENT = 1000;
     private static final int DEBUG_GEM_INCREMENT = 10;
@@ -45,6 +45,7 @@ public final class PlantCollectionScreen implements Screen {
     private static final String PLANTS_TAB = "image_ui_almanac_tabs_plants_active";
     private static final String ZOMBIES_TAB = "image_ui_almanac_tabs_zombies_down";
     private static final String CLOSE_TAB = "image_ui_almanac_tabs_close_tab";
+    private static final String CLOSE_TAB_DOWN = "image_ui_almanac_tabs_close_tab_down";
     private static final String FILTER_UP = "image_ui_almanac_filter_button_up";
     private static final String FILTER_DOWN = "image_ui_almanac_filter_button_down";
     private static final String SORT_UP = "image_ui_almanac_sort_button_up";
@@ -57,10 +58,14 @@ public final class PlantCollectionScreen implements Screen {
     private static final String SCROLL_KNOB = "image_ui_almanac_scroll_slider";
     private static final String PLUS_UP = "image_ui_generic_greenbutton";
     private static final String PLUS_DOWN = "image_ui_generic_greenbutton_down";
-    private static final Color HEADER = new Color(0.015f, 0.020f, 0.018f, 1f);
-    private static final Color OUTER = new Color(0.23f, 0.105f, 0.028f, 1f);
-    private static final Color FRAME = new Color(0.63f, 0.31f, 0.085f, 1f);
-    private static final Color INNER = new Color(0.34f, 0.14f, 0.038f, 1f);
+    private static final String ALMANAC_GRADIENT_TOP = "IMAGE_UI_ALMANAC_GRADIENT_TOP";
+    private static final String ALMANAC_GRADIENT_BOTTOM = "IMAGE_UI_ALMANAC_GRADIENT_BOTTOM";
+    private static final String ALMANAC_EDGE_GRADIENT = "IMAGE_UI_ALMANAC_EDGE_GRADIENT";
+    private static final Color HEADER = new Color(0.010f, 0.014f, 0.012f, 1f);
+    private static final Color COLLECTION_BASE = new Color(0.16f, 0.055f, 0.012f, 1f);
+    private static final Color OUTER = PvzVisualTheme.ALMANAC_WOOD;
+    private static final Color FRAME = PvzVisualTheme.ALMANAC_GOLD;
+    private static final Color INNER = PvzVisualTheme.ALMANAC_INNER;
     private static final Color GLOW = new Color(0.80f, 0.46f, 0.16f, 1f);
     private static final Color FOOTER = new Color(0.91f, 0.86f, 0.65f, 1f);
     private static final Color FOOTER_BORDER = new Color(0.51f, 0.33f, 0.13f, 1f);
@@ -94,7 +99,6 @@ public final class PlantCollectionScreen implements Screen {
     private PlantCollectionSort sort = PlantCollectionSort.DEFAULT;
     private int detailIndex = -1;
     private String selectedPlantName;
-    private String loadErrorMessage = "";
     private Runnable onClose;
     private Runnable onZombiesTab;
 
@@ -190,6 +194,7 @@ public final class PlantCollectionScreen implements Screen {
     }
 
     private void build() {
+        this.stage.addActor(background());
         this.stage.addActor(header());
         this.stage.addActor(panel());
         this.stage.addActor(footer());
@@ -204,16 +209,72 @@ public final class PlantCollectionScreen implements Screen {
         this.stage.addActor(this.detailsPanel);
     }
 
+    private Actor background() {
+        Stack stack = new Stack();
+        stack.setBounds(0f, 0f, WORLD_WIDTH, WORLD_HEIGHT);
+        stack.add(colorImage(COLLECTION_BASE));
+
+        Image top = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (top != null) {
+            top.setColor(1f, 0.78f, 0.52f, 0.24f);
+            stack.add(top);
+        }
+        Image bottom = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (bottom != null) {
+            bottom.setColor(0.82f, 0.52f, 0.25f, 0.18f);
+            stack.add(bottom);
+        }
+        Image edge = resourceImage(ALMANAC_EDGE_GRADIENT);
+        if (edge != null) {
+            edge.setColor(1f, 1f, 1f, 0.42f);
+            stack.add(edge);
+        }
+        return stack;
+    }
+
     private Actor header() {
-        Table table = colored(HEADER, 0f); table.setBounds(0f, 968f, WORLD_WIDTH, 112f); return table;
+        Stack stack = new Stack();
+        stack.setBounds(0f, 968f, WORLD_WIDTH, 112f);
+        stack.add(colored(HEADER, 0f));
+        Image gradient = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (gradient != null) {
+            gradient.setColor(1f, 1f, 1f, 0.58f);
+            stack.add(gradient);
+        }
+        Table titleLayer = new Table();
+        titleLayer.left();
+        Label title = new Label("COLLECTION", this.skin, "medium_outline");
+        title.setFontScale(1.16f);
+        title.setColor(PvzVisualTheme.TEXT_CREAM);
+        titleLayer.add(title).width(650f).padLeft(285f).left();
+        stack.add(titleLayer);
+        return stack;
     }
 
     private Actor panel() {
-        Stack stack = new Stack(); stack.setBounds(10f, 102f, 1900f, 876f);
-        Table outer = colored(OUTER, 4f); Table glow = colored(GLOW, 3f);
-        Table frame = colored(FRAME, 5f); Table inner = colored(INNER, 0f);
-        inner.pad(39f, 24f, 112f, 24f); inner.add(scroll()).grow();
-        frame.add(inner).grow(); glow.add(frame).grow(); outer.add(glow).grow(); stack.add(outer); return stack;
+        Stack stack = new Stack();
+        stack.setBounds(10f, 102f, 1900f, 876f);
+        Table outer = colored(OUTER, 4f);
+        Table glow = colored(GLOW, 3f);
+        Table frame = colored(FRAME, 5f);
+        Table inner = colored(INNER, 0f);
+        inner.pad(35f, 24f, 108f, 24f);
+        inner.add(scroll()).grow();
+        frame.add(inner).grow();
+        glow.add(frame).grow();
+        outer.add(glow).grow();
+        stack.add(outer);
+        Image top = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (top != null) {
+            top.setColor(1f, 1f, 1f, 0.24f);
+            stack.add(top);
+        }
+        Image bottom = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (bottom != null) {
+            bottom.setColor(1f, 1f, 1f, 0.19f);
+            stack.add(bottom);
+        }
+        return stack;
     }
 
     private ScrollPane scroll() {
@@ -285,8 +346,11 @@ public final class PlantCollectionScreen implements Screen {
     }
 
     private Actor closeButton() {
-        Stack close = new Stack(); close.setBounds(1800f, 988f, 88f, 80f);
-        close.add(new Image(this.skin.getDrawable(CLOSE_TAB)));
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.imageUp = this.skin.getDrawable(CLOSE_TAB);
+        style.imageDown = this.skin.getDrawable(CLOSE_TAB_DOWN);
+        ImageButton close = new ImageButton(style);
+        close.setBounds(1800f, 988f, 88f, 80f);
         close.addListener(click(() -> {
             hidePopups();
             this.dataSource.save();
@@ -301,8 +365,11 @@ public final class PlantCollectionScreen implements Screen {
     }
 
     private Actor footer() {
-        Stack footer = new Stack(); footer.setBounds(132f, 103f, 1655f, 91f);
-        Table border = colored(FOOTER_BORDER, 3f); Table body = colored(FOOTER, 0f); body.pad(0f, 55f, 0f, 62f);
+        Stack footer = new Stack();
+        footer.setBounds(132f, 103f, 1655f, 91f);
+        Table border = colored(FOOTER_BORDER, 3f);
+        Table body = colored(FOOTER, 0f);
+        body.pad(0f, 55f, 0f, 62f);
         body.add(footerControl(
                 FILTER_UP, FILTER_DOWN, this.filterLabel, () -> toggle(this.filterPopup)
         )).width(390f).left();
@@ -310,7 +377,14 @@ public final class PlantCollectionScreen implements Screen {
         body.add().growX();
         this.collectedLabel.setAlignment(Align.right);
         body.add(this.collectedLabel).right().width(520f);
-        border.add(body).grow(); footer.add(border); return footer;
+        border.add(body).grow();
+        footer.add(border);
+        Image gradient = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (gradient != null) {
+            gradient.setColor(1f, 1f, 1f, 0.33f);
+            footer.add(gradient);
+        }
+        return footer;
     }
 
     private Table footerControl(String up, String down, Label label, Runnable action) {
@@ -384,9 +458,8 @@ public final class PlantCollectionScreen implements Screen {
     private void rebuildGrid(List<PlantCollectionState> source) {
         this.grid.clearChildren(); this.renderedCards.clear(); this.visibleStates.clear();
         List<PlantCollectionState> filtered = new ArrayList<>();
-        int availableGold = this.dataSource.getGold();
         for (PlantCollectionState state : source) {
-            if (this.filter.matches(state, availableGold)) {
+            if (this.filter.matches(state, this.dataSource.getGold())) {
                 filtered.add(state);
             }
         }
@@ -395,17 +468,14 @@ public final class PlantCollectionScreen implements Screen {
         for (PlantCollectionState state : filtered) {
             PlantCard card = card(state);
             this.renderedCards.add(card);
-            this.grid.add(card).size(PlantCard.CARD_WIDTH, PlantCard.CARD_HEIGHT).pad(6f, 4f, 6f, 4f);
+            this.grid.add(card).size(PlantCard.CARD_WIDTH, PlantCard.CARD_HEIGHT).pad(4f);
             if (++column >= GRID_COLUMNS) {
                 this.grid.row();
                 column = 0;
             }
         }
         if (filtered.isEmpty()) {
-            String message = this.loadErrorMessage.isEmpty()
-                    ? "No plants match this filter."
-                    : this.loadErrorMessage;
-            Label empty = new Label(message, this.skin, "medium_outline");
+            Label empty = new Label("No plants match this filter.", this.skin, "medium_outline");
             empty.setFontScale(0.80f);
             this.grid.add(empty).colspan(GRID_COLUMNS).padTop(140f);
         }
@@ -546,11 +616,9 @@ public final class PlantCollectionScreen implements Screen {
     private List<PlantCollectionState> safePlants() {
         try {
             List<PlantCollectionState> plants = this.dataSource.getPlants();
-            this.loadErrorMessage = safe(this.dataSource.getLoadErrorMessage()).trim();
             return plants == null ? Collections.emptyList() : plants;
         } catch (RuntimeException exception) {
-            this.loadErrorMessage = "Unable to load plant collection.";
-            showStatus(this.loadErrorMessage, false);
+            showStatus("Unable to load plant collection.", false);
             return Collections.emptyList();
         }
     }
@@ -577,6 +645,10 @@ public final class PlantCollectionScreen implements Screen {
         image.setColor(color);
         return image;
     }
+    private Image resourceImage(String resourceId) {
+        return PvzVisualTheme.resourceImage(this.assets, this.skin, resourceId, Scaling.stretch);
+    }
+
     private Drawable drawable(String name) {
         try {
             return this.skin.has(name, Drawable.class) ? this.skin.getDrawable(name) : null;

@@ -333,6 +333,14 @@ public class ApplicationController implements CommandHandler {
         this.accountService.save();
     }
 
+    public void finishGraphicalGame(boolean won) {
+        this.accountService.save();
+        if (this.menuContext.getCurrentMenu() == MenuType.MID_GAME_MENU) {
+            this.menuContext.finishGame(won);
+        }
+        this.clearGameConnections();
+    }
+
     boolean isCollectionCommand(String input) {
         return ApplicationCommandMatchers.isCollectionCommand(input);
     }

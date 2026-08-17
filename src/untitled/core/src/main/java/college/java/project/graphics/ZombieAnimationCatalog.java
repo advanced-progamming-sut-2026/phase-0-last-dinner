@@ -13,7 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
-
+/** Maps project zombie aliases to the closest original PvZ2 PAM entry. */
 public final class ZombieAnimationCatalog {
     private static final String CATALOG_PATH = "animations.json";
     private static final Map<String, String> ALIASES = createAliases();
@@ -86,16 +86,24 @@ public final class ZombieAnimationCatalog {
             return null;
         }
         Set<String> clips = new LinkedHashSet<>();
+        Map<String, Float> clipDurations = new HashMap<>();
         JsonObject clipObject = object.getAsJsonObject("clips");
         if (clipObject != null) {
-            clips.addAll(clipObject.keySet());
+            for (Map.Entry<String, JsonElement> entry : clipObject.entrySet()) {
+                clips.add(entry.getKey());
+                if (entry.getValue() != null && entry.getValue().isJsonPrimitive()
+                        && entry.getValue().getAsJsonPrimitive().isNumber()) {
+                    clipDurations.put(entry.getKey(), Math.max(0f, entry.getValue().getAsFloat()));
+                }
+            }
         }
         return new AnimationInfo(
                 object.get("name").getAsString(),
                 object.get("path").getAsString().replace('\\', '/'),
                 canvas.get(0).getAsFloat(),
                 canvas.get(1).getAsFloat(),
-                clips
+                clips,
+                clipDurations
         );
     }
 
@@ -228,13 +236,22 @@ public final class ZombieAnimationCatalog {
         private final float canvasWidth;
         private final float canvasHeight;
         private final Set<String> clips;
+        private final Map<String, Float> clipDurations;
 
-        private AnimationInfo(String name, String path, float canvasWidth, float canvasHeight, Set<String> clips) {
+        private AnimationInfo(
+                String name,
+                String path,
+                float canvasWidth,
+                float canvasHeight,
+                Set<String> clips,
+                Map<String, Float> clipDurations
+        ) {
             this.name = name;
             this.path = path;
             this.canvasWidth = canvasWidth;
             this.canvasHeight = canvasHeight;
             this.clips = clips;
+            this.clipDurations = clipDurations == null ? Map.of() : Map.copyOf(clipDurations);
         }
 
         public String getName() {
@@ -251,6 +268,96 @@ public final class ZombieAnimationCatalog {
 
         public float getCanvasHeight() {
             return this.canvasHeight;
+        }
+
+        public boolean hasClip(String clipName) {
+            return clipName != null && this.clips.contains(clipName);
+        }
+
+        public float getClipDuration(String clipName, float fallbackSeconds) {
+            if (clipName == null) {
+                return Math.max(0f, fallbackSeconds);
+            }
+            Float duration = this.clipDurations.get(clipName);
+            return duration == null || duration <= 0f
+                    ? Math.max(0f, fallbackSeconds)
+                    : duration;
+        }
+
+        public String getWalkClip() {
+            if (this.clips.contains("walk")) {
+                return "walk";
+            }
+            return getPreviewClip();
+        }
+
+        public String getEatClip() {
+            if (this.clips.contains("eat")) {
+                return "eat";
+            }
+            for (String candidate : new String[] {"eat_loop", "eat_start", "reel", "special", "play"}) {
+                String exact = findExactIgnoreCase(candidate);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return getWalkClip();
+        }
+
+        public String getAttackClip() {
+            for (String candidate : new String[] {
+                    "smash_left", "kick", "attack", "attack1", "attack2", "bite", "toss", "reel"
+            }) {
+                String exact = findExactIgnoreCase(candidate);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return getEatClip();
+        }
+
+        public String getThrowClip() {
+            return findClip("fire", "cannon_fire", "throw", "toss");
+        }
+
+        public String findClip(String... candidates) {
+            if (candidates == null) {
+                return null;
+            }
+            for (String candidate : candidates) {
+                String exact = findExactIgnoreCase(candidate);
+                if (exact != null) {
+                    return exact;
+                }
+            }
+            return null;
+        }
+
+        private String findExactIgnoreCase(String wanted) {
+            for (String clip : this.clips) {
+                if (wanted.equalsIgnoreCase(clip)) {
+                    return clip;
+                }
+            }
+            return null;
+        }
+
+        public String getDeathClip() {
+            for (String candidate : new String[] {"death", "die", "death1", "death2"}) {
+                if (this.clips.contains(candidate)) {
+                    return candidate;
+                }
+            }
+            for (String clip : this.clips) {
+                if (clip == null) {
+                    continue;
+                }
+                String lower = clip.toLowerCase(Locale.ROOT);
+                if (lower.startsWith("death") || lower.endsWith("_die") || lower.endsWith("die")) {
+                    return clip;
+                }
+            }
+            return null;
         }
 
         public String getPreviewClip() {

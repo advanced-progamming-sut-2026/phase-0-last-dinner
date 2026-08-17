@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Collectors;
 
-
+/** Full-screen PvZ2 Almanac-style zombie detail view with safe PAM fallback. */
 public final class ZombieDetailsPanel extends Group {
     private static final float WIDTH = 1920f;
     private static final float HEIGHT = 1080f;

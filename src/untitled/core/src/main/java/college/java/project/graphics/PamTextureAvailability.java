@@ -10,7 +10,14 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-
+/**
+ * Performs a fail-closed preflight for PAM texture dependencies.
+ *
+ * libPVZ can parse/bake a PAM and return bounds even when one of the texture atlases
+ * used by the baked parts is absent. Rendering then reaches a part with no UV and
+ * fails. This validator checks the image resource ids embedded in the PAM against
+ * the ResourceIndex and verifies that every referenced atlas file actually exists.
+ */
 final class PamTextureAvailability {
     private static final Pattern IMAGE_RESOURCE_PATTERN =
             Pattern.compile("IMAGE_[A-Za-z0-9_]+");
@@ -21,6 +28,10 @@ final class PamTextureAvailability {
 
     static boolean allTexturesAvailable(TextureBank textureBank, FileHandle pamFile) {
         if (textureBank == null || pamFile == null || !pamFile.exists()) {
+            return false;
+        }
+        FileHandle runtimePam = new FileHandle(pamFile.path());
+        if (!runtimePam.exists()) {
             return false;
         }
 
@@ -56,6 +67,9 @@ final class PamTextureAvailability {
                 return false;
             }
         }
+
+        // Plant preview PAMs are expected to contain image resources. A PAM for which
+        // no texture reference can be proven is not safe enough to hand to the actor.
         return foundImageResource;
     }
 
@@ -67,6 +81,11 @@ final class PamTextureAvailability {
         if (exact != null) {
             return exact;
         }
+
+        // PAM string fields are length-prefixed binary data. The regex can occasionally
+        // consume the following single printable metadata byte (for example ..._82X74R).
+        // Only that one-byte suffix is tolerated; anything longer fails closed rather
+        // than accidentally resolving an unrelated shorter resource id.
         if (binaryCandidate.length() <= "IMAGE_".length()) {
             return null;
         }

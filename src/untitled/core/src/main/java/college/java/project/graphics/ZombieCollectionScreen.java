@@ -32,7 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-
+/** Complete zombie tab of the graphical PvZ2 Collection/Almanac. */
 @SuppressWarnings("PMD.ExcessiveClassLength")
 public final class ZombieCollectionScreen implements Screen {
     public static final float WORLD_WIDTH = 1920f;
@@ -48,6 +48,7 @@ public final class ZombieCollectionScreen implements Screen {
     private static final String PLANTS_TAB = "image_ui_almanac_tabs_plants_down";
     private static final String ZOMBIES_TAB = "image_ui_almanac_tabs_zombies_active";
     private static final String CLOSE_TAB = "image_ui_almanac_tabs_close_tab";
+    private static final String CLOSE_TAB_DOWN = "image_ui_almanac_tabs_close_tab_down";
     private static final String FILTER_ICON = "image_ui_almanac_filter_button_up";
     private static final String FILTER_ICON_DOWN = "image_ui_almanac_filter_button_down";
     private static final String SORT_ICON = "image_ui_almanac_sort_button_up";
@@ -61,8 +62,12 @@ public final class ZombieCollectionScreen implements Screen {
     private static final String SCROLL_KNOB = "image_ui_almanac_scroll_slider";
     private static final String PLUS_UP = "image_ui_generic_greenbutton";
     private static final String PLUS_DOWN = "image_ui_generic_greenbutton_down";
+    private static final String ALMANAC_GRADIENT_TOP = "IMAGE_UI_ALMANAC_GRADIENT_TOP";
+    private static final String ALMANAC_GRADIENT_BOTTOM = "IMAGE_UI_ALMANAC_GRADIENT_BOTTOM";
+    private static final String ALMANAC_EDGE_GRADIENT = "IMAGE_UI_ALMANAC_EDGE_GRADIENT";
 
-    private static final Color HEADER_COLOR = new Color(0.015f, 0.020f, 0.018f, 1f);
+    private static final Color HEADER_COLOR = new Color(0.010f, 0.014f, 0.012f, 1f);
+    private static final Color COLLECTION_BASE = new Color(0.16f, 0.055f, 0.012f, 1f);
     private static final Color PANEL_OUTER = new Color(0.23f, 0.105f, 0.028f, 1f);
     private static final Color PANEL_FRAME = new Color(0.63f, 0.31f, 0.085f, 1f);
     private static final Color PANEL_INNER = new Color(0.34f, 0.14f, 0.038f, 1f);
@@ -98,7 +103,6 @@ public final class ZombieCollectionScreen implements Screen {
     private ZombieCollectionSort collectionSort;
     private String selectedZombieAlias;
     private int detailIndex;
-    private String loadErrorMessage = "";
     private Runnable onClose;
     private Runnable onPlantsTab;
 
@@ -234,6 +238,7 @@ public final class ZombieCollectionScreen implements Screen {
     }
 
     private void buildScreen() {
+        this.stage.addActor(createBackground());
         this.stage.addActor(createHeader());
         this.stage.addActor(createCollectionPanel());
         this.stage.addActor(createFooter());
@@ -248,11 +253,45 @@ public final class ZombieCollectionScreen implements Screen {
         this.stage.addActor(this.detailsPanel);
     }
 
+    private Actor createBackground() {
+        Stack stack = new Stack();
+        stack.setBounds(0f, 0f, WORLD_WIDTH, WORLD_HEIGHT);
+        stack.add(colorImage(COLLECTION_BASE));
+        Image top = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (top != null) {
+            top.setColor(1f, 0.78f, 0.52f, 0.24f);
+            stack.add(top);
+        }
+        Image bottom = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (bottom != null) {
+            bottom.setColor(0.82f, 0.52f, 0.25f, 0.18f);
+            stack.add(bottom);
+        }
+        Image edge = resourceImage(ALMANAC_EDGE_GRADIENT);
+        if (edge != null) {
+            edge.setColor(1f, 1f, 1f, 0.42f);
+            stack.add(edge);
+        }
+        return stack;
+    }
+
     private Actor createHeader() {
-        Table header = new Table();
-        header.setBackground(this.skin.newDrawable(WHITE_PIXEL, HEADER_COLOR));
-        header.setBounds(0f, 968f, WORLD_WIDTH, 112f);
-        return header;
+        Stack stack = new Stack();
+        stack.setBounds(0f, 968f, WORLD_WIDTH, 112f);
+        stack.add(coloredTable(HEADER_COLOR, 0f));
+        Image gradient = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (gradient != null) {
+            gradient.setColor(1f, 1f, 1f, 0.58f);
+            stack.add(gradient);
+        }
+        Table titleLayer = new Table();
+        titleLayer.left();
+        Label title = new Label("COLLECTION", this.skin, "medium_outline");
+        title.setFontScale(1.16f);
+        title.setColor(PvzVisualTheme.TEXT_CREAM);
+        titleLayer.add(title).width(650f).padLeft(285f).left();
+        stack.add(titleLayer);
+        return stack;
     }
 
     private Actor createCollectionPanel() {
@@ -271,6 +310,16 @@ public final class ZombieCollectionScreen implements Screen {
         frame.add(border).grow();
         outer.add(frame).grow();
         panel.add(outer);
+        Image top = resourceImage(ALMANAC_GRADIENT_TOP);
+        if (top != null) {
+            top.setColor(1f, 1f, 1f, 0.24f);
+            panel.add(top);
+        }
+        Image bottom = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (bottom != null) {
+            bottom.setColor(1f, 1f, 1f, 0.19f);
+            panel.add(bottom);
+        }
         return panel;
     }
 
@@ -361,19 +410,24 @@ public final class ZombieCollectionScreen implements Screen {
     }
 
     private Actor createCloseButton() {
-        Stack close = new Stack();
+        ImageButton.ImageButtonStyle style = new ImageButton.ImageButtonStyle();
+        style.imageUp = this.skin.getDrawable(CLOSE_TAB);
+        style.imageDown = this.skin.getDrawable(CLOSE_TAB_DOWN);
+        ImageButton close = new ImageButton(style);
         close.setBounds(1800f, 988f, 88f, 80f);
-        close.add(new Image(this.skin.getDrawable(CLOSE_TAB)));
-        makeClickable(close, () -> {
-            hidePopups();
-            this.dataSource.save();
-            CollectionUiAnimator.leaveScreen(this.stage, () -> {
-                if (this.onClose != null) {
-                    this.onClose.run();
-                } else {
-                    showStatus("Close requested.");
-                }
-            });
+        close.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                hidePopups();
+                dataSource.save();
+                CollectionUiAnimator.leaveScreen(stage, () -> {
+                    if (onClose != null) {
+                        onClose.run();
+                    } else {
+                        showStatus("Close requested.");
+                    }
+                });
+            }
         });
         CollectionUiAnimator.installHoverScale(close);
         return close;
@@ -403,6 +457,11 @@ public final class ZombieCollectionScreen implements Screen {
         body.add(this.collectedLabel).right().width(520f);
         border.add(body).grow();
         footer.add(border);
+        Image gradient = resourceImage(ALMANAC_GRADIENT_BOTTOM);
+        if (gradient != null) {
+            gradient.setColor(1f, 1f, 1f, 0.33f);
+            footer.add(gradient);
+        }
         return footer;
     }
 
@@ -535,10 +594,7 @@ public final class ZombieCollectionScreen implements Screen {
             }
         }
         if (visible.isEmpty()) {
-            String message = this.loadErrorMessage.isEmpty()
-                    ? "No zombies match this filter."
-                    : this.loadErrorMessage;
-            Label empty = new Label(message, this.skin, "medium_outline");
+            Label empty = new Label("No zombies match this filter.", this.skin, "medium_outline");
             empty.setFontScale(0.80f);
             this.cardGrid.add(empty).colspan(GRID_COLUMNS).padTop(140f);
         }
@@ -574,16 +630,8 @@ public final class ZombieCollectionScreen implements Screen {
     }
 
     private List<ZombieCollectionState> safeZombies() {
-        try {
-            List<ZombieCollectionState> states = this.dataSource.loadZombies();
-            String message = this.dataSource.getLoadErrorMessage();
-            this.loadErrorMessage = message == null ? "" : message.trim();
-            return states == null ? Collections.emptyList() : states;
-        } catch (RuntimeException exception) {
-            this.loadErrorMessage = "Unable to load zombie collection.";
-            showStatus(this.loadErrorMessage);
-            return Collections.emptyList();
-        }
+        List<ZombieCollectionState> states = this.dataSource.loadZombies();
+        return states == null ? Collections.emptyList() : states;
     }
 
     private void updateCollectedLabel(List<ZombieCollectionState> states) {
@@ -798,6 +846,10 @@ public final class ZombieCollectionScreen implements Screen {
         label.setVisible(false);
         label.setTouchable(Touchable.disabled);
         return label;
+    }
+
+    private Image resourceImage(String resourceId) {
+        return PvzVisualTheme.resourceImage(this.assets, this.skin, resourceId, Scaling.stretch);
     }
 
     private Image colorImage(Color color) {

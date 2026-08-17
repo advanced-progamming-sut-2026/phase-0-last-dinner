@@ -12,7 +12,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 
-
+/** Shared top-right PvZ2 Almanac currency strip for full-screen detail views. */
 final class AlmanacResourceStrip extends Table {
     private static final String CURRENCY_BG = "image_ui_generic_button_generic_currency_normal";
     private static final String MINT_ICON = "image_ui_generic_mint_icon_small";

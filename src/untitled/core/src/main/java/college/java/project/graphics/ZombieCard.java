@@ -14,7 +14,7 @@ import com.badlogic.gdx.utils.Align;
 import model.collection.ZombieCollectionState;
 import pvz.libpvz.textures.TextureBank;
 
-
+/** Original-PvZ2-style zombie Almanac slot. Undiscovered entries never reveal artwork. */
 public final class ZombieCard extends Group {
     public static final float CARD_WIDTH = 132f;
     public static final float CARD_HEIGHT = 185f;
