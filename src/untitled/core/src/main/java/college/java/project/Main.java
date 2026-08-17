@@ -138,7 +138,7 @@ public final class Main extends Game {
         changeScreen(new view.MainMenuScreen(this.applicationController, new view.MainMenuScreen.Navigator() {
             @Override
             public void openGameMenu() {
-                // TODO: هنوز صفحه‌ی گرافیکی Game Menu ساخته نشده، فعلاً فقط از طریق ApplicationController.execute state عوض می‌شه
+                showGameMenuScreen();
             }
 
             @Override
@@ -165,6 +165,34 @@ public final class Main extends Game {
 
     public void showSettingsMenuScreen() {
         changeScreen(new view.SettingsMenuScreen(this.applicationController, this::showMainMenuScreen));
+    }
+    public void showGameMenuScreen() {
+        changeScreen(new view.GameMenuScreen(this.applicationController, new view.GameMenuScreen.Navigator() {
+            @Override
+            public void openChapterMenu(model.chapters.ChapterType chapter) {
+                // TODO: هنوز صفحه‌ی گرافیکی Chapter/Level ساخته نشده
+            }
+
+            @Override
+            public void openGreenhouse() {
+                // TODO: هنوز صفحه‌ی گرافیکی Greenhouse ساخته نشده
+            }
+
+            @Override
+            public void openTravelLog() {
+                // TODO: هنوز صفحه‌ی گرافیکی Travel Log ساخته نشده
+            }
+
+            @Override
+            public void openLeaderboard() {
+                // TODO: هنوز صفحه‌ی گرافیکی Leaderboard ساخته نشده
+            }
+
+            @Override
+            public void onBack() {
+                showMainMenuScreen();
+            }
+        }));
     }
 
     private void transferStoredPlantFood(User user, PlantZombieGame game) {
