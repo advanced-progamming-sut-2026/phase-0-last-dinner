@@ -70,6 +70,7 @@ public class ApplicationController implements CommandHandler {
     private final LoginController loginController;
     private final MainController mainController;
     private final ChapterController chapterController;
+    private final GameController gameController;
     private final GameView gameView;
     private User currentUser;
     private String lastMessage;
@@ -116,8 +117,13 @@ public class ApplicationController implements CommandHandler {
             this.commandParser, this.signupController, this.loginController);
         this.mainController = new MainController(this.accountService, this.menuContext);
         this.chapterController = new ChapterController(this.loginController);
+        this.gameController = new GameController(
+                this.loginController,
+                repository,
+                this.chapterController
+        );
         this.gameView = new GameView();
-        this.gameView.setObserver(new GameController(this.loginController, repository, this.chapterController));
+        this.gameView.setObserver(this.gameController);
         this.plantDefinitions = plantDefinitions;
         this.zombieDefinitions = zombieDefinitions;
         this.currentUser = this.loginController.restoreRememberedLogin();
@@ -377,6 +383,14 @@ public class ApplicationController implements CommandHandler {
 
     public void save() {
         this.accountService.save();
+    }
+
+    public void finishGraphicalGame(boolean won) {
+        this.accountService.save();
+        if (this.menuContext.getCurrentMenu() == MenuType.MID_GAME_MENU) {
+            this.menuContext.finishGame(won);
+        }
+        this.clearGameConnections();
     }
 
     boolean isCollectionCommand(String input) {

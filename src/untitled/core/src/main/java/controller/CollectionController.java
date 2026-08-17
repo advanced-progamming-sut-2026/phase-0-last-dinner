@@ -55,8 +55,17 @@ public class CollectionController implements MenuController, CollectionViewObser
             PlantDefinitionRepository plantDefinitions,
             ZombieDefinitionRepository zombieDefinitions
     ) {
+        this(user, plantDefinitions, zombieDefinitions);
         if (view == null)
             throw new IllegalArgumentException("Collection view is required");
+        view.setObserver(this);
+    }
+
+    public CollectionController(
+            User user,
+            PlantDefinitionRepository plantDefinitions,
+            ZombieDefinitionRepository zombieDefinitions
+    ) {
         if (user == null)
             throw new IllegalArgumentException("User is required");
         if (plantDefinitions == null)
@@ -68,7 +77,6 @@ public class CollectionController implements MenuController, CollectionViewObser
         this.plantDefinitions = plantDefinitions;
         this.zombieDefinitions = zombieDefinitions;
         this.plantUpgrades = user.getPlantUpgradeService();
-        view.setObserver(this);
     }
 
     @Override

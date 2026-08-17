@@ -3,6 +3,9 @@ package college.java.project;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
+import college.java.project.graphics.CollectionMenuCoordinator;
+import college.java.project.graphics.ControllerPlantCollectionDataSource;
+import college.java.project.graphics.ControllerZombieCollectionDataSource;
 import controller.ApplicationController;
 import controller.CollectionController;
 import lombok.Getter;
@@ -36,7 +39,9 @@ public final class Main extends Game {
     private final ZombieFactory zombieFactory;
     private final ApplicationController applicationController;
     private final PlantUpgradeService plantUpgradeService;
-    private final CollectionController collectionController;
+    private CollectionController collectionController;
+    private CollectionMenuCoordinator collectionMenuCoordinator;
+    private Screen collectionReturnScreen;
 
     private Skin skin;
 
@@ -50,7 +55,6 @@ public final class Main extends Game {
 
             this.zombieFactory = new ZombieFactory(this.zombieDefinitions);
             this.plantUpgradeService = new PlantUpgradeService();
-
             this.collectionController = new CollectionController(this.plantDefinitions, this.plantUpgradeService);
 
             this.applicationController = new ApplicationController(new UserRepository(), this.plantDefinitions,
@@ -88,6 +92,44 @@ public final class Main extends Game {
             if (previousScreen != null)
                 previousScreen.dispose();
         });
+    }
+
+    public boolean showCollection() {
+        User user = this.applicationController.getCurrentUser();
+        if (user == null) {
+            return false;
+        }
+        user.initializeMissingFields();
+        Screen currentScreen = getScreen();
+        if (this.collectionMenuCoordinator == null) {
+            this.collectionReturnScreen = currentScreen;
+        }
+        if (this.collectionMenuCoordinator != null) {
+            this.collectionMenuCoordinator.dispose();
+        }
+        this.collectionController = new CollectionController(
+                user,
+                this.plantDefinitions,
+                this.zombieDefinitions
+        );
+        this.collectionMenuCoordinator = new CollectionMenuCoordinator(
+                this,
+                new ControllerPlantCollectionDataSource(
+                        this.collectionController,
+                        this.applicationController.getGameController(),
+                        false,
+                        this.applicationController::save
+                ),
+                new ControllerZombieCollectionDataSource(
+                        this.collectionController,
+                        this.applicationController.getGameController(),
+                        false,
+                        this.applicationController::save
+                )
+        );
+        this.collectionMenuCoordinator.setOnClose(this::closeCollection);
+        this.collectionMenuCoordinator.showPlants();
+        return true;
     }
 
     public MiniGameFactory createMiniGameFactory() {
@@ -199,13 +241,37 @@ public final class Main extends Game {
 
         super.dispose();
 
-        if (currentScreen != null)
+        if (this.collectionMenuCoordinator != null) {
+            this.collectionMenuCoordinator.dispose();
+            this.collectionMenuCoordinator = null;
+        } else if (currentScreen != null) {
             currentScreen.dispose();
+        }
 
         if (this.skin != null)
             this.skin.dispose();
 
         if (this.authBackground != null)
             this.authBackground.dispose();
+    }
+
+    private void closeCollection() {
+        this.applicationController.save();
+        CollectionMenuCoordinator coordinator = this.collectionMenuCoordinator;
+        this.collectionMenuCoordinator = null;
+        this.collectionController = new CollectionController(
+                this.plantDefinitions,
+                this.plantUpgradeService
+        );
+        Screen returnScreen = this.collectionReturnScreen;
+        this.collectionReturnScreen = null;
+        if (returnScreen == null) {
+            showMainMenuScreen();
+        } else {
+            setScreen(returnScreen);
+        }
+        if (coordinator != null) {
+            coordinator.dispose();
+        }
     }
 }

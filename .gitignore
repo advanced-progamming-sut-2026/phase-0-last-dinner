@@ -11,6 +11,10 @@ data/
 !src/untitled/data/plants.csv
 !src/untitled/data/zombies.json
 !src/untitled/data/ArmorTypeData.json
+!src/untitled/core/src/main/resources/data/
+!src/untitled/core/src/main/resources/data/plants.csv
+!src/untitled/core/src/main/resources/data/zombies.json
+!src/untitled/core/src/main/resources/data/ArmorTypeData.json
 
 # Separate learning example created before the real project
 plant-pattern-demo/

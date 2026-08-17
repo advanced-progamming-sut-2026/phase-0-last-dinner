@@ -1,0 +1,12 @@
+Two exact original PvZ2 768-resolution atlases are still required for the corresponding PAM animations:
+
+PLANTXSHOT_768_00.PNG
+  -> backs ATLASIMAGE_ATLAS_PLANTXSHOT_768_00
+  -> required by Rotobaga / ROTORUTABAGA.PAM
+
+PLANTPOISONPEASHOOTER_768_00.PNG
+  -> backs ATLASIMAGE_ATLAS_PLANTPOISONPEASHOOTER_768_00
+  -> required by Goo Peashooter / GOOPEASHOOTER.PAM
+
+Do not replace these with unrelated textures. The Java preflight intentionally falls back to the original
+static seed-packet art until the exact atlas exists at assets/ATLASES/.
