@@ -86,8 +86,11 @@ public class ApplicationController implements CommandHandler {
     private NewsView newsView;
     private NewsController newsController;
     private User newsViewUser;
+
     private ProfileView profileView;
+    private ProfileController profileController;
     private User profileViewUser;
+
     private SettingView settingView;
     private User settingViewUser;
     private PlantPickView plantPickView;
@@ -155,8 +158,6 @@ public class ApplicationController implements CommandHandler {
         if (registrationResult.getStatus() != AccountStatus.SECURITY_QUESTION_REQUIRED) {
             return registrationResult;
         }
-        if (registrationResult.getStatus() != AccountStatus.SECURITY_QUESTION_REQUIRED)
-            return registrationResult;
 
         return this.signupController.pickQuestion(securityQuestionNumber, securityAnswer, securityAnswerConfirm);
     }
@@ -242,9 +243,6 @@ public class ApplicationController implements CommandHandler {
         String username = this.valueAfter(tokens, "-u", 1);
         String password = this.valueAfter(tokens, "-p", 1);
 
-        if (this.hasMissingValue(username, password)) {
-            return "Login command is incomplete";
-        }
         if (this.hasMissingValue(username, password))
             return "Login command is incomplete";
 
@@ -463,12 +461,20 @@ public class ApplicationController implements CommandHandler {
     }
 
     private void ensureProfileConnected() {
-        if (this.profileView != null && this.profileViewUser == this.currentUser) {
+        if (this.profileView != null && this.profileController != null && this.profileViewUser == this.currentUser)
             return;
-        }
+
         this.profileView = new ProfileView();
-        new ProfileController(this.profileView, this.accountService, this.currentUser);
+        this.profileController = new ProfileController(this.profileView, this.accountService, this.currentUser);
         this.profileViewUser = this.currentUser;
+    }
+
+    public ProfileController getOrCreateProfileController() {
+        if (this.currentUser == null)
+            throw new IllegalStateException("Login is required");
+
+        ensureProfileConnected();
+        return this.profileController;
     }
 
     boolean isLeaderboardCommand(String input) {
@@ -608,6 +614,7 @@ public class ApplicationController implements CommandHandler {
         this.newsController = null;
         this.newsViewUser = null;
         this.profileView = null;
+        this.profileController = null;
         this.profileViewUser = null;
         this.settingView = null;
         this.settingViewUser = null;

@@ -69,7 +69,11 @@ public final class Main extends Game {
         this.skin = PvzSkin.get();
         this.authBackground = new Texture(Gdx.files.internal("ui/auth_background.png"));
         this.authBackground.setFilter(TextureFilter.Linear, TextureFilter.Linear);
-        showLoginScreen();
+
+        if (this.applicationController.getCurrentUser() != null)
+            showMainMenuScreen();
+        else
+            showLoginScreen();
     }
 
     public void showLoginScreen() {
@@ -153,7 +157,7 @@ public final class Main extends Game {
 
             @Override
             public void openProfileMenu() {
-                // TODO: هنوز صفحه‌ی گرافیکی Profile ساخته نشده
+                showProfileMenuScreen();
             }
 
             @Override
@@ -161,6 +165,10 @@ public final class Main extends Game {
                 showLoginScreen();
             }
         }));
+    }
+
+    public void showProfileMenuScreen() {
+        changeScreen(new view.ProfileMenuScreen(this.applicationController, this::showMainMenuScreen));
     }
 
     public void showSettingsMenuScreen() {
