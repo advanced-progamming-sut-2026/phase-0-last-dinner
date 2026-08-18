@@ -240,7 +240,7 @@ public final class Main extends Game {
 
             @Override
             public void openLeaderboard() {
-                // TODO: هنوز صفحه‌ی گرافیکی Leaderboard ساخته نشده
+                showLeaderBoardMenuScreen(Main.this::showGameMenuScreen);
             }
 
             @Override
@@ -248,6 +248,10 @@ public final class Main extends Game {
                 showMainMenuScreen();
             }
         }));
+    }
+
+    private void showLeaderBoardMenuScreen(Runnable onBack) {
+        changeScreen(new view.LeaderBoardMenuScreen(this.applicationController, onBack::run));
     }
 
     private void transferStoredPlantFood(User user, PlantZombieGame game) {
