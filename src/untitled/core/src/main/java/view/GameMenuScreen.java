@@ -32,12 +32,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Graphical replacement for the console game/adventure menu. As with MainMenuScreen, every
- * action goes through {@link ApplicationController#execute(String)} with the exact command
- * strings the console version used, so GameCommand/GameController stays the single source
- * of truth for what is actually allowed (e.g. locked chapters).
- */
 public class GameMenuScreen implements Screen {
 
     public interface Navigator {
@@ -68,14 +62,11 @@ public class GameMenuScreen implements Screen {
     private static final String COIN_PILL_PATH = "Assets/Exports/buttons_coin_buy_normal.png";
     private static final String DIAMOND_PILL_PATH = "Assets/Exports/buttons_premium_normal.png";
     private static final float WALLET_PILL_HEIGHT = 40f;
-    // Measured from the source images: where the black number box starts/ends as a
-    // fraction of the pill's total width, so the count label lands inside it at any size.
     private static final float COIN_BOX_START = 0.326f;
     private static final float COIN_BOX_END = 0.785f;
     private static final float DIAMOND_BOX_START = 0.348f;
     private static final float DIAMOND_BOX_END = 0.740f;
 
-    // Order controls the 2x2 grid layout below.
     private static final Map<ChapterType, String> CHAPTER_ART = new LinkedHashMap<>();
     private static final Map<ChapterType, String> CHAPTER_LABEL = new LinkedHashMap<>();
 
@@ -114,7 +105,6 @@ public class GameMenuScreen implements Screen {
 
         this.stage.addActor(this.createImageFill(BACKGROUND_PATH));
 
-        // Bottom-left: back button.
         TextButton backButton = new TextButton("Back", skin, "brown");
         backButton.getLabel().setFontScale(0.8f);
         backButton.addListener(new ClickListener() {
@@ -128,10 +118,6 @@ public class GameMenuScreen implements Screen {
         User user = this.controller.getCurrentUser();
         int gold = user == null ? 0 : user.getGold();
         int diamonds = user == null ? 0 : user.getDiamond();
-
-        // Top-left: Travel Log / Greenhouse / Leaderboard as icon buttons, sized the same
-        // way as the chapter tiles (fixed square box, Scaling.fit so the art keeps its
-        // proportions).
         Actor travelLogIcon = this.createIconAction(TRAVEL_LOG_ICON_PATH, "menu travel-log", this.navigator::openTravelLog);
         Actor greenhouseIcon = this.createIconAction(GREENHOUSE_ICON_PATH, "menu greenhouse", this.navigator::openGreenhouse);
         Actor leaderboardIcon = this.createIconAction(LEADERBOARD_ICON_PATH, "menu leaderboard", this.navigator::openLeaderboard);
@@ -141,9 +127,6 @@ public class GameMenuScreen implements Screen {
         topLeftGroup.add(greenhouseIcon).size(HUD_ICON_SIZE).padRight(10);
         topLeftGroup.add(leaderboardIcon).size(HUD_ICON_SIZE);
 
-        // Top-right: coin + diamond pills, count drawn inside each pill's black number box.
-        // The "+" part of each image is clickable, but only does anything (adds currency)
-        // while Debug Mode is on in Settings; otherwise the click is a no-op.
         WalletPill coinPill = this.createWalletPill(COIN_PILL_PATH, gold, COIN_BOX_START, COIN_BOX_END, skin);
         WalletPill diamondPill = this.createWalletPill(DIAMOND_PILL_PATH, diamonds, DIAMOND_BOX_START, DIAMOND_BOX_END, skin);
         this.attachCheatButton(coinPill, COIN_BOX_END, "coin", 10);
@@ -153,7 +136,6 @@ public class GameMenuScreen implements Screen {
         walletGroup.add(coinPill.root).padBottom(8).row();
         walletGroup.add(diamondPill.root);
 
-        // 2x2 grid of chapter tiles.
         Table chapterGrid = new Table();
         chapterGrid.defaults().pad(12);
         int column = 0;
@@ -171,11 +153,6 @@ public class GameMenuScreen implements Screen {
 
         this.statusLabel = new Label("", skin, "secondary");
 
-        // Same 3-column pattern that already works correctly in MainMenuScreen: the expand
-        // filler is ALWAYS the middle column, on every row, so left/right columns never both
-        // try to expand at once (that was the bug last time). Each interactive actor is put
-        // in a small Table cell with an explicit .size(...) first, so its size is locked in
-        // regardless of the outer layout - this fixes the size regression too.
         Table backBox = new Table();
         backBox.add(backButton).size(110, 44);
 
@@ -198,10 +175,6 @@ public class GameMenuScreen implements Screen {
         root.add(this.statusLabel).colspan(3).center();
     }
 
-    /**
-     * Small bundle so callers can both show the pill and later update its number label
-     * (after a debug-mode cheat click adds currency) without re-measuring anything.
-     */
     private static final class WalletPill {
         private final Stack root;
         private final Label amountLabel;
@@ -214,12 +187,6 @@ public class GameMenuScreen implements Screen {
         }
     }
 
-    /**
-     * Builds a coin/diamond pill: the source image at a fixed size (locked in via a Table
-     * cell, same trick used elsewhere in this class), with the count centered inside the
-     * black number box - positioned using boxStart/boxEnd as fractions of the pill's width,
-     * via a Container overlay in a Stack (same technique as the news unread badge).
-     */
     private WalletPill createWalletPill(String assetPath, int amount, float boxStart, float boxEnd, Skin skin) {
         Texture texture = this.loadTexture(assetPath);
         float aspect = (float) texture.getWidth() / (float) texture.getHeight();
@@ -243,16 +210,8 @@ public class GameMenuScreen implements Screen {
         return new WalletPill(pill, amountLabel, pillWidth);
     }
 
-    /**
-     * Makes just the "+" region of a wallet pill (from boxEnd to the right edge of the
-     * image) clickable. While Debug Mode is off the click does nothing at all - no command
-     * is sent, no message is shown. While it's on, it sends the same "menu cheat add ..."
-     * command GameCommand.CHEAT_ADD expects, then refreshes the pill's own number label.
-     */
     private void attachCheatButton(WalletPill pill, float boxEnd, String currency, int amount) {
         Table plusRegion = new Table();
-        // Table/Group defaults to Touchable.childrenOnly - since this Table has no children
-        // of its own, it would never receive the click at all without this.
         plusRegion.setTouchable(Touchable.enabled);
         plusRegion.addListener(new ClickListener() {
             @Override
@@ -273,11 +232,6 @@ public class GameMenuScreen implements Screen {
                 }
             }
         });
-
-        // The outer Container gets stretched to the full pill size by the Stack it sits in
-        // (unavoidable), but padLeft + fill() shrinks the CHILD (plusRegion, the actual
-        // touchable target) down to only the region after the number box - i.e. the "+"
-        // icon - so clicks anywhere else on the pill do nothing.
         Container<Table> plusContainer = new Container<>(plusRegion);
         plusContainer.padLeft(pill.pillWidth * boxEnd);
         plusContainer.fill();
@@ -287,7 +241,6 @@ public class GameMenuScreen implements Screen {
     private Stack createChapterTile(ChapterType chapter, String assetPath, Skin skin, boolean unlocked) {
         Image art = this.createImageFit(assetPath, TILE_SIZE, TILE_SIZE);
         if (!unlocked) {
-            // Darken the artwork so the lock icon (added below) reads clearly on top of it.
             art.setColor(0.35f, 0.35f, 0.35f, 1f);
         }
 
