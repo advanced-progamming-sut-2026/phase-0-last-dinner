@@ -222,7 +222,10 @@ public final class GameplaySeedBank extends Table {
         pad(0f);
 
         Table sunBox = originalSunCounter();
-        add(sunBox).width(142f).height(76f).left().padBottom(0f);
+        // Native PvZ2 HUD art is authored for the 768p gameplay canvas.
+        // At our 1080p virtual stage the original sun meter is about 1.406x
+        // larger than the raw atlas dimensions, so keep that authored scale.
+        add(sunBox).width(164f).height(98f).left().padBottom(0f);
         row();
 
         Drawable bankBackground = resourceDrawable(HUD_BACKGROUND);
@@ -243,12 +246,21 @@ public final class GameplaySeedBank extends Table {
 
 
     /**
-     * Recreates the original PvZ2 in-level sun meter: the full-size sun
-     * overlaps the left edge of the dark rounded counter instead of sitting
-     * inside a generic resource box.  The source sprites keep their native
-     * 768p proportions (70x71 sun, 84x42 three-slice background).
+     * PvZ2-style in-level sun meter.  The reference game renders the 70x71
+     * authored sun sprite at gameplay-background scale, with the sun overlapping
+     * a dark rounded counter.  Keeping the 768p-authored proportions here makes
+     * the meter read like the original instead of a small generic resource row.
      */
     private Table originalSunCounter() {
+        final float authoredScale = GameplayWorldLayout.BACKGROUND_SCALE;
+        final float sunWidth = 70f * authoredScale;
+        final float sunHeight = 71f * authoredScale;
+        final float counterWidth = 86f * authoredScale;
+        final float counterHeight = 42f * authoredScale;
+        final float overlapInset = 30f * authoredScale;
+        final float meterWidth = 164f;
+        final float meterHeight = 98f;
+
         Table root = new Table();
         root.setTouchable(Touchable.disabled);
 
@@ -257,12 +269,24 @@ public final class GameplaySeedBank extends Table {
         counter.setBackground(counterBackground == null
                 ? this.skin.newDrawable(WHITE_PIXEL, RESOURCE_BG)
                 : counterBackground);
-        counter.add(this.sunLabel).grow().center().padLeft(22f).padRight(7f);
+
+        this.sunLabel.setFontScale(1.08f);
+        this.sunLabel.setAlignment(Align.center);
+        counter.add(this.sunLabel)
+                .grow()
+                .center()
+                .padLeft(30f)
+                .padRight(8f)
+                .padBottom(1f);
 
         Stack stack = new Stack();
+
         Table backgroundLayer = new Table();
-        backgroundLayer.left().add().width(31f);
-        backgroundLayer.add(counter).width(105f).height(48f);
+        backgroundLayer.left();
+        backgroundLayer.add().width(overlapInset);
+        backgroundLayer.add(counter)
+                .width(counterWidth)
+                .height(counterHeight);
         stack.add(backgroundLayer);
 
         Drawable sunDrawable = resourceDrawable(SUN_ICON);
@@ -272,11 +296,11 @@ public final class GameplaySeedBank extends Table {
             Image sun = new Image(sunDrawable);
             sun.setScaling(Scaling.fit);
             sun.setTouchable(Touchable.disabled);
-            sunLayer.add(sun).size(70f, 71f);
+            sunLayer.add(sun).size(sunWidth, sunHeight);
             stack.add(sunLayer);
         }
 
-        root.add(stack).width(142f).height(74f);
+        root.add(stack).width(meterWidth).height(meterHeight);
         return root;
     }
 
@@ -335,6 +359,7 @@ public final class GameplaySeedBank extends Table {
         if (card == null) {
             return;
         }
+        CollectionUiAnimator.playClickPulse(card);
         String name = card.getPlantName();
         if ("imitater".equals(normalize(this.activePlantName))
                 && !"imitater".equals(normalize(name))) {

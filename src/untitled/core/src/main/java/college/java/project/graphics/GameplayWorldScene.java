@@ -132,6 +132,13 @@ public final class GameplayWorldScene extends Group {
         addActor(this.interactionLayer);
 
         this.sunLayer = new GameplaySunLayer(worldDataSource, this.assets);
+        // Aim collected suns at the visual center of the full-size original
+        // sun icon.  These offsets match the 70x71 768p sprite after the
+        // gameplay-background scale is applied.
+        this.sunLayer.setCollectionTarget(
+                this.seedBank.getX() + 49f - GameplayWorldLayout.LAWN_X,
+                this.seedBank.getY() + this.seedBank.getHeight() - 50f - GameplayWorldLayout.LAWN_Y
+        );
         this.sunLayer.setSpawnListener(sun -> {
             if (sun != null && sun.getProducer() != null) {
                 this.plantLayer.playSunProduction(sun.getProducer());
