@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
@@ -34,6 +35,7 @@ public final class GameplayBoardInteractionLayer extends Group {
     private static final Color AXIS_COLOR = new Color(1f, 1f, 1f, 0.18f);
     private static final Color VALID_TILE_COLOR = new Color(1f, 1f, 1f, 0.38f);
     private static final Color INVALID_TILE_COLOR = new Color(1f, 0.18f, 0.12f, 0.30f);
+    private static final Color SUCCESS_TILE_COLOR = new Color(0.72f, 1f, 0.45f, 0.52f);
 
     private final GameplaySeedBankDataSource dataSource;
     private final GameplaySeedBank seedBank;
@@ -43,6 +45,7 @@ public final class GameplayBoardInteractionLayer extends Group {
     private final Image rowHighlight;
     private final Image columnHighlight;
     private final Image tileHighlight;
+    private final Image feedbackHighlight;
 
     private GameplayInteractionMode mode = GameplayInteractionMode.NONE;
     private String selectedPlantName;
@@ -80,9 +83,12 @@ public final class GameplayBoardInteractionLayer extends Group {
         this.rowHighlight = overlay(AXIS_COLOR);
         this.columnHighlight = overlay(AXIS_COLOR);
         this.tileHighlight = overlay(VALID_TILE_COLOR);
+        this.feedbackHighlight = overlay(SUCCESS_TILE_COLOR);
         addActor(this.rowHighlight);
         addActor(this.columnHighlight);
         addActor(this.tileHighlight);
+        addActor(this.feedbackHighlight);
+        this.feedbackHighlight.setVisible(false);
         hideHighlights();
         setTouchable(Touchable.enabled);
         addPointerListener();
@@ -218,6 +224,7 @@ public final class GameplayBoardInteractionLayer extends Group {
         this.hoverValid = isTargetValid(column, row);
         if (!this.hoverValid) {
             refreshHoverVisuals();
+            playTileFeedback(column, row, false);
             if (this.actionListener != null) {
                 this.actionListener.onActionRejected(this.mode, column, row);
             }
@@ -232,6 +239,7 @@ public final class GameplayBoardInteractionLayer extends Group {
                 && this.dataSource.isBoosted(this.lastAppliedPlantName);
         boolean applied = executeAction(column, row);
         if (applied) {
+            playTileFeedback(column, row, true);
             if (this.actionListener != null) {
                 this.actionListener.onActionApplied(appliedMode, column, row);
             }
@@ -507,8 +515,34 @@ public final class GameplayBoardInteractionLayer extends Group {
         this.cursorActor = actor;
         if (actor != null) {
             actor.setVisible(false);
+            actor.setOrigin(actor.getWidth() / 2f, actor.getHeight() / 2f);
+            actor.getColor().a = 0f;
+            actor.setScale(0.90f);
+            actor.addAction(Actions.parallel(
+                    Actions.fadeIn(0.10f),
+                    Actions.scaleTo(1f, 1f, 0.12f)
+            ));
             addActor(actor);
         }
+    }
+
+    private void playTileFeedback(int column, int row, boolean success) {
+        if (!insideCell(column, row)) {
+            return;
+        }
+        float cellWidth = getWidth() / COLUMN_COUNT;
+        float cellHeight = getHeight() / ROW_COUNT;
+        float tileX = column * cellWidth;
+        float tileY = (ROW_COUNT - 1 - row) * cellHeight;
+        this.feedbackHighlight.clearActions();
+        this.feedbackHighlight.setBounds(tileX, tileY, cellWidth, cellHeight);
+        this.feedbackHighlight.setColor(success ? SUCCESS_TILE_COLOR : INVALID_TILE_COLOR);
+        this.feedbackHighlight.getColor().a = success ? 0.60f : 0.72f;
+        this.feedbackHighlight.setVisible(true);
+        this.feedbackHighlight.addAction(Actions.sequence(
+                Actions.alpha(success ? 0.22f : 0.28f, 0.18f),
+                Actions.visible(false)
+        ));
     }
 
     private Image overlay(Color color) {
