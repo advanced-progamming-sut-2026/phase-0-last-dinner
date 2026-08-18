@@ -43,6 +43,8 @@ public class GameMenuScreen implements Screen {
 
         void openLeaderboard();
 
+        void openCollectionMenu();
+
         void onBack();
     }
 
@@ -58,6 +60,7 @@ public class GameMenuScreen implements Screen {
     private static final String TRAVEL_LOG_ICON_PATH = "Assets/Exports/buttons_hud_task_list_normal.png";
     private static final String GREENHOUSE_ICON_PATH = "Assets/Exports/buttons_hud_zg_normal.png";
     private static final String LEADERBOARD_ICON_PATH = "Assets/Exports/icon.png";
+    private static final String COLLECTION_ICON_PATH = "Assets/Exports/QuestIcons_Plant.png";
 
     private static final String COIN_PILL_PATH = "Assets/Exports/buttons_coin_buy_normal.png";
     private static final String DIAMOND_PILL_PATH = "Assets/Exports/buttons_premium_normal.png";
@@ -121,11 +124,13 @@ public class GameMenuScreen implements Screen {
         Actor travelLogIcon = this.createIconAction(TRAVEL_LOG_ICON_PATH, "menu travel-log", this.navigator::openTravelLog);
         Actor greenhouseIcon = this.createIconAction(GREENHOUSE_ICON_PATH, "menu greenhouse", this.navigator::openGreenhouse);
         Actor leaderboardIcon = this.createIconAction(LEADERBOARD_ICON_PATH, "menu leaderboard", this.navigator::openLeaderboard);
+        Actor collectionIcon = this.createIconLink(COLLECTION_ICON_PATH, this.navigator::openCollectionMenu);
 
         Table topLeftGroup = new Table();
         topLeftGroup.add(travelLogIcon).size(HUD_ICON_SIZE).padRight(10);
         topLeftGroup.add(greenhouseIcon).size(HUD_ICON_SIZE).padRight(10);
-        topLeftGroup.add(leaderboardIcon).size(HUD_ICON_SIZE);
+        topLeftGroup.add(leaderboardIcon).size(HUD_ICON_SIZE).padRight(10);
+        topLeftGroup.add(collectionIcon).size(HUD_ICON_SIZE);
 
         WalletPill coinPill = this.createWalletPill(COIN_PILL_PATH, gold, COIN_BOX_START, COIN_BOX_END, skin);
         WalletPill diamondPill = this.createWalletPill(DIAMOND_PILL_PATH, diamonds, DIAMOND_BOX_START, DIAMOND_BOX_END, skin);
@@ -232,6 +237,7 @@ public class GameMenuScreen implements Screen {
                 }
             }
         });
+
         Container<Table> plusContainer = new Container<>(plusRegion);
         plusContainer.padLeft(pill.pillWidth * boxEnd);
         plusContainer.fill();
@@ -299,6 +305,19 @@ public class GameMenuScreen implements Screen {
                     statusLabel.setText(result);
                 }
                 onSuccess.run();
+            }
+        });
+        return button;
+    }
+
+    private Actor createIconLink(String assetPath, Runnable onClick) {
+        Image icon = this.createImageFit(assetPath, HUD_ICON_SIZE, HUD_ICON_SIZE);
+        Stack button = new Stack();
+        button.add(icon);
+        button.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                onClick.run();
             }
         });
         return button;

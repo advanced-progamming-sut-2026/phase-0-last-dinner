@@ -224,6 +224,11 @@ public final class Main extends Game {
             }
 
             @Override
+            public void openCollectionMenu() {
+                showCollection();
+            }
+
+            @Override
             public void openGreenhouse() {
                 // TODO: هنوز صفحه‌ی گرافیکی Greenhouse ساخته نشده
             }
