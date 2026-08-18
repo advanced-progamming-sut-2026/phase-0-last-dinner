@@ -220,7 +220,7 @@ public final class Main extends Game {
         changeScreen(new view.GameMenuScreen(this.applicationController, new view.GameMenuScreen.Navigator() {
             @Override
             public void openChapterMenu(model.chapters.ChapterType chapter) {
-                // TODO: هنوز صفحه‌ی گرافیکی Chapter/Level ساخته نشده
+                changeScreen(new college.java.project.graphics.AdventureLevelSelectionScreen(Main.this));
             }
 
             @Override
