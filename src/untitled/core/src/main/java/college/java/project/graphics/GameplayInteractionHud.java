@@ -148,6 +148,7 @@ public final class GameplayInteractionHud extends Group {
         this.shovelButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                CollectionUiAnimator.playClickPulse(shovelButton);
                 boolean wasActive = interactionLayer.getMode() == GameplayInteractionMode.SHOVEL;
                 if (!wasActive) {
                     seedBank.clearSelection();
@@ -162,6 +163,7 @@ public final class GameplayInteractionHud extends Group {
         this.foodButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                CollectionUiAnimator.playClickPulse(foodButton);
                 if (foodButton.isDisabled()) {
                     seedBank.showInteractionStatus("No Plant Food available.");
                     return;

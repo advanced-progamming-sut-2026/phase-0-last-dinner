@@ -32,6 +32,9 @@ public final class GameplaySunLayer extends Group {
     private Consumer<Sun> spawnListener;
     private final Map<Sun, Image> actors = new IdentityHashMap<>();
     private final Set<Sun> collecting = Collections.newSetFromMap(new IdentityHashMap<>());
+    private boolean hasCollectionTarget;
+    private float collectionTargetX;
+    private float collectionTargetY;
 
     public GameplaySunLayer(GameplayWorldDataSource dataSource) {
         this(dataSource, new GameAssetManager());
@@ -67,6 +70,13 @@ public final class GameplaySunLayer extends Group {
 
     public boolean collectSun(Sun sun) {
         return sun != null && this.dataSource.collectSun(sun);
+    }
+
+    /** Sets the local-space destination used by the PvZ2-style collection fly animation. */
+    public void setCollectionTarget(float x, float y) {
+        this.collectionTargetX = x;
+        this.collectionTargetY = y;
+        this.hasCollectionTarget = true;
     }
 
     public void dispose() {
@@ -143,11 +153,17 @@ public final class GameplaySunLayer extends Group {
                     image.setTouchable(Touchable.disabled);
                     image.setOrigin(image.getWidth() / 2f, image.getHeight() / 2f);
                     image.clearActions();
+                    float targetX = hasCollectionTarget
+                            ? collectionTargetX - image.getWidth() / 2f
+                            : image.getX();
+                    float targetY = hasCollectionTarget
+                            ? collectionTargetY - image.getHeight() / 2f
+                            : image.getY() + 54f;
                     image.addAction(Actions.sequence(
                             Actions.parallel(
-                                    Actions.fadeOut(0.18f),
-                                    Actions.scaleTo(0.35f, 0.35f, 0.18f),
-                                    Actions.moveBy(0f, 54f, 0.18f)
+                                    Actions.fadeOut(0.28f),
+                                    Actions.scaleTo(0.30f, 0.30f, 0.28f),
+                                    Actions.moveTo(targetX, targetY, 0.28f)
                             ),
                             Actions.run(() -> {
                                 collecting.remove(sun);
