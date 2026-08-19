@@ -123,8 +123,11 @@ public class GameMenuScreen implements Screen {
         int diamonds = user == null ? 0 : user.getDiamond();
         Actor travelLogIcon = this.createIconAction(TRAVEL_LOG_ICON_PATH, "menu travel-log", this.navigator::openTravelLog);
         Actor greenhouseIcon = this.createIconAction(GREENHOUSE_ICON_PATH, "menu greenhouse", this.navigator::openGreenhouse);
-        Actor leaderboardIcon = this.createIconAction(LEADERBOARD_ICON_PATH, "menu leaderboard", this.navigator::openLeaderboard);
-        Actor collectionIcon = this.createIconLink(COLLECTION_ICON_PATH, this.navigator::openCollectionMenu);
+        Actor leaderboardIcon = this.createIconAction(
+            LEADERBOARD_ICON_PATH,
+            "menu enter leaderboard",
+            this.navigator::openLeaderboard
+        );        Actor collectionIcon = this.createIconLink(COLLECTION_ICON_PATH, this.navigator::openCollectionMenu);
 
         Table topLeftGroup = new Table();
         topLeftGroup.add(travelLogIcon).size(HUD_ICON_SIZE).padRight(10);

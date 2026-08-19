@@ -92,6 +92,9 @@ public class ApplicationController implements CommandHandler {
     private ProfileController profileController;
     private User profileViewUser;
 
+    private LeaderBoardView leaderBoardView;
+    private LeaderBoardController leaderBoardController;
+
     private SettingView settingView;
     private User settingViewUser;
     private PlantPickView plantPickView;
@@ -546,18 +549,33 @@ public class ApplicationController implements CommandHandler {
     }
 
     String executeLeaderboardCommand(String input) {
-        if (this.currentUser == null) {
+        if (this.currentUser == null)
             return "Login is required.";
-        }
+
         MenuType currentMenu = this.menuContext.getCurrentMenu();
         if (currentMenu != MenuType.MAIN_MENU && currentMenu != MenuType.GAME_MENU
-            && currentMenu != MenuType.LEADERBOARD_MENU) {
+            && currentMenu != MenuType.LEADERBOARD_MENU)
             return "Leaderboard is only available from main or game menu.";
-        }
-        LeaderBoardView view = new LeaderBoardView();
-        new LeaderBoardController(view, this.accountService);
-        view.handleCommand(input);
+
+        ensureLeaderboardConnected();
+        this.leaderBoardView.handleCommand(input);
         return "";
+    }
+
+    private void ensureLeaderboardConnected() {
+        if (this.leaderBoardView != null && this.leaderBoardController != null)
+            return;
+
+        this.leaderBoardView = new LeaderBoardView();
+        this.leaderBoardController = new LeaderBoardController(this.leaderBoardView, this.accountService);
+    }
+
+    public LeaderBoardController getOrCreateLeaderboardController() {
+        if (this.currentUser == null)
+            throw new IllegalStateException("Login is required");
+
+        ensureLeaderboardConnected();
+        return this.leaderBoardController;
     }
 
     String executePlantPickCommand(String input) {
@@ -632,6 +650,8 @@ public class ApplicationController implements CommandHandler {
         this.profileViewUser = null;
         this.settingView = null;
         this.settingViewUser = null;
+        this.leaderBoardView = null;
+        this.leaderBoardController = null;
         this.clearGameConnections();
     }
 
