@@ -120,7 +120,7 @@ public final class GameplayWorldScene extends Group {
         addActor(this.projectileLayer);
 
         this.seedBank = new GameplaySeedBank(seedDataSource, this.assets);
-        this.seedBank.setBounds(276f, 244f, 146f, 820f);
+        layoutSeedBankAtScreenEdge();
         addActor(this.seedBank);
 
         this.conveyorBelt = new GameplayConveyorBelt(worldDataSource, this.assets);
@@ -132,6 +132,13 @@ public final class GameplayWorldScene extends Group {
         addActor(this.interactionLayer);
 
         this.sunLayer = new GameplaySunLayer(worldDataSource, this.assets);
+        // Aim collected suns at the visual center of the full-size original
+        // sun icon.  These offsets match the 70x71 768p sprite after the
+        // gameplay-background scale is applied.
+        this.sunLayer.setCollectionTarget(
+                this.seedBank.getX() + 49f - GameplayWorldLayout.LAWN_X,
+                this.seedBank.getY() + this.seedBank.getHeight() - 50f - GameplayWorldLayout.LAWN_Y
+        );
         this.sunLayer.setSpawnListener(sun -> {
             if (sun != null && sun.getProducer() != null) {
                 this.plantLayer.playSunProduction(sun.getProducer());
@@ -150,7 +157,7 @@ public final class GameplayWorldScene extends Group {
         addActor(this.interactionHud);
 
         this.waveProgressBar = new GameplayWaveProgressBar(worldDataSource, this.assets);
-        this.waveProgressBar.setBounds(756f, 1014f, 410f, 50f);
+        this.waveProgressBar.setBounds(596f, 1014f, 384f, 46.4f);
         addActor(this.waveProgressBar);
 
         this.resourceStrip = new GameplayResourceStrip(seedDataSource, this.assets);
@@ -509,6 +516,25 @@ public final class GameplayWorldScene extends Group {
         boolean conveyor = this.worldDataSource.getLevelType() == LevelType.CONVEYOR_BELT;
         this.seedBank.setVisible(!conveyor);
         this.conveyorBelt.setVisible(conveyor);
+    }
+
+    /**
+     * Keeps the gameplay seed bank in HUD/screen space rather than registering
+     * it to the lawn rectangle. Ratios are evaluated against the fixed virtual
+     * stage, so FitViewport resizing preserves the same PvZ2-like left/top anchor.
+     */
+    private void layoutSeedBankAtScreenEdge() {
+        float leftMargin = getWidth() * 0.0022f;
+        float bottomMargin = getHeight() * 0.010f;
+        float topMargin = getHeight() * 0.0075f;
+        float bankWidth = getWidth() * 0.100f;
+        float bankHeight = getHeight() - bottomMargin - topMargin;
+        this.seedBank.setBounds(
+                leftMargin,
+                bottomMargin,
+                bankWidth,
+                bankHeight
+        );
     }
 
     private void setLawnBounds(Group actor) {

@@ -105,11 +105,11 @@ public final class GameplayInteractionHud extends Group {
         // Plant Food sits at the lower-left in the original gameplay HUD.
         Image bank = resourceImage(FOOD_BANK);
         if (bank != null) {
-            bank.setBounds(265f, 30f, 290f, 124f);
+            bank.setBounds(265f, 30f, 320f, 137f);
             addActor(bank);
         }
 
-        this.foodButton.setBounds(275f, 42f, 88f, 88f);
+        this.foodButton.setBounds(292f, 55f, 82f, 87f);
         addActor(this.foodButton);
 
         Drawable slotDrawable = resourceDrawable(FOOD_SLOT);
@@ -119,8 +119,8 @@ public final class GameplayInteractionHud extends Group {
             // Project gameplay stores at most three Plant Foods, so we place the
             // three filled sprites over the first three sockets using the same
             // source-space geometry instead of hand-tuned screen offsets.
-            float bankScaleX = 290f / 206f;
-            float bankScaleY = 124f / 88f;
+            float bankScaleX = 320f / 206f;
+            float bankScaleY = 137f / 88f;
             float slotWidth = 25f * bankScaleX;
             float slotHeight = 25f * bankScaleY;
             float firstSlotX = 265f + 74f * bankScaleX;
@@ -137,7 +137,7 @@ public final class GameplayInteractionHud extends Group {
         }
 
         // The shovel is a spatial lawn control, so it belongs at the lower-right.
-        this.shovelButton.setBounds(1757f, 37f, 112f, 112f);
+        this.shovelButton.setBounds(1745f, 41f, 124f, 124f);
         addActor(this.shovelButton);
 
         this.debugControls.setBounds(1668f, 47f, 86f, 96f);
@@ -148,6 +148,7 @@ public final class GameplayInteractionHud extends Group {
         this.shovelButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                CollectionUiAnimator.playClickPulse(shovelButton);
                 boolean wasActive = interactionLayer.getMode() == GameplayInteractionMode.SHOVEL;
                 if (!wasActive) {
                     seedBank.clearSelection();
@@ -162,6 +163,7 @@ public final class GameplayInteractionHud extends Group {
         this.foodButton.addListener(new ClickListener() {
             @Override
             public void clicked(InputEvent event, float x, float y) {
+                CollectionUiAnimator.playClickPulse(foodButton);
                 if (foodButton.isDisabled()) {
                     seedBank.showInteractionStatus("No Plant Food available.");
                     return;

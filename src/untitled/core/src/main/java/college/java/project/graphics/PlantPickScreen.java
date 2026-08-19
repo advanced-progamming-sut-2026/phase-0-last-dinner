@@ -34,8 +34,10 @@ import pvz.skin.PvzSkin;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Phase 2 graphical plant selection screen. The same PlantCard actor used by
@@ -96,6 +98,7 @@ public final class PlantPickScreen implements Screen {
     private final AlmanacResourceStrip resourceStrip;
     private final List<PlantCollectionState> availableStates = new ArrayList<>();
     private final List<PlantCard> gridCards = new ArrayList<>();
+    private final Set<String> previousSelectedNames = new LinkedHashSet<>();
     private PlantCollectionState activeState;
     private boolean sortByFamily;
     private PlantCollectionFilter activeFilter = PlantCollectionFilter.ALL;
@@ -601,7 +604,8 @@ public final class PlantPickScreen implements Screen {
         card.setSunCostVisible(true);
         card.setActionListener(new PlantCard.PlantCardActionListener() {
             @Override
-            public void onPlantCardClicked(PlantCard ignored) {
+            public void onPlantCardClicked(PlantCard clicked) {
+                CollectionUiAnimator.playClickPulse(clicked);
                 setActiveState(state);
                 togglePlant(state.getName());
             }
@@ -641,18 +645,24 @@ public final class PlantPickScreen implements Screen {
     private void rebuildSelectedBank() {
         this.selectedBank.clearChildren();
         List<PlantCollectionState> selected = selectedStates();
+        Set<String> selectedNames = selectedNameSet(selected);
         int slots = this.dataSource.getSlotCount();
         for (int i = 0; i < slots; i++) {
             if (i < selected.size()) {
-                PlantCard card = createPlantCard(selected.get(i), true);
+                PlantCollectionState state = selected.get(i);
+                PlantCard card = createPlantCard(state, true);
                 ScaledPlantCard scaled = new ScaledPlantCard(card, BANK_CARD_SCALE);
-                scaled.getColor().a = 0f;
-                scaled.setScale(0.96f);
-                scaled.setOrigin(scaled.getPrefWidth() / 2f, scaled.getPrefHeight() / 2f);
-                scaled.addAction(Actions.parallel(
-                        Actions.fadeIn(0.10f),
-                        Actions.scaleTo(1f, 1f, 0.12f)
-                ));
+                if (!this.previousSelectedNames.contains(normalize(state.getName()))) {
+                    scaled.getColor().a = 0f;
+                    scaled.setScale(0.92f);
+                    scaled.setX(-18f);
+                    scaled.setOrigin(scaled.getPrefWidth() / 2f, scaled.getPrefHeight() / 2f);
+                    scaled.addAction(Actions.parallel(
+                            Actions.fadeIn(0.13f),
+                            Actions.scaleTo(1f, 1f, 0.15f),
+                            Actions.moveBy(18f, 0f, 0.15f)
+                    ));
+                }
                 this.selectedBank.add(scaled)
                         .size(scaled.getPrefWidth(), scaled.getPrefHeight())
                         .padBottom(4f);
@@ -666,7 +676,19 @@ public final class PlantPickScreen implements Screen {
             }
             this.selectedBank.row();
         }
+        this.previousSelectedNames.clear();
+        this.previousSelectedNames.addAll(selectedNames);
         this.selectedBank.invalidateHierarchy();
+    }
+
+    private Set<String> selectedNameSet(List<PlantCollectionState> states) {
+        Set<String> names = new LinkedHashSet<>();
+        for (PlantCollectionState state : states) {
+            if (state != null && state.getName() != null) {
+                names.add(normalize(state.getName()));
+            }
+        }
+        return names;
     }
 
     private Actor emptySlot() {
@@ -928,7 +950,10 @@ public final class PlantPickScreen implements Screen {
     private TextButton actionButton(String text, String style, Runnable action) {
         TextButton button = new TextButton(text, this.skin, style);
         button.getLabel().setFontScale(0.75f);
-        button.addListener(click(action));
+        button.addListener(click(() -> {
+            CollectionUiAnimator.playClickPulse(button);
+            run(action);
+        }));
         CollectionUiAnimator.installHoverScale(button);
         return button;
     }
@@ -998,6 +1023,10 @@ public final class PlantPickScreen implements Screen {
 
     private boolean sameName(String first, String second) {
         return first != null && second != null && first.equalsIgnoreCase(second);
+    }
+
+    private String normalize(String value) {
+        return safe(value).trim().toLowerCase(Locale.ROOT);
     }
 
     private String formatNumber(int value) {

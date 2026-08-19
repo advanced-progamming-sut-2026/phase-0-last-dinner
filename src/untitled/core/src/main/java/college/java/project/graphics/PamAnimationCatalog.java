@@ -7,7 +7,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Map;
@@ -206,6 +208,44 @@ public final class PamAnimationCatalog {
                 }
             }
             return null;
+        }
+
+        /**
+         * Returns every authored idle-like clip for this PAM in catalog order.
+         *
+         * This intentionally includes state-specific idles (for example
+         * idle_damage, idle_plantfood and stage-specific idles) so reusable UI
+         * components can expose the complete set instead of silently choosing
+         * only one variant.  If a PAM has no clip containing "idle" but does
+         * provide a generic loop clip, loop is exposed as the final safe idle
+         * fallback.
+         */
+        public List<String> getIdleClips() {
+            List<String> idleClips = new ArrayList<>();
+            for (String clip : this.clips) {
+                if (clip == null) {
+                    continue;
+                }
+                String lower = clip.toLowerCase(Locale.ROOT);
+                if (lower.equals("idle")
+                        || lower.startsWith("idle")
+                        || lower.endsWith("_idle")
+                        || lower.contains("_idle_")) {
+                    idleClips.add(clip);
+                }
+            }
+            if (idleClips.isEmpty()) {
+                String loop = this.findExactIgnoreCase("loop");
+                if (loop != null) {
+                    idleClips.add(loop);
+                }
+            }
+            return List.copyOf(idleClips);
+        }
+
+        /** Returns all clips authored in this PAM, preserving catalog order. */
+        public List<String> getAllClips() {
+            return List.copyOf(this.clips);
         }
 
         public String getIdleClip() {

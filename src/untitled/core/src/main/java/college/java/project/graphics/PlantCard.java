@@ -2,6 +2,8 @@ package college.java.project.graphics;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Pixmap;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -59,6 +61,8 @@ public final class PlantCard extends Table {
             "IMAGE_UI_ALMANAC_ALMANAC_STAT_ICON_SUNCOST";
     private static final String PACKET_LOCK_SMALL = "IMAGE_UI_PACKETS_LOCK_SMALL";
 
+    private static Drawable gameplayCostTriangleDrawable;
+
     private static final Color OUTER_BORDER = new Color(0.15f, 0.09f, 0.04f, 1f);
     private static final Color WOOD_BORDER = new Color(0.48f, 0.25f, 0.08f, 1f);
     private static final Color WOOD_HIGHLIGHT = new Color(0.78f, 0.45f, 0.14f, 1f);
@@ -78,6 +82,8 @@ public final class PlantCard extends Table {
     private final Label levelLabel;
     private final Label seedPacketLabel;
     private final Label sunCostLabel;
+    private Image sunCostIcon;
+    private Table sunCostBadge;
     private final Label availabilityLabel;
     private final ProgressBar seedPacketBar;
     private final Image selectionFrame;
@@ -146,6 +152,7 @@ public final class PlantCard extends Table {
     ) {
         super(skin);
         this.validateArguments(skin, plantState);
+        setTouchable(Touchable.enabled);
 
         this.skin = skin;
         this.textureBank = textureBank;
@@ -276,6 +283,16 @@ public final class PlantCard extends Table {
 
     public void setGameplayMode(boolean enabled) {
         this.gameplayMode = enabled;
+        this.pictureSurface.setClip(!enabled || this.packetArtwork == null);
+        this.sunCostLabel.setFontScale(enabled ? 1.00f : 0.58f);
+        if (this.sunCostIcon != null) {
+            this.sunCostIcon.setVisible(!enabled);
+        }
+        if (this.sunCostBadge != null) {
+            this.sunCostBadge.setBackground(enabled
+                    ? gameplayCostTriangleDrawable()
+                    : defaultCostBadgeDrawable());
+        }
         this.gameplayStatusLayer.setVisible(enabled);
         if (!enabled) {
             this.gameplayDimOverlay.setVisible(false);
@@ -452,11 +469,66 @@ public final class PlantCard extends Table {
 
         Image artwork = new Image(drawable);
         artwork.setScaling(Scaling.fit);
+        if (this.isLeftTrimmedGameplayPacket(packet.getResourceId())) {
+            artwork.setAlign(Align.left);
+        }
         artwork.setTouchable(Touchable.disabled);
         if (!this.plantState.isUnlocked()) {
             artwork.setColor(LOCKED_ART);
         }
         return artwork;
+    }
+
+    private boolean isLeftTrimmedGameplayPacket(String resourceId) {
+        return switch (resourceId) {
+            case "IMAGE_UI_PACKETS_APPEASEMINT" -> true;
+            case "IMAGE_UI_PACKETS_ARMAMINT" -> true;
+            case "IMAGE_UI_PACKETS_BOMBARDMINT" -> true;
+            case "IMAGE_UI_PACKETS_BONKCHOY" -> true;
+            case "IMAGE_UI_PACKETS_BOWLINGBULB" -> true;
+            case "IMAGE_UI_PACKETS_CABBAGEPULT" -> true;
+            case "IMAGE_UI_PACKETS_CAULIPOWER" -> true;
+            case "IMAGE_UI_PACKETS_CHERRY_BOMB" -> true;
+            case "IMAGE_UI_PACKETS_CHOMPER" -> true;
+            case "IMAGE_UI_PACKETS_CITRON" -> true;
+            case "IMAGE_UI_PACKETS_ELECTRICBLUEBERRY" -> true;
+            case "IMAGE_UI_PACKETS_ENCHANTMINT" -> true;
+            case "IMAGE_UI_PACKETS_ENFORCEMINT" -> true;
+            case "IMAGE_UI_PACKETS_ENLIGHTENMINT" -> true;
+            case "IMAGE_UI_PACKETS_EXPLODEONUT" -> true;
+            case "IMAGE_UI_PACKETS_FIREPEASHOOTER" -> true;
+            case "IMAGE_UI_PACKETS_FUMESHROOM" -> true;
+            case "IMAGE_UI_PACKETS_GARLIC" -> true;
+            case "IMAGE_UI_PACKETS_GRAPESHOT" -> true;
+            case "IMAGE_UI_PACKETS_HOTPOTATO" -> true;
+            case "IMAGE_UI_PACKETS_HYPNOSHROOM" -> true;
+            case "IMAGE_UI_PACKETS_ICESHROOM" -> true;
+            case "IMAGE_UI_PACKETS_IMITATER" -> true;
+            case "IMAGE_UI_PACKETS_KERNELPULT" -> true;
+            case "IMAGE_UI_PACKETS_KIWIBEAST" -> true;
+            case "IMAGE_UI_PACKETS_LILYPAD" -> true;
+            case "IMAGE_UI_PACKETS_MAGNETSHROOM" -> true;
+            case "IMAGE_UI_PACKETS_MEGAGATLING" -> true;
+            case "IMAGE_UI_PACKETS_MELONPULT" -> true;
+            case "IMAGE_UI_PACKETS_PEAPOD" -> true;
+            case "IMAGE_UI_PACKETS_PEPPERPULT" -> true;
+            case "IMAGE_UI_PACKETS_PHATBEET" -> true;
+            case "IMAGE_UI_PACKETS_POISONPEASHOOTER" -> true;
+            case "IMAGE_UI_PACKETS_POTATOMINE" -> true;
+            case "IMAGE_UI_PACKETS_PRIMALPOTATOMINE" -> true;
+            case "IMAGE_UI_PACKETS_PUFFSHROOM" -> true;
+            case "IMAGE_UI_PACKETS_PUMPKIN" -> true;
+            case "IMAGE_UI_PACKETS_REINFORCEMINT" -> true;
+            case "IMAGE_UI_PACKETS_SEASHROOM" -> true;
+            case "IMAGE_UI_PACKETS_SPLITPEA" -> true;
+            case "IMAGE_UI_PACKETS_SQUASH" -> true;
+            case "IMAGE_UI_PACKETS_STARFRUIT" -> true;
+            case "IMAGE_UI_PACKETS_SWEETPOTATO" -> true;
+            case "IMAGE_UI_PACKETS_TORCHWOOD" -> true;
+            case "IMAGE_UI_PACKETS_WASABIWHIP" -> true;
+            case "IMAGE_UI_PACKETS_WINTERMELON" -> true;
+            default -> false;
+        };
     }
 
     private Drawable packetDrawable(String resourceId) {
@@ -578,22 +650,19 @@ public final class PlantCard extends Table {
         Table layer = new Table();
         layer.bottom().right();
 
-        Table badge = new Table();
-        badge.setBackground(this.skin.newDrawable(
-                WHITE_PIXEL,
-                new Color(0f, 0f, 0f, 0.58f)
-        ));
-        badge.pad(1f, 3f, 1f, 3f);
+        this.sunCostBadge = new Table();
+        this.sunCostBadge.setBackground(defaultCostBadgeDrawable());
+        this.sunCostBadge.pad(1f, 3f, 1f, 3f);
 
         Drawable sunDrawable = this.packetDrawable(SUN_COST_ICON);
         if (sunDrawable != null) {
-            Image sun = new Image(sunDrawable);
-            sun.setScaling(Scaling.fit);
-            sun.setTouchable(Touchable.disabled);
-            badge.add(sun).size(19f);
+            this.sunCostIcon = new Image(sunDrawable);
+            this.sunCostIcon.setScaling(Scaling.fit);
+            this.sunCostIcon.setTouchable(Touchable.disabled);
+            this.sunCostBadge.add(this.sunCostIcon).size(19f);
         }
-        badge.add(this.sunCostLabel).padLeft(2f);
-        layer.add(badge).padRight(4f).padBottom(3f);
+        this.sunCostBadge.add(this.sunCostLabel).padLeft(2f);
+        layer.add(this.sunCostBadge).padRight(4f).padBottom(3f);
         return layer;
     }
 
@@ -691,6 +760,36 @@ public final class PlantCard extends Table {
         );
         animation.applyVisualProfile(visualProfile);
         return animation;
+    }
+
+    private Drawable defaultCostBadgeDrawable() {
+        return this.skin.newDrawable(
+                WHITE_PIXEL,
+                new Color(0f, 0f, 0f, 0.58f)
+        );
+    }
+
+    private static Drawable gameplayCostTriangleDrawable() {
+        if (gameplayCostTriangleDrawable != null) {
+            return gameplayCostTriangleDrawable;
+        }
+        Pixmap pixmap = new Pixmap(64, 40, Pixmap.Format.RGBA8888);
+        pixmap.setColor(Color.CLEAR);
+        pixmap.fill();
+        pixmap.setColor(Color.WHITE);
+        int width = pixmap.getWidth();
+        int height = pixmap.getHeight();
+        for (int x = 0; x < width; x++) {
+            int minY = Math.round((height - 1f) - ((height - 1f) * x / (width - 1f)));
+            for (int y = minY; y < height; y++) {
+                pixmap.drawPixel(x, y);
+            }
+        }
+        Texture texture = new Texture(pixmap);
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        pixmap.dispose();
+        gameplayCostTriangleDrawable = new TextureRegionDrawable(new TextureRegion(texture));
+        return gameplayCostTriangleDrawable;
     }
 
     private Label createOverlayLabel(String text, float fontScale) {

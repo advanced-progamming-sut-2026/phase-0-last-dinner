@@ -29,7 +29,9 @@ import java.util.Map;
  * the Phase 2 requirement shared by Collection, Plant Pick and gameplay.
  */
 public final class GameplaySeedBank extends Table {
-    private static final float CARD_SCALE = 0.74f;
+    private static final float CARD_SCALE = 1.03f;
+    private static final float PACKET_GAP = 0f;
+    private static final float SUN_TO_PACKETS_GAP = 70f;
     private static final String WHITE_PIXEL = "white_pixel";
     private static final String SUN_ICON = "IMAGE_UI_HUD_INGAME_SUN";
     private static final String HUD_BACKGROUND = "IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE";
@@ -222,15 +224,22 @@ public final class GameplaySeedBank extends Table {
         pad(0f);
 
         Table sunBox = originalSunCounter();
-        add(sunBox).width(142f).height(76f).left().padBottom(0f);
+        // Native PvZ2 HUD art is authored for the 768p gameplay canvas.
+        // Keep the sun meter independent, then leave the same breathing room
+        // visible in the original game before the first seed packet begins.
+        add(sunBox)
+                .width(164f)
+                .height(98f)
+                .left()
+                .padBottom(SUN_TO_PACKETS_GAP);
         row();
 
-        Drawable bankBackground = resourceDrawable(HUD_BACKGROUND);
-        if (bankBackground != null) {
-            this.cardRow.setBackground(bankBackground);
-            this.cardRow.pad(3f, 2f, 2f, 2f);
-        }
-        add(this.cardRow).width(138f).left();
+        // The original gameplay bank is not a dark toolbar behind the whole
+        // packet column.  Each packet already carries its authentic PvZ2 frame,
+        // so the column itself stays transparent and tightly packed.
+        this.cardRow.setBackground((Drawable) null);
+        this.cardRow.pad(0f);
+        add(this.cardRow).left();
         row();
 
         this.statusLabel.setAlignment(Align.center);
@@ -238,17 +247,29 @@ public final class GameplaySeedBank extends Table {
         this.statusLabel.setWrap(true);
         this.statusLabel.setFontScale(0.48f);
         this.statusLabel.setVisible(false);
-        add(this.statusLabel).width(138f).height(32f).padTop(2f);
+        add(this.statusLabel)
+                .width(PlantCard.CARD_WIDTH * CARD_SCALE)
+                .height(32f)
+                .padTop(2f);
     }
 
 
     /**
-     * Recreates the original PvZ2 in-level sun meter: the full-size sun
-     * overlaps the left edge of the dark rounded counter instead of sitting
-     * inside a generic resource box.  The source sprites keep their native
-     * 768p proportions (70x71 sun, 84x42 three-slice background).
+     * PvZ2-style in-level sun meter.  The reference game renders the 70x71
+     * authored sun sprite at gameplay-background scale, with the sun overlapping
+     * a dark rounded counter.  Keeping the 768p-authored proportions here makes
+     * the meter read like the original instead of a small generic resource row.
      */
     private Table originalSunCounter() {
+        final float authoredScale = GameplayWorldLayout.BACKGROUND_SCALE;
+        final float sunWidth = 70f * authoredScale;
+        final float sunHeight = 71f * authoredScale;
+        final float counterWidth = 86f * authoredScale;
+        final float counterHeight = 42f * authoredScale;
+        final float overlapInset = 30f * authoredScale;
+        final float meterWidth = 164f;
+        final float meterHeight = 98f;
+
         Table root = new Table();
         root.setTouchable(Touchable.disabled);
 
@@ -257,12 +278,24 @@ public final class GameplaySeedBank extends Table {
         counter.setBackground(counterBackground == null
                 ? this.skin.newDrawable(WHITE_PIXEL, RESOURCE_BG)
                 : counterBackground);
-        counter.add(this.sunLabel).grow().center().padLeft(22f).padRight(7f);
+
+        this.sunLabel.setFontScale(1.08f);
+        this.sunLabel.setAlignment(Align.center);
+        counter.add(this.sunLabel)
+                .grow()
+                .center()
+                .padLeft(30f)
+                .padRight(8f)
+                .padBottom(1f);
 
         Stack stack = new Stack();
+
         Table backgroundLayer = new Table();
-        backgroundLayer.left().add().width(31f);
-        backgroundLayer.add(counter).width(105f).height(48f);
+        backgroundLayer.left();
+        backgroundLayer.add().width(overlapInset);
+        backgroundLayer.add(counter)
+                .width(counterWidth)
+                .height(counterHeight);
         stack.add(backgroundLayer);
 
         Drawable sunDrawable = resourceDrawable(SUN_ICON);
@@ -272,11 +305,11 @@ public final class GameplaySeedBank extends Table {
             Image sun = new Image(sunDrawable);
             sun.setScaling(Scaling.fit);
             sun.setTouchable(Touchable.disabled);
-            sunLayer.add(sun).size(70f, 71f);
+            sunLayer.add(sun).size(sunWidth, sunHeight);
             stack.add(sunLayer);
         }
 
-        root.add(stack).width(142f).height(74f);
+        root.add(stack).width(meterWidth).height(meterHeight);
         return root;
     }
 
@@ -308,10 +341,11 @@ public final class GameplaySeedBank extends Table {
             });
             this.cards.add(card);
             this.cardsByName.put(normalize(state.getName()), card);
-            this.cardRow.add(new ScaledPlantCard(card, CARD_SCALE))
-                    .width(132f)
-                    .height(78f)
-                    .padBottom(1f);
+            ScaledPlantCard gameplayCard = new ScaledPlantCard(card, CARD_SCALE);
+            this.cardRow.add(gameplayCard)
+                    .width(gameplayCard.getPrefWidth())
+                    .height(gameplayCard.getPrefHeight())
+                    .padBottom(PACKET_GAP);
             this.cardRow.row();
         }
     }
@@ -335,6 +369,7 @@ public final class GameplaySeedBank extends Table {
         if (card == null) {
             return;
         }
+        CollectionUiAnimator.playClickPulse(card);
         String name = card.getPlantName();
         if ("imitater".equals(normalize(this.activePlantName))
                 && !"imitater".equals(normalize(name))) {

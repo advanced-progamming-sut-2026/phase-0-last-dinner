@@ -23,6 +23,13 @@ import java.util.function.ToDoubleFunction;
 public final class GameplayProjectileLayer extends Group {
     private static final String PEA_RESOURCE = "IMAGE_PROJECTILEPEA";
 
+    // Round26 moved the rendered entities upward inside each tile without
+    // changing Phase 1 projectile coordinates. Keep the projectile path in the
+    // same visual space as its source so it does not drop back toward the old
+    // tile-centre line immediately after leaving the mouth/nozzle/basket.
+    private static final float PRE_ANCHOR_PLANT_BOTTOM_FACTOR = -0.01f;
+    private static final float PRE_ANCHOR_ZOMBIE_BOTTOM_FACTOR = -0.03f;
+
     private final GameplayWorldDataSource dataSource;
     private final GameAssetManager assets;
     private Group renderHost;
@@ -244,6 +251,7 @@ public final class GameplayProjectileLayer extends Group {
         float modelCenterY = (
                 GameplayBoardInteractionLayer.ROW_COUNT - 0.5f - (float) projectile.getExactY()
         ) * cellHeight + lobHeight(projectile, cellHeight);
+        modelCenterY += projectileVisualAnchorShift(projectile, cellHeight);
 
         float centerX = modelCenterX;
         float centerY = modelCenterY;
@@ -284,6 +292,25 @@ public final class GameplayProjectileLayer extends Group {
         float height = aspect >= 1f ? targetSize / aspect : targetSize;
         rendered.image.setBounds(centerX - width / 2f, centerY - height / 2f, width, height);
         rendered.image.setColor(rendered.visual.getTint());
+    }
+
+    private float projectileVisualAnchorShift(Projectile projectile, float cellHeight) {
+        if (projectile == null) {
+            return 0f;
+        }
+        if (projectile.getSourcePlant() != null) {
+            return cellHeight * (
+                    GameplayWorldLayout.PLANT_GROUND_ANCHOR_FACTOR
+                            - PRE_ANCHOR_PLANT_BOTTOM_FACTOR
+            );
+        }
+        if (projectile.isHostileToPlants()) {
+            return cellHeight * (
+                    GameplayWorldLayout.ZOMBIE_GROUND_ANCHOR_FACTOR
+                            - PRE_ANCHOR_ZOMBIE_BOTTOM_FACTOR
+            );
+        }
+        return 0f;
     }
 
     private float lerp(float start, float end, float amount) {
