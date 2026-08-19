@@ -7,103 +7,61 @@ import model.minigame.vasebreakerminigame.VasebreakerStateResult;
 import view.vasebreaker.VaseBreakerView;
 import view.vasebreaker.VasebreakerViewObserver;
 
-public class VasebreakerController
-        implements VasebreakerViewObserver {
+import java.util.Objects;
+
+public class VasebreakerController implements VasebreakerViewObserver {
 
     private static final int MAX_TICKS_PER_COMMAND = 10_000;
 
     private final VasebreakerMiniGame game;
 
-    public VasebreakerController(
-            VaseBreakerView view
-    ) {
-        this(
-                view,
-                new VasebreakerMiniGame()
-        );
+    public VasebreakerController(VaseBreakerView view) {
+        this(view, new VasebreakerMiniGame());
     }
 
-    public VasebreakerController(
-            VaseBreakerView view,
-            VasebreakerMiniGame game
-    ) {
-        if (view == null) {
-            throw new IllegalArgumentException(
-                    "Vasebreaker view cannot be null."
-            );
-        }
+    public VasebreakerController(VasebreakerMiniGame game) {
+        this.game = game == null ? new VasebreakerMiniGame() : game;
+    }
 
-        if (game == null) {
-            this.game = new VasebreakerMiniGame();
-        } else {
-            this.game = game;
-        }
+    public VasebreakerController(VaseBreakerView view, VasebreakerMiniGame game) {
+        this(game);
+
+        if (view == null)
+            throw new IllegalArgumentException("Vasebreaker view cannot be null.");
 
         view.setObserver(this);
     }
 
     @Override
-    public VasebreakerActionResult
-    onStartVasebreakerRequested(
-            int stageNumber
-    ) {
+    public VasebreakerActionResult onStartVasebreakerRequested(int stageNumber) {
         return game.startStage(stageNumber);
     }
 
     @Override
-    public VasebreakerActionResult
-    onBreakVaseRequested(
-            Position position
-    ) {
+    public VasebreakerActionResult onBreakVaseRequested(Position position) {
         return game.breakVase(position);
     }
 
     @Override
-    public VasebreakerActionResult
-    onCollectSeedPacketRequested(
-            Position position
-    ) {
+    public VasebreakerActionResult onCollectSeedPacketRequested(Position position) {
         return game.collectSeedPacket(position);
     }
 
     @Override
-    public VasebreakerActionResult
-    onPlantSeedPacketRequested(
-            String plantName,
-            Position targetPosition
-    ) {
-        return game.plantFromCollectedPacket(
-                plantName,
-                targetPosition
-        );
+    public VasebreakerActionResult onPlantSeedPacketRequested(String plantName, Position targetPosition) {
+        return game.plantFromCollectedPacket(plantName, targetPosition);
     }
 
     @Override
-    public VasebreakerActionResult
-    onAdvanceTicksRequested(
-            int ticks
-    ) {
-        if (ticks <= 0
-                || ticks > MAX_TICKS_PER_COMMAND) {
+    public VasebreakerActionResult onAdvanceTicksRequested(int ticks) {
+        if (ticks <= 0 || ticks > MAX_TICKS_PER_COMMAND)
+            return VasebreakerActionResult.invalidAction(null);
 
-            return VasebreakerActionResult
-                    .invalidAction(null);
-        }
+        if (!game.isStarted())
+            return VasebreakerActionResult.gameNotStarted();
 
-        if (!game.isStarted()) {
-            return VasebreakerActionResult
-                    .gameNotStarted();
-        }
-
-        if (game.isCompleted()
-                || game.isLoseConditionMet()) {
-
-            return VasebreakerActionResult
-                    .gameAlreadyFinished(
-                            game.isCompleted(),
-                            game.isLoseConditionMet()
-                    );
-        }
+        if (game.isCompleted() || game.isLoseConditionMet())
+            return VasebreakerActionResult.gameAlreadyFinished(game.isCompleted(), game.isLoseConditionMet());
 
         int advancedTicks = 0;
 
@@ -111,22 +69,15 @@ public class VasebreakerController
             game.onTick();
             advancedTicks++;
 
-            if (game.isCompleted()
-                    || game.isLoseConditionMet()) {
+            if (game.isCompleted() || game.isLoseConditionMet())
                 break;
-            }
         }
 
-        return VasebreakerActionResult.timeAdvanced(
-                advancedTicks,
-                game.isCompleted(),
-                game.isLoseConditionMet()
-        );
+        return VasebreakerActionResult.timeAdvanced(advancedTicks, game.isCompleted(), game.isLoseConditionMet());
     }
 
     @Override
-    public VasebreakerStateResult
-    onShowVasebreakerRequested() {
+    public VasebreakerStateResult onShowVasebreakerRequested() {
         return game.getState();
     }
 

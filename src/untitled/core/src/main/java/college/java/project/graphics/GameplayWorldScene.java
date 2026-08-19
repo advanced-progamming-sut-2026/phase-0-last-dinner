@@ -4,6 +4,8 @@ import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
+import lombok.Getter;
+import lombok.Setter;
 import model.Plant;
 import model.level.LevelType;
 import model.plant.PlantCategory;
@@ -16,6 +18,8 @@ import java.util.Locale;
  * Reusable graphical core for gameplay. It keeps Phase 1 state authoritative
  * while supplying the mandatory Phase 2 HUD, pause, mission and result shell.
  */
+
+@Getter
 public final class GameplayWorldScene extends Group {
     private static final float EXPLOSION_SHAKE = 10f;
     private static final float GARGANTUAR_SHAKE = 7f;
@@ -50,6 +54,7 @@ public final class GameplayWorldScene extends Group {
     private Runnable saveAndExitAction;
     private Runnable exitAction;
     private Runnable retryAction;
+    @Setter
     private Runnable outcomeAction;
 
     public GameplayWorldScene(
@@ -110,11 +115,9 @@ public final class GameplayWorldScene extends Group {
             }
         });
         this.projectileLayer.setImpactListener(this.zombieLayer::noteProjectileImpact);
-        this.projectileLayer.setLaunchPointProvider(projectile ->
-                this.plantLayer.getProjectileLaunchPoint(projectile)
+        this.projectileLayer.setLaunchPointProvider(this.plantLayer::getProjectileLaunchPoint
         );
-        this.projectileLayer.setReleaseDelayProvider(projectile ->
-                this.plantLayer.getAttackReleaseDelay(projectile)
+        this.projectileLayer.setReleaseDelayProvider(this.plantLayer::getAttackReleaseDelay
         );
         setLawnBounds(this.projectileLayer);
         addActor(this.projectileLayer);
@@ -210,70 +213,6 @@ public final class GameplayWorldScene extends Group {
         updateOutcome();
     }
 
-    public GameplaySeedBank getSeedBank() {
-        return this.seedBank;
-    }
-
-    public GameplayConveyorBelt getConveyorBelt() {
-        return this.conveyorBelt;
-    }
-
-    public GameplayLevelRulesLayer getLevelRulesLayer() {
-        return this.levelRulesLayer;
-    }
-
-    public GameplayChapterEventLayer getChapterEventLayer() {
-        return this.chapterEventLayer;
-    }
-
-    public GameplayBoardInteractionLayer getInteractionLayer() {
-        return this.interactionLayer;
-    }
-
-    public GameplaySunLayer getSunLayer() {
-        return this.sunLayer;
-    }
-
-    public GameplayZombieLayer getZombieLayer() {
-        return this.zombieLayer;
-    }
-
-    public GameplayPlantLayer getPlantLayer() {
-        return this.plantLayer;
-    }
-
-    public GameplayProjectileLayer getProjectileLayer() {
-        return this.projectileLayer;
-    }
-
-    public GameplayWaveProgressBar getWaveProgressBar() {
-        return this.waveProgressBar;
-    }
-
-    public GameplayAlertLayer getAlertLayer() {
-        return this.alertLayer;
-    }
-
-    public GameplayMissionOverlay getMissionOverlay() {
-        return this.missionOverlay;
-    }
-
-    public GameplayPauseOverlay getPauseOverlay() {
-        return this.pauseOverlay;
-    }
-
-    public GameplayOutcomeOverlay getOutcomeOverlay() {
-        return this.outcomeOverlay;
-    }
-
-    public GameplayResourceStrip getResourceStrip() {
-        return this.resourceStrip;
-    }
-
-    public boolean isPaused() {
-        return this.paused;
-    }
-
     public boolean shouldAdvanceModel() {
         return !isWorldFrozen();
     }
@@ -304,10 +243,6 @@ public final class GameplayWorldScene extends Group {
         this.saveAndExitAction = saveAndExit;
         this.exitAction = exit;
         this.retryAction = retry;
-    }
-
-    public void setOutcomeAction(Runnable outcomeAction) {
-        this.outcomeAction = outcomeAction;
     }
 
     public void setDebugModeEnabled(boolean enabled) {
@@ -526,4 +461,5 @@ public final class GameplayWorldScene extends Group {
                 GameplayWorldLayout.LAWN_HEIGHT
         );
     }
+
 }
