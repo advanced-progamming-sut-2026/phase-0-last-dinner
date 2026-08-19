@@ -59,6 +59,7 @@ public final class GameplayBoardInteractionLayer extends Group {
     private String lastAppliedPlantName;
     private boolean lastAppliedPlantBoosted;
     private InteractionActionListener actionListener;
+    private int activeTouchPointer = -1;
 
     public GameplayBoardInteractionLayer(
             GameplaySeedBankDataSource dataSource,
@@ -197,6 +198,7 @@ public final class GameplayBoardInteractionLayer extends Group {
         this.cursorGroundAnchored = false;
         this.cursorCenterOffsetX = 0f;
         this.cursorGroundOffset = 0f;
+        this.activeTouchPointer = -1;
         hideHighlights();
         replaceCursor(null);
     }
@@ -277,9 +279,33 @@ public final class GameplayBoardInteractionLayer extends Group {
 
             @Override
             public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                if (button != Input.Buttons.LEFT || mode == GameplayInteractionMode.NONE) {
+                    return false;
+                }
+                activeTouchPointer = pointer;
                 updateFromPointer(x, y);
-                return button == Input.Buttons.LEFT
-                        && applyAtCell(hoverColumn, hoverRow);
+                return true;
+            }
+
+            @Override
+            public void touchDragged(InputEvent event, float x, float y, int pointer) {
+                if (pointer == activeTouchPointer) {
+                    updateFromPointer(x, y);
+                }
+            }
+
+            @Override
+            public void touchUp(InputEvent event, float x, float y, int pointer, int button) {
+                if (pointer != activeTouchPointer) {
+                    return;
+                }
+                activeTouchPointer = -1;
+                updateFromPointer(x, y);
+                if (button == Input.Buttons.LEFT
+                        && insideCell(hoverColumn, hoverRow)
+                        && mode != GameplayInteractionMode.NONE) {
+                    applyAtCell(hoverColumn, hoverRow);
+                }
             }
 
             @Override
@@ -455,7 +481,7 @@ public final class GameplayBoardInteractionLayer extends Group {
             float tileBottom = (ROW_COUNT - 1 - this.hoverRow) * cellHeight;
             this.cursorActor.setPosition(
                     tileCenterX + this.cursorCenterOffsetX - this.cursorActor.getWidth() / 2f,
-                    tileBottom - cellHeight * 0.01f
+                    tileBottom + cellHeight * GameplayWorldLayout.PLANT_GROUND_ANCHOR_FACTOR
                             + this.cursorGroundOffset - this.cursorActor.getHeight() / 2f
             );
         } else {

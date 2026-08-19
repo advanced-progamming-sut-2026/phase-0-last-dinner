@@ -326,11 +326,8 @@ public final class ControllerGameplaySeedBankDataSource implements GameplaySeedB
         if (sun == null || sun.isCollected() || sun.getPosition() == null) {
             return false;
         }
-        Position position = sun.getPosition();
-        return this.midGameController.onCollectSunRequested(
-                position.getX(),
-                position.getY()
-        );
+        this.game.getSunSystem().collectSun(sun);
+        return sun.isCollected();
     }
 
     @Override

@@ -29,7 +29,9 @@ import java.util.Map;
  * the Phase 2 requirement shared by Collection, Plant Pick and gameplay.
  */
 public final class GameplaySeedBank extends Table {
-    private static final float CARD_SCALE = 0.74f;
+    private static final float CARD_SCALE = 1.03f;
+    private static final float PACKET_GAP = 0f;
+    private static final float SUN_TO_PACKETS_GAP = 70f;
     private static final String WHITE_PIXEL = "white_pixel";
     private static final String SUN_ICON = "IMAGE_UI_HUD_INGAME_SUN";
     private static final String HUD_BACKGROUND = "IMAGE_UI_HUD_INGAME_BACKGROUND_3SLICE";
@@ -223,17 +225,21 @@ public final class GameplaySeedBank extends Table {
 
         Table sunBox = originalSunCounter();
         // Native PvZ2 HUD art is authored for the 768p gameplay canvas.
-        // At our 1080p virtual stage the original sun meter is about 1.406x
-        // larger than the raw atlas dimensions, so keep that authored scale.
-        add(sunBox).width(164f).height(98f).left().padBottom(0f);
+        // Keep the sun meter independent, then leave the same breathing room
+        // visible in the original game before the first seed packet begins.
+        add(sunBox)
+                .width(164f)
+                .height(98f)
+                .left()
+                .padBottom(SUN_TO_PACKETS_GAP);
         row();
 
-        Drawable bankBackground = resourceDrawable(HUD_BACKGROUND);
-        if (bankBackground != null) {
-            this.cardRow.setBackground(bankBackground);
-            this.cardRow.pad(3f, 2f, 2f, 2f);
-        }
-        add(this.cardRow).width(138f).left();
+        // The original gameplay bank is not a dark toolbar behind the whole
+        // packet column.  Each packet already carries its authentic PvZ2 frame,
+        // so the column itself stays transparent and tightly packed.
+        this.cardRow.setBackground((Drawable) null);
+        this.cardRow.pad(0f);
+        add(this.cardRow).left();
         row();
 
         this.statusLabel.setAlignment(Align.center);
@@ -241,7 +247,10 @@ public final class GameplaySeedBank extends Table {
         this.statusLabel.setWrap(true);
         this.statusLabel.setFontScale(0.48f);
         this.statusLabel.setVisible(false);
-        add(this.statusLabel).width(138f).height(32f).padTop(2f);
+        add(this.statusLabel)
+                .width(PlantCard.CARD_WIDTH * CARD_SCALE)
+                .height(32f)
+                .padTop(2f);
     }
 
 
@@ -332,10 +341,11 @@ public final class GameplaySeedBank extends Table {
             });
             this.cards.add(card);
             this.cardsByName.put(normalize(state.getName()), card);
-            this.cardRow.add(new ScaledPlantCard(card, CARD_SCALE))
-                    .width(132f)
-                    .height(78f)
-                    .padBottom(1f);
+            ScaledPlantCard gameplayCard = new ScaledPlantCard(card, CARD_SCALE);
+            this.cardRow.add(gameplayCard)
+                    .width(gameplayCard.getPrefWidth())
+                    .height(gameplayCard.getPrefHeight())
+                    .padBottom(PACKET_GAP);
             this.cardRow.row();
         }
     }

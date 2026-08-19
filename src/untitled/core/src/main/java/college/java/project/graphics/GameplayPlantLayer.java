@@ -1128,7 +1128,12 @@ public final class GameplayPlantLayer extends Group {
         float tileBottom = (
                 GameplayBoardInteractionLayer.ROW_COUNT - 1 - position.getY()
         ) * cellHeight;
-        actor.setBounds(tileX, tileBottom - cellHeight * 0.01f, cellWidth, cellHeight);
+        actor.setBounds(
+                tileX,
+                tileBottom + cellHeight * GameplayWorldLayout.PLANT_GROUND_ANCHOR_FACTOR,
+                cellWidth,
+                cellHeight
+        );
     }
 
     private void layoutRenderedPlant(RenderedPlant rendered, String plantName) {
@@ -1151,44 +1156,88 @@ public final class GameplayPlantLayer extends Group {
 
 
     private boolean showPlantShadow(String plantName) {
-        String name = normalize(plantName);
-        return !name.contains("lily pad")
-                && !name.contains("tangle kelp")
-                && !name.contains("sea-shroom")
-                && !name.contains("cat-tail");
+        // The original PvZ2 keeps a soft contact shadow under every planted
+        // gameplay entity. Water/ground-hugging plants use a lighter, flatter
+        // footprint instead of removing the shadow entirely.
+        return plantName != null && !plantName.isBlank();
     }
 
     private void layoutPlantShadow(Image shadow, String plantName, float width, float height) {
         if (shadow == null || !shadow.isVisible()) {
             return;
         }
-        String name = normalize(plantName);
-        float widthFactor = 0.72f;
-        float heightFactor = 0.24f;
-        float yFactor = -0.015f;
-        if (name.contains("potato mine") || name.contains("iceberg")
-                || name.contains("puff-shroom") || name.contains("sun bean")) {
-            widthFactor = 0.56f;
-            heightFactor = 0.20f;
-        } else if (name.contains("tall-nut") || name.contains("wall-nut")
-                || name.contains("endurian") || name.contains("pumpkin")) {
-            widthFactor = 0.78f;
-            heightFactor = 0.25f;
-        } else if (name.contains("bonk choy") || name.contains("chomper")
-                || name.contains("squash")) {
-            widthFactor = 0.82f;
-            heightFactor = 0.26f;
-        }
-        float shadowWidth = width * widthFactor;
-        float shadowHeight = height * heightFactor;
+        PlantShadowProfile profile = plantShadowProfile(plantName);
+        float shadowWidth = width * profile.widthFactor;
+        float shadowHeight = height * profile.heightFactor;
         shadow.setBounds(
-                width * 0.5f - shadowWidth * 0.5f,
-                height * yFactor,
+                width * (0.5f + profile.centerOffsetX) - shadowWidth * 0.5f,
+                height * profile.yFactor,
                 shadowWidth,
                 shadowHeight
         );
+        shadow.getColor().a = profile.alpha;
     }
 
+    private PlantShadowProfile plantShadowProfile(String plantName) {
+        String name = normalize(plantName);
+        PlantShadowProfile profile = PlantShadowProfile.of(0.68f, 0.225f, -0.020f, 0.82f);
+
+        // Very low or compact plants keep a short contact footprint.
+        if (name.contains("potato mine") || name.contains("iceberg")
+                || name.contains("puff-shroom") || name.contains("sun bean")
+                || name.contains("hot potato") || name.contains("sea-shroom")) {
+            return PlantShadowProfile.of(0.52f, 0.175f, -0.012f, 0.72f);
+        }
+
+        // Water plants in PvZ2 have a faint footprint/reflection-like contact
+        // shadow instead of the strong oval used by land plants.
+        if (name.contains("lily pad") || name.contains("tangle kelp")
+                || name.contains("cat-tail")) {
+            return PlantShadowProfile.of(0.72f, 0.155f, -0.006f, 0.42f);
+        }
+
+        // Wide defensive plants occupy most of the tile footprint.
+        if (name.contains("tall-nut") || name.contains("wall-nut")
+                || name.contains("endurian") || name.contains("pumpkin")
+                || name.contains("explode-o-nut") || name.contains("garlic")) {
+            return PlantShadowProfile.of(0.78f, 0.245f, -0.018f, 0.84f);
+        }
+
+        // Plants with broad lateral animation need a wider shadow than their
+        // stem/contact point would otherwise suggest.
+        if (name.contains("bonk choy") || name.contains("chomper")
+                || name.contains("squash") || name.contains("wasabi")
+                || name.contains("kiwibeast") || name.contains("phat beet")) {
+            return PlantShadowProfile.of(0.84f, 0.245f, -0.018f, 0.82f);
+        }
+
+        // Lobbers and other large-bodied plants sit on a broad base in the
+        // original game.
+        if (name.contains("melon") || name.contains("winter melon")
+                || name.contains("cabbage") || name.contains("kernel")
+                || name.contains("pepper-pult") || name.contains("citron")
+                || name.contains("caulipower") || name.contains("electric blueberry")
+                || name.contains("bowling bulb")) {
+            return PlantShadowProfile.of(0.80f, 0.235f, -0.018f, 0.82f);
+        }
+
+        if (name.contains("threepeater") || name.contains("pea pod")
+                || name.contains("split pea") || name.contains("starfruit")
+                || name.contains("rotobaga")) {
+            return PlantShadowProfile.of(0.74f, 0.225f, -0.018f, 0.80f);
+        }
+
+        if (name.contains("mint")) {
+            return PlantShadowProfile.of(0.76f, 0.220f, -0.016f, 0.78f);
+        }
+
+        if (name.contains("sunflower") || name.contains("sun-shroom")
+                || name.contains("gold bloom")) {
+            return PlantShadowProfile.of(0.64f, 0.215f, -0.018f, 0.80f);
+        }
+
+        return profile;
+    }
 
     private void layoutStaticBody(RenderedPlant rendered, String plantName, float width, float height) {
         float maxWidth = STATIC_WIDTH_FACTOR;
@@ -1674,6 +1723,37 @@ public final class GameplayPlantLayer extends Group {
         ATTACK,
         SUN_PRODUCTION,
         INTRO
+    }
+
+    private static final class PlantShadowProfile {
+        private final float widthFactor;
+        private final float heightFactor;
+        private final float yFactor;
+        private final float centerOffsetX;
+        private final float alpha;
+
+        private PlantShadowProfile(
+                float widthFactor,
+                float heightFactor,
+                float yFactor,
+                float centerOffsetX,
+                float alpha
+        ) {
+            this.widthFactor = widthFactor;
+            this.heightFactor = heightFactor;
+            this.yFactor = yFactor;
+            this.centerOffsetX = centerOffsetX;
+            this.alpha = alpha;
+        }
+
+        private static PlantShadowProfile of(
+                float widthFactor,
+                float heightFactor,
+                float yFactor,
+                float alpha
+        ) {
+            return new PlantShadowProfile(widthFactor, heightFactor, yFactor, 0f, alpha);
+        }
     }
 
     private static final class ProjectileLaunchProfile {

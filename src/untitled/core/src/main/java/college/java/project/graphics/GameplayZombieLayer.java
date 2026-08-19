@@ -40,6 +40,7 @@ public final class GameplayZombieLayer extends Group {
     private static final float STATIC_WIDTH_FACTOR = 0.92f;
     private static final float STATIC_HEIGHT_FACTOR = 1.42f;
     private static final float STATIC_BOTTOM_FACTOR = -0.02f;
+    private static final String ZOMBIE_SHADOW = "IMAGE_PLANTSHADOW";
     private static final float DAMAGE_FLASH_SECONDS = 0.12f;
     private static final float IMP_THROW_SECONDS = 1.0f;
     private static final float SPECIAL_CLIP_SECONDS = 0.82f;
@@ -47,6 +48,7 @@ public final class GameplayZombieLayer extends Group {
     private static final float EXPLOSION_DEATH_WINDOW_SECONDS = 0.55f;
     private static final float PROSPECTOR_FLIGHT_SECONDS = 1.15f;
     private static final float ROW_SLIDE_SECONDS = 0.30f;
+    private static final float PRE_ANCHOR_PLANT_BOTTOM_FACTOR = -0.01f;
     private static final String ASH_MAIN = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_104X95";
     private static final String ASH_PILE = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_53X33";
     private static final String ASH_DUST_TALL = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_15X26";
@@ -288,7 +290,7 @@ public final class GameplayZombieLayer extends Group {
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
         float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
         float x = cellCenterX(target.getPosition().getX());
-        float y = cellBottomY(target.getPosition().getY()) + cellHeight * 0.48f;
+        float y = plantProjectileTargetY(target.getPosition().getY(), cellHeight);
         spawnAbilityImpact(WIZARD_MAGIC, x, y, cellWidth * 0.92f, target.getPosition().getY());
     }
 
@@ -360,6 +362,12 @@ public final class GameplayZombieLayer extends Group {
         rendered.specialClipRemaining = rendered.animation.getClipDuration(clip, SPECIAL_CLIP_SECONDS);
     }
 
+    private float plantProjectileTargetY(int row, float cellHeight) {
+        float anchorShift = GameplayWorldLayout.PLANT_GROUND_ANCHOR_FACTOR
+                - PRE_ANCHOR_PLANT_BOTTOM_FACTOR;
+        return cellBottomY(row) + cellHeight * (0.48f + anchorShift);
+    }
+
     private void spawnAbilityProjectile(
             Zombie source,
             Plant target,
@@ -379,7 +387,7 @@ public final class GameplayZombieLayer extends Group {
         float fromX = rendered.root.getX() + rendered.root.getWidth() * 0.43f;
         float fromY = rendered.root.getY() + rendered.root.getHeight() * 0.70f;
         float toX = cellCenterX(target.getPosition().getX());
-        float toY = cellBottomY(target.getPosition().getY()) + cellHeight * 0.48f;
+        float toY = plantProjectileTargetY(target.getPosition().getY(), cellHeight);
         float size = Math.max(14f, cellWidth * sizeFactor);
         AbilityArcActor projectile = new AbilityArcActor(
                 drawable,
@@ -408,7 +416,7 @@ public final class GameplayZombieLayer extends Group {
         float fromX = source.root.getX() + source.root.getWidth() * 0.42f;
         float fromY = source.root.getY() + source.root.getHeight() * 0.58f;
         float toX = cellCenterX(target.getPosition().getX());
-        float toY = cellBottomY(target.getPosition().getY()) + cellHeight * 0.48f;
+        float toY = plantProjectileTargetY(target.getPosition().getY(), cellHeight);
         Group effect = new Group();
         effect.setTouchable(Touchable.disabled);
         effect.setBounds(0f, 0f, getWidth(), getHeight());
@@ -914,6 +922,10 @@ public final class GameplayZombieLayer extends Group {
         }
         Group root = new Group();
         root.setTouchable(Touchable.disabled);
+        Image shadow = createZombieShadow();
+        if (shadow != null) {
+            root.addActor(shadow);
+        }
         root.addActor(body);
         Actor butter = createButterOverlay();
         butter.setVisible(false);
@@ -937,12 +949,101 @@ public final class GameplayZombieLayer extends Group {
                     root, body, butter, iceBlock, animation, groundMotion, groundOffset, centerOffset, alias
             );
         }
+        rendered.shadow = shadow;
         rendered.piano = createPianoOverlay(alias);
         if (rendered.piano != null) {
             root.addActor(rendered.piano);
         }
         initializeAbilityState(rendered, zombie);
         return rendered;
+    }
+
+    private Image createZombieShadow() {
+        Drawable drawable = resourceDrawable(ZOMBIE_SHADOW);
+        if (drawable == null) {
+            return null;
+        }
+        Image shadow = new Image(drawable);
+        shadow.setScaling(Scaling.stretch);
+        shadow.setTouchable(Touchable.disabled);
+        return shadow;
+    }
+
+    private void layoutZombieShadow(RenderedZombie rendered, Zombie zombie) {
+        if (rendered == null || rendered.shadow == null || zombie == null) {
+            return;
+        }
+        ZombieShadowProfile profile = zombieShadowProfile(rendered.alias);
+        float rootWidth = rendered.root.getWidth();
+        float rootHeight = rendered.root.getHeight();
+        float lift = airborneVisualLift(rendered, zombie);
+        float airFactor = Math.min(1f, lift / Math.max(1f, rootHeight * 1.05f));
+        float widthScale = 1f - airFactor * 0.18f;
+        float heightScale = 1f - airFactor * 0.30f;
+        float shadowWidth = rootWidth * profile.widthFactor * widthScale;
+        float shadowHeight = rootHeight * profile.heightFactor * heightScale;
+        rendered.shadow.setBounds(
+                rootWidth * (0.5f + profile.centerOffsetX) - shadowWidth * 0.5f,
+                rootHeight * profile.yFactor - lift,
+                shadowWidth,
+                shadowHeight
+        );
+        rendered.shadow.getColor().a = profile.alpha * (1f - airFactor * 0.42f);
+    }
+
+    private float airborneVisualLift(RenderedZombie rendered, Zombie zombie) {
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float lift = 0f;
+
+        if (rendered.prospectorFlightRemaining > 0f && rendered.prospectorFlightDuration > 0f) {
+            float ratio = rendered.prospectorFlightRemaining / rendered.prospectorFlightDuration;
+            float progress = 1f - ratio;
+            lift += (float) Math.sin(Math.PI * progress) * cellHeight * 1.05f;
+        }
+
+        if (rendered.dodoLiftFactor > 0.001f) {
+            float bob = (float) Math.sin(rendered.motionTime * 7f) * cellHeight * 0.035f;
+            lift += cellHeight * 0.36f * rendered.dodoLiftFactor + bob;
+        }
+
+        if (rendered.throwRemaining > 0f && rendered.throwDuration > 0f) {
+            float progress = 1f - rendered.throwRemaining / rendered.throwDuration;
+            progress = Math.max(0f, Math.min(1f, progress));
+            lift += 4f * progress * (1f - progress) * cellHeight * 1.55f;
+        }
+        return Math.max(0f, lift);
+    }
+
+    private ZombieShadowProfile zombieShadowProfile(String aliasValue) {
+        String alias = normalizeAlias(aliasValue);
+        ZombieShadowProfile profile = ZombieShadowProfile.of(0.66f, 0.215f, -0.040f, 0.78f);
+
+        if (alias.contains("imp")) {
+            return ZombieShadowProfile.of(0.48f, 0.175f, -0.034f, 0.72f);
+        }
+        if (alias.contains("gargantuar")) {
+            return ZombieShadowProfile.of(1.18f, 0.300f, -0.050f, 0.84f);
+        }
+        if (alias.contains("allstar")) {
+            return ZombieShadowProfile.of(0.92f, 0.255f, -0.045f, 0.82f);
+        }
+        if (alias.contains("piano")) {
+            return ZombieShadowProfile.of(1.20f, 0.285f, -0.045f, 0.84f);
+        }
+        if (alias.contains("barrel") || alias.contains("arcade")
+                || alias.contains("troglobite") || alias.contains("iceblock")) {
+            return ZombieShadowProfile.of(0.96f, 0.265f, -0.044f, 0.82f);
+        }
+        if (alias.contains("dodo")) {
+            return ZombieShadowProfile.of(0.72f, 0.205f, -0.038f, 0.72f);
+        }
+        if (alias.contains("fisherman") || alias.contains("octopus")
+                || alias.contains("snorkel") || alias.contains("juggler")
+                || alias.contains("wizard") || alias.contains("king")
+                || alias.contains("hunter") || alias.contains("prospector")) {
+            return ZombieShadowProfile.of(0.72f, 0.225f, -0.040f, 0.78f);
+        }
+        return profile;
     }
 
     private Actor createPianoOverlay(String alias) {
@@ -1230,6 +1331,7 @@ public final class GameplayZombieLayer extends Group {
         position(rendered.root, zombie);
         applyEntityVisualMotion(rendered, zombie);
         applyImpThrowMotion(rendered, zombie, delta);
+        layoutZombieShadow(rendered, zombie);
         ensureKnightVisual(rendered, zombie);
         updateClip(rendered, zombie);
         updateArmor(rendered, zombie);
@@ -1442,7 +1544,7 @@ public final class GameplayZombieLayer extends Group {
         ) * cellHeight;
         root.setBounds(
                 centerX - cellWidth / 2f,
-                tileBottom - cellHeight * 0.03f,
+                tileBottom + cellHeight * GameplayWorldLayout.ZOMBIE_GROUND_ANCHOR_FACTOR,
                 cellWidth,
                 cellHeight
         );
@@ -2168,9 +2270,41 @@ public final class GameplayZombieLayer extends Group {
         }
     }
 
+    private static final class ZombieShadowProfile {
+        private final float widthFactor;
+        private final float heightFactor;
+        private final float yFactor;
+        private final float centerOffsetX;
+        private final float alpha;
+
+        private ZombieShadowProfile(
+                float widthFactor,
+                float heightFactor,
+                float yFactor,
+                float centerOffsetX,
+                float alpha
+        ) {
+            this.widthFactor = widthFactor;
+            this.heightFactor = heightFactor;
+            this.yFactor = yFactor;
+            this.centerOffsetX = centerOffsetX;
+            this.alpha = alpha;
+        }
+
+        private static ZombieShadowProfile of(
+                float widthFactor,
+                float heightFactor,
+                float yFactor,
+                float alpha
+        ) {
+            return new ZombieShadowProfile(widthFactor, heightFactor, yFactor, 0f, alpha);
+        }
+    }
+
     private static final class RenderedZombie {
         private final Group root;
         private Actor body;
+        private Image shadow;
         private final Actor butter;
         private final Actor iceBlock;
         private Actor piano;

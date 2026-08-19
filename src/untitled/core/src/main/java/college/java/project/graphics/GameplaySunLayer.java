@@ -146,37 +146,50 @@ public final class GameplaySunLayer extends Group {
             image.addListener(new InputListener() {
                 @Override
                 public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                    if (collecting.contains(sun) || !collectSun(sun)) {
-                        return;
-                    }
-                    collecting.add(sun);
-                    image.setTouchable(Touchable.disabled);
-                    image.setOrigin(image.getWidth() / 2f, image.getHeight() / 2f);
-                    image.clearActions();
-                    float targetX = hasCollectionTarget
-                            ? collectionTargetX - image.getWidth() / 2f
-                            : image.getX();
-                    float targetY = hasCollectionTarget
-                            ? collectionTargetY - image.getHeight() / 2f
-                            : image.getY() + 54f;
-                    image.addAction(Actions.sequence(
-                            Actions.parallel(
-                                    Actions.fadeOut(0.28f),
-                                    Actions.scaleTo(0.30f, 0.30f, 0.28f),
-                                    Actions.moveTo(targetX, targetY, 0.28f)
-                            ),
-                            Actions.run(() -> {
-                                collecting.remove(sun);
-                                actors.remove(sun);
-                                image.remove();
-                            })
-                    ));
+                    beginCollection(sun, image);
+                }
+
+                @Override
+                public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                    return beginCollection(sun, image);
                 }
             });
             return image;
         } catch (RuntimeException ignored) {
             return null;
         }
+    }
+
+    private boolean beginCollection(Sun sun, Image image) {
+        if (sun == null || image == null || this.collecting.contains(sun)) {
+            return false;
+        }
+        if (!collectSun(sun)) {
+            return false;
+        }
+        this.collecting.add(sun);
+        image.setTouchable(Touchable.disabled);
+        image.setOrigin(image.getWidth() / 2f, image.getHeight() / 2f);
+        image.clearActions();
+        float targetX = this.hasCollectionTarget
+                ? this.collectionTargetX - image.getWidth() / 2f
+                : image.getX();
+        float targetY = this.hasCollectionTarget
+                ? this.collectionTargetY - image.getHeight() / 2f
+                : image.getY() + 54f;
+        image.addAction(Actions.sequence(
+                Actions.parallel(
+                        Actions.fadeOut(0.28f),
+                        Actions.scaleTo(0.30f, 0.30f, 0.28f),
+                        Actions.moveTo(targetX, targetY, 0.28f)
+                ),
+                Actions.run(() -> {
+                    this.collecting.remove(sun);
+                    this.actors.remove(sun);
+                    image.remove();
+                })
+        ));
+        return true;
     }
 
     private void positionSun(Image actor, Sun sun) {
