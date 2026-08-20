@@ -380,6 +380,13 @@ public class Zombie implements Tickable {
         this.position = position;
     }
 
+    public void applySpawnEntryOffset(double offsetTiles) {
+        if (this.position == null || !Double.isFinite(offsetTiles) || offsetTiles <= 0d) {
+            return;
+        }
+        this.exactX = this.position.getX() + offsetTiles;
+    }
+
     public void setCurrentSpeed(double currentSpeed) {
         this.currentSpeed = Math.max(0, currentSpeed);
     }

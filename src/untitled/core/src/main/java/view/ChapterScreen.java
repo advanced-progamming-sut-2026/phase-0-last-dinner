@@ -50,15 +50,12 @@ public class ChapterScreen implements Screen {
     private static final String BACKGROUND_PATH =
         "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/mainmenu_background.png";
     private static final String NAMEPLATE_DRAWABLE = "image_ui_if_bundle_reward_multiplier_bg_10";
-    private static final String NORMAL_ICON_PATH = "Assets/Exports/damage_icon.png";
-    private static final String SPECIAL_ICON_PATH = "Assets/Exports/variable_icon.png";
     private static final String LOCK_ICON_PATH = "Assets/Exports/perk_icon_locked.png";
 
     private static final float VIRTUAL_WIDTH = 1280f;
     private static final float VIRTUAL_HEIGHT = 720f;
     private static final float NAMEPLATE_WIDTH = 340f;
     private static final float NAMEPLATE_HEIGHT = 84f;
-    private static final float LEVEL_ICON_SIZE = 64f;
     private static final float LOCK_ICON_SIZE = 56f;
 
     private final ApplicationController controller;
@@ -145,7 +142,6 @@ public class ChapterScreen implements Screen {
 
     private Stack createLevelRow(LevelType level, boolean unlocked, Skin skin) {
         boolean isNormal = level == LevelType.NORMAL;
-        String iconPath = isNormal ? NORMAL_ICON_PATH : SPECIAL_ICON_PATH;
         String displayName = isNormal ? "Normal" : prettyName(level.name());
 
         Label nameLabel = new Label(displayName, skin, "big_outline");
@@ -159,13 +155,8 @@ public class ChapterScreen implements Screen {
         Table namePlateBox = new Table();
         namePlateBox.add(namePlate).size(NAMEPLATE_WIDTH, NAMEPLATE_HEIGHT);
 
-        Image levelIcon = this.createImageFit(iconPath, LEVEL_ICON_SIZE, LEVEL_ICON_SIZE);
-        Table iconBox = new Table();
-        iconBox.add(levelIcon).size(LEVEL_ICON_SIZE, LEVEL_ICON_SIZE);
-
         Table row = new Table();
-        row.add(namePlateBox).padRight(16);
-        row.add(iconBox);
+        row.add(namePlateBox);
 
         Stack rowStack = new Stack();
         rowStack.add(row);
@@ -176,9 +167,6 @@ public class ChapterScreen implements Screen {
             lockBox.add(lockIcon).size(LOCK_ICON_SIZE, LOCK_ICON_SIZE);
             Container<Table> lockContainer = new Container<>(lockBox);
             lockContainer.align(Align.center);
-            // Only cover the nameplate's own width, not the icon next to it, so the lock
-            // visually sits on the box as asked, not floating over the whole row.
-            lockContainer.padRight(LEVEL_ICON_SIZE + 16f);
             rowStack.add(lockContainer);
             rowStack.setTouchable(Touchable.disabled);
         } else {

@@ -205,6 +205,7 @@ public final class GameplayWorldScene extends Group {
             return;
         }
         super.act(delta);
+        this.seedBank.refresh();
         GameplayBoardDepthOrder.sort(this.boardEntityLayer);
         updatePlantSelectorMode();
         updateOutcome();

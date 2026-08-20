@@ -36,12 +36,15 @@ import java.util.Set;
  * graphical in-game seed bank without changing Phase 1 Model/Controller code.
  */
 public final class ControllerGameplaySeedBankDataSource implements GameplaySeedBankDataSource, GameplayWorldDataSource {
+    private static final long FIRST_WAVE_DELAY_TICKS = 20L;
     private final MidGameController midGameController;
     private final CollectionController collectionController;
     private final GameController gameController;
     private final PlantZombieGame game;
     private boolean debugModeEnabled;
     private String imitaterCopyTarget;
+    private long firstWaveReleaseTick = -1L;
+    private boolean firstWaveHeld;
 
     public ControllerGameplaySeedBankDataSource(
             MidGameController midGameController,
@@ -73,6 +76,7 @@ public final class ControllerGameplaySeedBankDataSource implements GameplaySeedB
         this.gameController = gameController;
         this.game = game;
         this.debugModeEnabled = debugModeEnabled;
+        this.prepareFirstWaveDelay();
     }
 
     @Override
@@ -270,6 +274,7 @@ public final class ControllerGameplaySeedBankDataSource implements GameplaySeedB
 
     @Override
     public List<Zombie> getZombiesOnBoard() {
+        this.releaseFirstWaveIfReady();
         return new ArrayList<>(this.game.getBoard().getAllZombies());
     }
 
@@ -582,6 +587,36 @@ public final class ControllerGameplaySeedBankDataSource implements GameplaySeedB
             return "";
         }
         return status.getPlant().getName();
+    }
+
+    private void prepareFirstWaveDelay() {
+        if (this.game.getWaveManager() == null
+                || this.game.getEngine() == null
+                || this.game.getEngine().getClock() == null
+                || this.game.getWaveManager().getCurrentWaveIndex() >= 0
+                || this.game.getWaveManager().isStarted()) {
+            return;
+        }
+        long currentTick = this.game.getEngine().getClock().getCurrentTick();
+        this.firstWaveReleaseTick = currentTick + FIRST_WAVE_DELAY_TICKS - 1L;
+        this.firstWaveHeld = true;
+        this.game.getWaveManager().setStarted(true);
+    }
+
+    private void releaseFirstWaveIfReady() {
+        if (!this.firstWaveHeld
+                || this.game.getEngine() == null
+                || this.game.getEngine().getClock() == null) {
+            return;
+        }
+        if (this.game.getEngine().getClock().getCurrentTick() < this.firstWaveReleaseTick) {
+            return;
+        }
+        this.firstWaveHeld = false;
+        if (this.game.getWaveManager() != null
+                && this.game.getWaveManager().getCurrentWaveIndex() < 0) {
+            this.game.getWaveManager().setStarted(false);
+        }
     }
 
     private String normalize(String value) {

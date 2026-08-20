@@ -1,7 +1,6 @@
 package college.java.project.graphics;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
@@ -22,7 +21,7 @@ import java.util.Set;
 import java.util.Collections;
 import java.util.function.Consumer;
 
-/** Shows falling/ground suns and collects them when the pointer passes over them. */
+/** Shows falling and ground suns. */
 public final class GameplaySunLayer extends Group {
     private static final String SUN_RESOURCE = "IMAGE_EFFECTS_SUN_SUN_166X166";
 
@@ -144,11 +143,6 @@ public final class GameplaySunLayer extends Group {
             image.setColor(sunColor(sun.getType()));
             image.setTouchable(Touchable.enabled);
             image.addListener(new InputListener() {
-                @Override
-                public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                    beginCollection(sun, image);
-                }
-
                 @Override
                 public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
                     return beginCollection(sun, image);

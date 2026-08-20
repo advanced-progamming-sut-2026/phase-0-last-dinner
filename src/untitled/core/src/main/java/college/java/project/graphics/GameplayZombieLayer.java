@@ -3,6 +3,7 @@ package college.java.project.graphics;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -920,7 +921,7 @@ public final class GameplayZombieLayer extends Group {
         if (body == null) {
             return null;
         }
-        Group root = new Group();
+        Group root = new RightEdgeClippedZombieGroup();
         root.setTouchable(Touchable.disabled);
         Image shadow = createZombieShadow();
         if (shadow != null) {
@@ -2298,6 +2299,29 @@ public final class GameplayZombieLayer extends Group {
                 float alpha
         ) {
             return new ZombieShadowProfile(widthFactor, heightFactor, yFactor, 0f, alpha);
+        }
+    }
+
+    private static final class RightEdgeClippedZombieGroup extends Group {
+        private static final float OPEN_CLIP_MARGIN = 4096f;
+
+        @Override
+        public void draw(Batch batch, float parentAlpha) {
+            Group parent = getParent();
+            if (parent == null || getX() + getWidth() <= parent.getWidth()) {
+                super.draw(batch, parentAlpha);
+                return;
+            }
+
+            if (parent.clipBegin(
+                    -OPEN_CLIP_MARGIN,
+                    -OPEN_CLIP_MARGIN,
+                    parent.getWidth() + OPEN_CLIP_MARGIN,
+                    parent.getHeight() + OPEN_CLIP_MARGIN * 2f
+            )) {
+                super.draw(batch, parentAlpha);
+                parent.clipEnd();
+            }
         }
     }
 
