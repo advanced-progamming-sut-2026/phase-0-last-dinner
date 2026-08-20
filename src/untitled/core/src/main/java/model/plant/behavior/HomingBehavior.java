@@ -8,6 +8,7 @@ import model.plant.PlantUpgradeSpecialEffect;
 import model.plant.Projectile;
 import model.zombie.ArmorFlag;
 import model.zombie.Zombie;
+import model.zombie.ZombieCondition;
 import model.zombie.ZombieArmor;
 
 import java.util.ArrayList;
@@ -79,8 +80,12 @@ public class HomingBehavior implements PlantBehavior {
         if (this.targetMode == HomingTargetMode.HYPNOSIS) {
             Zombie target = this.selectTarget(plant, board);
 
-            if (target != null) {
-                target.addCondition(model.zombie.ZombieCondition.HYPNOTIZED);
+            if (target != null && this.projectileTemplate != null) {
+                Projectile projectile = this.projectileTemplate.copyAtTarget(plant.getPosition(), target);
+                projectile.setDamageExpression("0");
+                projectile.setForcedCondition(ZombieCondition.HYPNOTIZED);
+                projectile.setSourcePlant(plant);
+                board.addProjectile(projectile);
             }
             return;
         }

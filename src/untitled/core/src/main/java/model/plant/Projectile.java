@@ -27,6 +27,7 @@ public class Projectile implements Tickable {
     private int stunChancePercent;
     private int splashRadius;
     private int maxRange;
+    private ZombieCondition forcedCondition;
     // target haye sabt shode jeloye hit dobare dar yek masir ro migiran
     private List<Zombie> hitZombies;
     private int horizontalDirection;
@@ -116,6 +117,7 @@ public class Projectile implements Tickable {
         copy.lobbed = this.lobbed;
         copy.peaBased = this.peaBased;
         copy.hostileToPlants = this.hostileToPlants;
+        copy.forcedCondition = this.forcedCondition;
         copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
         return copy;
@@ -144,6 +146,7 @@ public class Projectile implements Tickable {
         copy.lobbed = this.lobbed;
         copy.peaBased = this.peaBased;
         copy.hostileToPlants = this.hostileToPlants;
+        copy.forcedCondition = this.forcedCondition;
         copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
         return copy;
@@ -203,6 +206,10 @@ public class Projectile implements Tickable {
     }
 
     public ZombieCondition getConditionFromType() {
+        if (this.forcedCondition != null) {
+            return this.forcedCondition;
+        }
+
         if (this.type == ProjectileType.ICE) {
             return ZombieCondition.CHILLED;
         }
@@ -310,6 +317,10 @@ public class Projectile implements Tickable {
 
     public void setPeaBased(boolean peaBased) {
         this.peaBased = peaBased;
+    }
+
+    public void setForcedCondition(ZombieCondition forcedCondition) {
+        this.forcedCondition = forcedCondition;
     }
 
     public void setRemainingTicks(long remainingTicks) {

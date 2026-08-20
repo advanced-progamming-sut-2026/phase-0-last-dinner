@@ -16,6 +16,7 @@ import java.util.Random;
 @Getter
 @Setter
 public class CombatSystem implements Tickable {
+    private static final double PROJECTILE_ZOMBIE_HIT_RADIUS_TILES = 0.30d;
     private Board board;
     private GameEventListener listener;
     private Random random;
@@ -171,6 +172,8 @@ public class CombatSystem implements Tickable {
         }
     }
     private boolean resolveProjectile(Projectile projectile) {
+        double movementStartX = projectile.getExactX();
+        double movementStartY = projectile.getExactY();
         projectile.move();
         if (projectile.isExpired()) {
             return true;
@@ -185,7 +188,7 @@ public class CombatSystem implements Tickable {
             }
             return plant != null;
         }
-        return this.resolveZombieProjectileHit(projectile);
+        return this.resolveZombieProjectileHit(projectile, movementStartX, movementStartY);
     }
     private boolean interceptProjectile(Projectile projectile) {
         Tile tile = this.board.getTile(projectile.getPosition());
@@ -198,8 +201,12 @@ public class CombatSystem implements Tickable {
         }
         return this.board.getPlantCoverSystem().intercept(projectile);
     }
-    private boolean resolveZombieProjectileHit(Projectile projectile) {
-        Zombie target = this.findCollidingZombie(projectile);
+    private boolean resolveZombieProjectileHit(
+            Projectile projectile,
+            double movementStartX,
+            double movementStartY
+    ) {
+        Zombie target = this.findCollidingZombie(projectile, movementStartX, movementStartY);
         if (target == null) {
             return false;
         }
@@ -351,7 +358,11 @@ public class CombatSystem implements Tickable {
         }
         return nearest;
     }
-    private Zombie findCollidingZombie(Projectile projectile) {
+    private Zombie findCollidingZombie(
+            Projectile projectile,
+            double movementStartX,
+            double movementStartY
+    ) {
         if (projectile.getPosition() == null) {
             return null;
         }
@@ -365,15 +376,49 @@ public class CombatSystem implements Tickable {
                     || zombie.getPosition() == null) {
                 continue;
             }
-            double deltaX = zombie.getExactX() - projectile.getExactX();
-            double deltaY = zombie.getPosition().getY() - projectile.getExactY();
-            double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            if (distance <= Math.max(0.55, projectile.getSpeed() * 0.6) && distance < nearestDistance) {
+            double collisionProgress = this.projectileCollisionProgress(
+                    movementStartX,
+                    movementStartY,
+                    projectile.getExactX(),
+                    projectile.getExactY(),
+                    zombie.getExactX(),
+                    zombie.getPosition().getY()
+            );
+            if (collisionProgress >= 0d && collisionProgress < nearestDistance) {
                 nearest = zombie;
-                nearestDistance = distance;
+                nearestDistance = collisionProgress;
             }
         }
         return nearest;
+    }
+    private double projectileCollisionProgress(
+            double startX,
+            double startY,
+            double endX,
+            double endY,
+            double zombieX,
+            double zombieY
+    ) {
+        double segmentX = endX - startX;
+        double segmentY = endY - startY;
+        double segmentLengthSquared = segmentX * segmentX + segmentY * segmentY;
+        double progress;
+        if (segmentLengthSquared <= 0.0000001d) {
+            progress = 0d;
+        } else {
+            progress = ((zombieX - startX) * segmentX + (zombieY - startY) * segmentY)
+                    / segmentLengthSquared;
+            progress = Math.max(0d, Math.min(1d, progress));
+        }
+
+        double closestX = startX + segmentX * progress;
+        double closestY = startY + segmentY * progress;
+        double deltaX = zombieX - closestX;
+        double deltaY = zombieY - closestY;
+        double distanceSquared = deltaX * deltaX + deltaY * deltaY;
+        double hitRadiusSquared = PROJECTILE_ZOMBIE_HIT_RADIUS_TILES
+                * PROJECTILE_ZOMBIE_HIT_RADIUS_TILES;
+        return distanceSquared <= hitRadiusSquared ? progress : -1d;
     }
     private Zombie findNearestUnhitZombie(Projectile projectile) {
         Zombie nearest = null;

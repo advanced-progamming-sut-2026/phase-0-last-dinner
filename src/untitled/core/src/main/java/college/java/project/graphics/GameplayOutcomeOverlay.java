@@ -15,32 +15,39 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
+import model.chapters.ChapterType;
 
 /** Mandatory win/loss dialog with Exit and loss-only Retry. */
 public final class GameplayOutcomeOverlay extends Group {
     private static final String BRAIN = "IMAGE_UI_GAMEOVER_FAIL_SCREEN_BRAIN_ONLY";
-    private static final String VICTORY_TROPHY = "IMAGE_ENDLEVEL_EGYPT_TROPHY";
     private static final Color LOSS_GREEN = new Color(0.02f, 0.83f, 0.05f, 1f);
 
     private final GameAssetManager assets;
+    private final String victoryTrophyResource;
     private final Group victoryContent;
     private final Group lossContent;
     private final Label title;
     private final Label subtitle;
     private final TextButton retryButton;
+    private final Image victoryTrophy;
     private Runnable exitAction;
     private Runnable retryAction;
     private boolean loss;
 
     public GameplayOutcomeOverlay() {
-        this(new GameAssetManager());
+        this(new GameAssetManager(), ChapterType.ANCIENT_EGYPT);
     }
 
     GameplayOutcomeOverlay(GameAssetManager assets) {
+        this(assets, ChapterType.ANCIENT_EGYPT);
+    }
+
+    GameplayOutcomeOverlay(GameAssetManager assets, ChapterType chapterType) {
         if (assets == null) {
             throw new IllegalArgumentException("Game asset manager is required");
         }
         this.assets = assets;
+        this.victoryTrophyResource = trophyResource(chapterType);
         setSize(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT);
         setTouchable(Touchable.enabled);
         Image dim = new Image(PvzSkin.get().newDrawable("white_pixel", new Color(0f, 0f, 0f, 0.68f)));
@@ -85,14 +92,15 @@ public final class GameplayOutcomeOverlay extends Group {
         this.title.setBounds(520f, 756f, 880f, 110f);
         this.victoryContent.addActor(this.title);
 
-        Drawable trophyDrawable = resourceDrawable(VICTORY_TROPHY);
+        this.victoryTrophy = new Image();
+        Drawable trophyDrawable = resourceDrawable(this.victoryTrophyResource);
         if (trophyDrawable != null) {
-            Image trophy = new Image(trophyDrawable);
-            trophy.setScaling(Scaling.fit);
-            trophy.setBounds(745f, 340f, 430f, 390f);
-            trophy.setTouchable(Touchable.disabled);
-            this.victoryContent.addActor(trophy);
+            this.victoryTrophy.setDrawable(trophyDrawable);
         }
+        this.victoryTrophy.setScaling(Scaling.fit);
+        this.victoryTrophy.setBounds(745f, 340f, 430f, 390f);
+        this.victoryTrophy.setTouchable(Touchable.disabled);
+        this.victoryContent.addActor(this.victoryTrophy);
 
         this.subtitle = new Label("The lawn is safe.", PvzSkin.get(), "medium_outline");
         this.subtitle.setAlignment(Align.center);
@@ -121,6 +129,12 @@ public final class GameplayOutcomeOverlay extends Group {
     public void act(float delta) {
         super.act(delta);
         this.assets.update();
+        if (this.victoryTrophy.getDrawable() == null) {
+            Drawable trophyDrawable = resourceDrawable(this.victoryTrophyResource);
+            if (trophyDrawable != null) {
+                this.victoryTrophy.setDrawable(trophyDrawable);
+            }
+        }
     }
 
     public void setActions(Runnable exit, Runnable retry) {
@@ -225,5 +239,17 @@ public final class GameplayOutcomeOverlay extends Group {
             return null;
         }
         return null;
+    }
+
+    private static String trophyResource(ChapterType chapterType) {
+        if (chapterType == null) {
+            return "IMAGE_ENDLEVEL_EGYPT_TROPHY";
+        }
+        return switch (chapterType) {
+            case ICE_CAVES -> "IMAGE_ENDLEVEL_ICEAGE_TROPHY";
+            case BIG_WAVE_BEACH -> "IMAGE_ENDLEVEL_BEACH_TROPHY";
+            case MEDIEVAL -> "IMAGE_ENDLEVEL_DARK_TROPHY";
+            case ANCIENT_EGYPT -> "IMAGE_ENDLEVEL_EGYPT_TROPHY";
+        };
     }
 }
