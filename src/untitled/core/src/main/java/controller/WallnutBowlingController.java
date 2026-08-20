@@ -1,5 +1,6 @@
 package controller;
 
+import lombok.Getter;
 import model.mechanism.Position;
 import model.minigame.wallnutbowlingminigame.WallnutBowlingActionResult;
 import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
@@ -7,6 +8,7 @@ import model.minigame.wallnutbowlingminigame.WallnutBowlingStateResult;
 import view.wallnutbowling.WallnutBowlingView;
 import view.wallnutbowling.WallnutBowlingViewObserver;
 
+@Getter
 public class WallnutBowlingController
         implements WallnutBowlingViewObserver {
 
@@ -14,30 +16,19 @@ public class WallnutBowlingController
 
     private final WallnutBowlingMiniGame game;
 
-    public WallnutBowlingController(
-            WallnutBowlingView view
-    ) {
-        this(
-                view,
-                new WallnutBowlingMiniGame()
-        );
+    public WallnutBowlingController(WallnutBowlingMiniGame game) {
+        this.game = game == null ? new WallnutBowlingMiniGame() : game;
     }
 
-    public WallnutBowlingController(
-            WallnutBowlingView view,
-            WallnutBowlingMiniGame game
-    ) {
-        if (view == null) {
-            throw new IllegalArgumentException(
-                    "Wallnut Bowling view cannot be null."
-            );
-        }
+    public WallnutBowlingController(WallnutBowlingView view) {
+        this(view, new WallnutBowlingMiniGame());
+    }
 
-        if (game == null) {
-            this.game =
-                    new WallnutBowlingMiniGame();
-        } else {
-            this.game = game;
+    public WallnutBowlingController(WallnutBowlingView view, WallnutBowlingMiniGame game) {
+        this(game);
+
+        if (view == null) {
+            throw new IllegalArgumentException("Wallnut Bowling view cannot be null.");
         }
 
         view.setObserver(this);
@@ -116,7 +107,4 @@ public class WallnutBowlingController
         return game.getState();
     }
 
-    public WallnutBowlingMiniGame getGame() {
-        return game;
-    }
 }

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Random;
+import model.zombie.ZombieCondition;
 
 // vasebreaker ro be runtime asli plant va zombie vasl mikone
 public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration {
@@ -34,49 +35,80 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
     private static final String ARMOR_RESOURCE = "data/ArmorTypeData.json";
 
     private static final String[][] PLANT_NAMES_BY_STAGE = {
-            {
-                    "Peashooter", "Repeater", "Snow Pea", "Potato Mine",
-                    "Bonk Choy", "Wall-nut"
-            },
-            {
-                    "Peashooter", "Repeater", "Snow Pea", "Potato Mine",
-                    "Bonk Choy", "Wall-nut", "Threepeater", "Split Pea",
-                    "Cabbage-pult", "Kernel-pult", "Cherry Bomb", "Fume-shroom",
-                    "Tall-nut", "Chomper"
-            },
-            {
-                    "Peashooter", "Repeater", "Snow Pea", "Potato Mine",
-                    "Bonk Choy", "Wall-nut", "Threepeater", "Split Pea",
-                    "Cabbage-pult", "Kernel-pult", "Cherry Bomb", "Fume-shroom",
-                    "Tall-nut", "Chomper", "Citron", "Bowling Bulb",
-                    "Fire Peashooter", "Starfruit", "Goo Peashooter",
-                    "Mega Gatling Pea", "Melon-pult", "Winter Melon",
-                    "Pepper-pult", "Primal Potato Mine", "Grapeshot", "Jalapeno",
-                    "Endurian", "Garlic", "Torchwood", "Magnet-shroom", "Cat-tail"
-            }
+        {
+            "Repeater",
+            "Snow Pea",
+            "Potato Mine",
+            "Bonk Choy",
+            "Peashooter",
+            "Wall-nut"
+        },
+        {
+            "Repeater",
+            "Snow Pea",
+            "Threepeater",
+            "Kernel-pult",
+            "Cherry Bomb",
+            "Chomper",
+            "Tall-nut"
+        },
+        {
+            "Mega Gatling Pea",
+            "Winter Melon",
+            "Fire Peashooter",
+            "Bowling Bulb",
+            "Cherry Bomb",
+            "Grapeshot",
+            "Jalapeno",
+            "Primal Potato Mine",
+            "Endurian",
+            "Magnet-shroom"
+        }
     };
 
     private static final String[][] REGULAR_ZOMBIE_ALIASES_BY_STAGE = {
-            {
-                    "ZombieDefault", "ZombieArmor1", "ZombieArmor2"
-            },
-            {
-                    "ZombieDefault", "ZombieArmor1", "ZombieArmor2", "ZombieArmor4",
-                    "ZombieImp", "ZombieRa", "ZombieExplorer", "ZombieTombRaiser",
-                    "ZombieProspector", "ZombieNewspaper", "ZombieIceAgeDodo",
-                    "ZombieIceAgeHunter"
-            },
-            {
-                    "ZombieDefault", "ZombieArmor1", "ZombieArmor2", "ZombieArmor4",
-                    "ZombieDarkArmor3", "ZombieImp", "ZombieRa", "ZombieExplorer",
-                    "ZombieTombRaiser", "ZombieIceAgeDodo", "ZombieIceAgeHunter",
-                    "ZombieIceAgeTroglobite", "ZombieBeachFisherman", "ZombieBeachOctopus",
-                    "ZombieBeachSnorkel", "ZombieDarkJuggler", "ZombieWizard",
-                    "ZombieDarkKing", "ZombieDarkImpDragon", "ZombieModernAllStar",
-                    "ZombieLostCityJane", "ZombieCrystalSkull", "ZombieProspector",
-                    "ZombiePiano", "ZombieNewspaper", "ZombieArcade", "ZombieBarrelRoller"
-            }
+        {
+            "ZombieDefault",
+            "ZombieDefault",
+            "ZombieDefault",
+            "ZombieArmor1",
+            "ZombieArmor1"
+        },
+        {
+            "ZombieDefault",
+            "ZombieArmor1",
+            "ZombieDefault",
+            "ZombieArmor1",
+            "ZombieImp",
+            "ZombieNewspaper",
+            "ZombieArmor2",
+            "ZombieExplorer"
+        },
+        {
+            "ZombieDefault",
+            "ZombieDefault",
+            "ZombieDefault",
+            "ZombieArmor1",
+            "ZombieArmor1",
+            "ZombieArmor1",
+            "ZombieArmor2",
+            "ZombieArmor2",
+            "ZombieImp",
+            "ZombieImp",
+            "ZombieNewspaper",
+            "ZombieNewspaper",
+            "ZombieExplorer",
+            "ZombieArmor4"
+        }
     };
+
+    private static final double[] ZOMBIE_SPEED_MULTIPLIER_BY_STAGE = {
+        0.72d,
+        0.82d,
+        0.90d
+    };
+
+    private static final long RELEASE_STUN_TICKS = 12;
 
     private final PlantDefinitionRepository plantDefinitions;
     private final ZombieDefinitionRepository zombieDefinitions;
@@ -93,6 +125,9 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
     private PlantingSystem seedPacketPlantingSystem;
     private CombatSystem combatSystem;
     private int stageNumber;
+
+    private int nextPlantIndex;
+    private int nextRegularZombieIndex;
 
     public PlantZombieVasebreakerIntegration() {
         this(loadBundledDefinitions(), new Random());
@@ -147,6 +182,8 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
     public void prepareStage(int stageNumber) {
         this.requireValidStage(stageNumber);
         this.stageNumber = stageNumber;
+        this.nextPlantIndex = 0;
+        this.nextRegularZombieIndex = 0;
         this.releasedZombies.clear();
 
         this.board = new Board();
@@ -165,49 +202,45 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
     @Override
     public PlantDefinition choosePlantDefinition(int stageNumber) {
         this.requireValidStage(stageNumber);
-        List<PlantDefinition> candidates = new ArrayList<>();
+        String[] deck = PLANT_NAMES_BY_STAGE[stageNumber - 1];
 
-        for (String name : PLANT_NAMES_BY_STAGE[stageNumber - 1]) {
+        for (int attempt = 0; attempt < deck.length; attempt++) {
+            String name = deck[this.nextPlantIndex % deck.length];
+            this.nextPlantIndex++;
+
             PlantDefinition definition = this.plantDefinitions.findByName(name);
-
-            if (definition != null) {
-                candidates.add(definition);
-            }
+            if (definition != null)
+                return definition;
         }
 
-        if (candidates.isEmpty()) {
-            for (PlantDefinition definition : this.plantDefinitions.findAll()) {
-                if (this.isUsefulVasebreakerPlant(definition)) {
-                    candidates.add(definition);
-                }
-            }
+        for (PlantDefinition definition : this.plantDefinitions.findAll()) {
+            if (this.isUsefulVasebreakerPlant(definition))
+                return definition;
         }
 
-        return this.chooseRandom(candidates);
+        return null;
     }
 
     @Override
     public ZombieDefinition chooseRegularZombieDefinition(int stageNumber) {
         this.requireValidStage(stageNumber);
-        List<ZombieDefinition> candidates = new ArrayList<>();
+        String[] deck = REGULAR_ZOMBIE_ALIASES_BY_STAGE[stageNumber - 1];
 
-        for (String alias : REGULAR_ZOMBIE_ALIASES_BY_STAGE[stageNumber - 1]) {
+        for (int attempt = 0; attempt < deck.length; attempt++) {
+            String alias = deck[this.nextRegularZombieIndex % deck.length];
+            this.nextRegularZombieIndex++;
+
             ZombieDefinition definition = this.zombieDefinitions.findByAlias(alias);
-
-            if (this.isRegularZombie(definition)) {
-                candidates.add(definition);
-            }
+            if (this.isRegularZombie(definition))
+                return definition;
         }
 
-        if (candidates.isEmpty()) {
-            for (ZombieDefinition definition : this.zombieDefinitions.findAll()) {
-                if (this.isRegularZombie(definition)) {
-                    candidates.add(definition);
-                }
-            }
+        for (ZombieDefinition definition : this.zombieDefinitions.findAll()) {
+            if (this.isRegularZombie(definition))
+                return definition;
         }
 
-        return this.chooseRandom(candidates);
+        return null;
     }
 
     @Override
@@ -241,6 +274,10 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
         if (zombie == null) {
             return false;
         }
+
+        double speedMultiplier = ZOMBIE_SPEED_MULTIPLIER_BY_STAGE[this.stageNumber - 1];
+        zombie.setCurrentSpeed(zombie.getCurrentSpeed() * speedMultiplier);
+        zombie.addCondition(ZombieCondition.STUNNED, RELEASE_STUN_TICKS);
 
         this.board.addZombie(zombie, boardPosition);
 
