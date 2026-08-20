@@ -65,15 +65,15 @@ public class VaseBreakerStageGenerator {
 
     public List<Vase> generateStageOne() {
         return buildStage(
-                1,
-                7,
-                9,
-                4,
-                3,
-                2,
-                4,
-                3,
-                0
+            1,
+            7,
+            9,
+            5,
+            4,
+            2,
+            5,
+            4,
+            0
         );
     }
 
