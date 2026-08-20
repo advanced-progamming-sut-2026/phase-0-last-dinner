@@ -190,7 +190,7 @@ public final class GameplayWorldScene extends Group {
         this.pauseOverlay.setActions(this::resumeGame, this::runRestart, this::runSaveAndExit);
         addActor(this.pauseOverlay);
 
-        this.outcomeOverlay = new GameplayOutcomeOverlay();
+        this.outcomeOverlay = new GameplayOutcomeOverlay(this.assets);
         this.outcomeOverlay.setActions(this::runExit, this::runRetry);
         addActor(this.outcomeOverlay);
 

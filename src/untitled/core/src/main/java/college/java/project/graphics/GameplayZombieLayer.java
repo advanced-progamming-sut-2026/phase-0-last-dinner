@@ -50,6 +50,7 @@ public final class GameplayZombieLayer extends Group {
     private static final float PROSPECTOR_FLIGHT_SECONDS = 1.15f;
     private static final float ROW_SLIDE_SECONDS = 0.30f;
     private static final float PRE_ANCHOR_PLANT_BOTTOM_FACTOR = -0.01f;
+    private static final float GARGANTUAR_GROUND_CORRECTION_FACTOR = 0.62f;
     private static final String ASH_MAIN = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_104X95";
     private static final String ASH_PILE = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_53X33";
     private static final String ASH_DUST_TALL = "IMAGE_EFFECTS_ZOMBIE_ASH_ZOMBIE_ASH_15X26";
@@ -1581,9 +1582,12 @@ public final class GameplayZombieLayer extends Group {
         float actorHeight = GameplayPamScale.actorHeight(rendered.animation.getCanvasHeight());
         float gaitOffset = zombie.isAttacking() || rendered.groundMotion == null
                 ? 0f : rendered.groundMotion.offsetX(actor.getStateTime());
+        float groundCorrection = normalizeAlias(rendered.alias).contains("gargantuar")
+                ? rendered.root.getHeight() * GARGANTUAR_GROUND_CORRECTION_FACTOR
+                : 0f;
         actor.setBounds(
                 rendered.root.getWidth() / 2f + rendered.centerOffset + gaitOffset - actorWidth / 2f,
-                rendered.groundOffset - actorHeight / 2f,
+                rendered.groundOffset - actorHeight / 2f - groundCorrection,
                 actorWidth,
                 actorHeight
         );

@@ -162,7 +162,7 @@ public final class GameplayPlantLayer extends Group {
     public boolean playAttack(Projectile projectile) {
         Plant plant = projectile == null ? null : projectile.getSourcePlant();
         RenderedPlant rendered = plant == null ? null : this.actors.get(plant);
-        if (rendered == null) {
+        if (rendered == null || rendered.plantFoodRemaining > 0f) {
             return false;
         }
         if (isBowlingBulb(plant.getName())) {
