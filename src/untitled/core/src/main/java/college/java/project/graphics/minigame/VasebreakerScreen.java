@@ -61,11 +61,13 @@ public final class VasebreakerScreen implements Screen {
         this.stage.addActor(this.worldScene);
 
         VaseLayer vaseLayer = new VaseLayer(this.controller, this.worldScene.getAssets());
-
         vaseLayer.setBounds(GameplayWorldLayout.LAWN_X, GameplayWorldLayout.LAWN_Y, GameplayWorldLayout.LAWN_WIDTH,
             GameplayWorldLayout.LAWN_HEIGHT);
-
         this.worldScene.addActorBefore(this.worldScene.getInteractionLayer(), vaseLayer);
+
+        VasebreakerSeedPacketLayer seedPacketLayer = new VasebreakerSeedPacketLayer(this.controller, this.worldScene.getAssets());
+        seedPacketLayer.setBounds(0f, 0f, GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT);
+        this.worldScene.addActorBefore(this.worldScene.getInteractionLayer(), seedPacketLayer);
 
         configureWorldScene();
     }
@@ -84,18 +86,15 @@ public final class VasebreakerScreen implements Screen {
     }
 
     private void configureWorldScene() {
-        this.worldScene.getSeedBank().setVisible(false);
-        this.worldScene.getConveyorBelt().setVisible(false);
+        this.worldScene.getSeedBank().remove();
+        this.worldScene.getConveyorBelt().remove();
+        this.worldScene.getSunLayer().remove();
+
         this.worldScene.getWaveProgressBar().setVisible(false);
         this.worldScene.getInteractionHud().setVisible(false);
         this.worldScene.getInteractionLayer().setTouchable(Touchable.disabled);
 
-        this.worldScene.setSessionActions(
-            this::restartStage,
-            this::exitScreen,
-            this::exitScreen,
-            this::restartStage
-        );
+        this.worldScene.setSessionActions(this::restartStage, this::exitScreen, this::exitScreen, this::restartStage);
 
         this.worldScene.setOutcomeAction(() -> this.application.getApplicationController().save());
     }

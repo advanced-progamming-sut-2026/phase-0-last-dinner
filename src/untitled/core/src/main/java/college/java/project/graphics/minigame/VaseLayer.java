@@ -104,8 +104,8 @@ public final class VaseLayer extends Group {
     }
 
     private void createVase(Vase vase) {
-        int column = vase.getPosition().getX();
-        int row = vase.getPosition().getY();
+        int column = vase.getPosition().getX() - 1;
+        int row = vase.getPosition().getY() - 1;
 
         if (column < 0 || column >= COLUMN_COUNT || row < 0 || row >= ROW_COUNT) {
             return;
