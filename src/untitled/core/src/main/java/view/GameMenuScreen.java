@@ -121,7 +121,7 @@ public class GameMenuScreen implements Screen {
         User user = this.controller.getCurrentUser();
         int gold = user == null ? 0 : user.getGold();
         int diamonds = user == null ? 0 : user.getDiamond();
-        Actor travelLogIcon = this.createIconAction(TRAVEL_LOG_ICON_PATH, "menu travel-log", this.navigator::openTravelLog);
+        Actor travelLogIcon = this.createIconAction(TRAVEL_LOG_ICON_PATH, "menu enter travel-log", this.navigator::openTravelLog);
         Actor greenhouseIcon = this.createIconAction(GREENHOUSE_ICON_PATH, "menu greenhouse", this.navigator::openGreenhouse);
         Actor leaderboardIcon = this.createIconAction(
             LEADERBOARD_ICON_PATH,

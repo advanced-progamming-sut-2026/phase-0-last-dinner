@@ -196,7 +196,6 @@ public final class GameplayWorldScene extends Group {
 
         wireSeedBank();
         updatePlantSelectorMode();
-        showInitialMissionIfRequired();
     }
 
     @Override
@@ -227,6 +226,9 @@ public final class GameplayWorldScene extends Group {
         this.seedBank.clearSelectionSilently();
         this.interactionHud.refresh();
         this.pauseOverlay.setVisible(true);
+    }
+    public void showInitialMissionIfNeeded() {
+        this.showInitialMissionIfRequired();
     }
 
     public void resumeGame() {

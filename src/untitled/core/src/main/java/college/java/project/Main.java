@@ -28,6 +28,7 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import pvz.skin.PvzSkin;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import view.GreenhouseScreen;
 
 @Getter
 public final class Main extends Game {
@@ -197,7 +198,6 @@ public final class Main extends Game {
 
             @Override
             public void openNewsMenu() {
-                // TODO: هنوز صفحه‌ی گرافیکی News ساخته نشده
             }
 
             @Override
@@ -233,12 +233,12 @@ public final class Main extends Game {
 
             @Override
             public void openGreenhouse() {
-                // TODO: هنوز صفحه‌ی گرافیکی Greenhouse ساخته نشده
+                showGreenhouseScreen();
             }
 
             @Override
             public void openTravelLog() {
-                // TODO: هنوز صفحه‌ی گرافیکی Travel Log ساخته نشده
+                showTravelLogScreen();
             }
 
             @Override
@@ -264,6 +264,21 @@ public final class Main extends Game {
 
     private void showLeaderBoardMenuScreen(Runnable onBack) {
         changeScreen(new view.LeaderBoardMenuScreen(this.applicationController, onBack::run));
+    }
+    public void showGreenhouseScreen() {
+        changeScreen(new GreenhouseScreen(this.applicationController, this::showGameMenuScreen));
+    }
+    public void showTravelLogScreen() {
+        changeScreen(new view.TravelLogScreen(
+            this.applicationController,
+            new view.TravelLogScreen.Navigator() {
+                @Override
+                public void onBack() {
+                    showGameMenuScreen();
+                }
+            },
+            null
+        ));
     }
 
     private void transferStoredPlantFood(User user, PlantZombieGame game) {

@@ -78,6 +78,7 @@ public class ApplicationController implements CommandHandler {
     private GreenhouseView greenhouseView;
     private User greenhouseViewUser;
     private TravelLogView travelLogView;
+    private TravelLogController travelLogController;
     private User travelLogViewUser;
     // اینا هم برا کالکشن
     private final PlantDefinitionRepository plantDefinitions;
@@ -94,6 +95,7 @@ public class ApplicationController implements CommandHandler {
 
     private LeaderBoardView leaderBoardView;
     private LeaderBoardController leaderBoardController;
+
 
     private SettingView settingView;
     private User settingViewUser;
@@ -362,6 +364,7 @@ public class ApplicationController implements CommandHandler {
         if (backToGame) {
             this.menuContext.exitMenu();
             this.travelLogView = null;
+            this.travelLogController = null;
             this.travelLogViewUser = null;
         }
         return "";
@@ -373,9 +376,16 @@ public class ApplicationController implements CommandHandler {
         }
         this.currentUser.initializeMissingFields();
         this.travelLogView = new TravelLogView();
-        new TravelLogController(this.travelLogView, this.currentUser.getTravelLog(),
+        this.travelLogController = new TravelLogController(this.travelLogView, this.currentUser.getTravelLog(),
             this.currentUser, this.plantDefinitions);
         this.travelLogViewUser = this.currentUser;
+    }
+    public TravelLogController getOrCreateTravelLogController() {
+        if (this.currentUser == null) {
+            return null;
+        }
+        this.ensureTravelLogConnected();
+        return this.travelLogController;
     }
 
     boolean isShopCommand(String input) {
@@ -538,6 +548,10 @@ public class ApplicationController implements CommandHandler {
         this.ensureSettingConnected();
         return this.settingView;
     }
+    public GreenhouseView getOrCreateGreenhouseView() {
+        this.ensureGreenhouseConnected();
+        return this.greenhouseView;
+    }
 
     private void ensureSettingConnected() {
         if (this.settingView != null && this.settingViewUser == this.currentUser) {
@@ -640,6 +654,7 @@ public class ApplicationController implements CommandHandler {
         this.greenhouseViewUser = null;
         this.travelLogView = null;
         this.travelLogViewUser = null;
+        this.travelLogController = null;
         this.collectionView = null;
         this.collectionViewUser = null;
         this.newsView = null;

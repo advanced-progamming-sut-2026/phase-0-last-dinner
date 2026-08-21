@@ -74,6 +74,14 @@ public final class GameplayScreen implements Screen {
                 GameplayWorldLayout.STAGE_HEIGHT
         ));
         this.stage.addActor(this.worldScene);
+        boolean shownIntroDialog = view.NpcDialogOverlay.show(
+            this.stage,
+            view.LevelNpcDialogs.getIntroDialog(this.chapterType, this.levelType),
+            this.worldScene::showInitialMissionIfNeeded
+        );
+        if (!shownIntroDialog) {
+            this.worldScene.showInitialMissionIfNeeded();
+        }
         this.worldScene.setSessionActions(
                 () -> queueSessionAction(this::restartLevel),
                 () -> queueSessionAction(this::saveAndExit),
@@ -246,6 +254,20 @@ public final class GameplayScreen implements Screen {
 
     private void persistOutcome() {
         boolean won = !this.worldScene.getOutcomeOverlay().isLoss();
+        this.worldScene.getOutcomeOverlay().setVisible(false);
+        Runnable revealOutcome = () -> this.worldScene.getOutcomeOverlay().setVisible(true);
+        if (won) {
+            boolean shownWinDialog = view.NpcDialogOverlay.show(
+                this.stage,
+                view.LevelNpcDialogs.getWinDialog(this.chapterType, this.levelType),
+                revealOutcome
+            );
+            if (!shownWinDialog) {
+                revealOutcome.run();
+            }
+        } else {
+            revealOutcome.run();
+        }
         this.application.getApplicationController().finishGraphicalGame(won);
     }
 
