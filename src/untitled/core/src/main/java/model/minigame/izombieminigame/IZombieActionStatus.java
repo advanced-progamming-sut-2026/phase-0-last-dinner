@@ -22,5 +22,6 @@ public enum IZombieActionStatus {
 
     STAGE_WON,
     GAME_WON,
-    GAME_LOST
+    GAME_LOST,
+    ZOMBIE_ON_COOLDOWN
 }

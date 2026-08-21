@@ -206,9 +206,6 @@ public class PlantZombieIZombieIntegration implements IZombieIntegration {
       IZombieSunProducerBehavior behavior = createSunProducerBehavior(miniGame, config);
       zombie.addBehavior(behavior);
       board.addZombie(zombie, position);
-      if (zombie.getBoard() == board) {
-        playerZombies.add(zombie);
-      }
     }
   }
   private static IZombieSunProducerBehavior createSunProducerBehavior(

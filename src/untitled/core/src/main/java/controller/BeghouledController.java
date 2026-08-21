@@ -15,28 +15,27 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Getter
-public class BeghouledController
-        implements BeghouledViewObserver {
+public class BeghouledController implements BeghouledViewObserver {
 
     private final BeghouledMiniGame game;
 
-    public BeghouledController(
-            BeghouledView view,
-            BeghouledMiniGame game
-    ) {
-        if (view == null) {
-            throw new IllegalArgumentException(
-                    "Beghouled view cannot be null."
-            );
-        }
-
-        if (game == null) {
-            throw new IllegalArgumentException(
-                    "Beghouled mini game cannot be null."
-            );
-        }
+    public BeghouledController(BeghouledMiniGame game) {
+        if (game == null)
+            throw new IllegalArgumentException("Beghouled mini game cannot be null.");
 
         this.game = game;
+    }
+
+    public BeghouledController(BeghouledView view) {
+        this(view, new BeghouledMiniGame());
+    }
+
+    public BeghouledController(BeghouledView view, BeghouledMiniGame game) {
+        this(game);
+
+        if (view == null)
+            throw new IllegalArgumentException("Beghouled view cannot be null.");
+
         view.setObserver(this);
     }
 
