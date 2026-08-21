@@ -20,6 +20,8 @@ import model.collection.CollectionActionStatus;
 import model.collection.PlantCollectionState;
 import model.level.LevelType;
 import model.mechanism.Board;
+import model.mechanism.CombatSystem;
+import model.mechanism.GameEngine;
 import model.mechanism.LawnMower;
 import model.mechanism.Position;
 import model.mechanism.Tile;
@@ -113,7 +115,7 @@ public final class GraphicsDevHarnessGame extends Game {
                 data.prepareZombieCalibration(3);
                 yield new HarnessGameplayScreen(data);
             }
-            case "pick", "plant-pick" -> new PlantPickScreen(data, data.getChapterType());
+            case "pick", "plant-pick" -> createPlantPickScreen(data);
             case "zombies", "zombie-collection" -> new ZombieCollectionScreen(data.zombieDefinitions);
             case "details-goo", "goo-details" -> new HarnessPlantDetailsScreen(data, "Goo Peashooter");
             case "details", "plant-details" -> new HarnessPlantDetailsScreen(data, "Rotobaga");
@@ -144,6 +146,14 @@ public final class GraphicsDevHarnessGame extends Game {
             default -> new PlantCollectionScreen(data);
         };
         return screen instanceof HarnessGameplayScreen ? screen : new HarnessCaptureScreen(screen);
+    }
+
+    private Screen createPlantPickScreen(HarnessData data) {
+        PlantPickScreen plantPickScreen = new PlantPickScreen(data, data.getChapterType());
+        plantPickScreen.setOnStart(() -> setScreen(
+                new HarnessGameplayScreen(data, true).enableLiveSimulation()
+        ));
+        return plantPickScreen;
     }
 
     private static void writeFrameBufferPng(String path) {
@@ -299,6 +309,8 @@ public final class GraphicsDevHarnessGame extends Game {
         private final boolean plantFoodDemo;
         private final boolean advancedDemo;
         private final boolean magnetDemo;
+        private boolean liveSimulation;
+        private float simulationAccumulator;
         private long firstRenderNanos;
         private boolean damageTriggered;
         private boolean explosionTriggered;
@@ -419,6 +431,11 @@ public final class GraphicsDevHarnessGame extends Game {
             }
         }
 
+        private HarnessGameplayScreen enableLiveSimulation() {
+            this.liveSimulation = true;
+            return this;
+        }
+
         private void prepareAbilityDemo() {
             this.data.clearBoardEntities();
             this.data.addPlant("Peashooter", 2, 0);
@@ -512,11 +529,19 @@ public final class GraphicsDevHarnessGame extends Game {
         public void render(float delta) {
             ScreenUtils.clear(Color.BLACK);
             float frameDelta = Math.min(Math.max(delta, 0f), 1f / 20f);
+            if (this.liveSimulation) {
+                this.simulationAccumulator += Math.min(Math.max(delta, 0f), 0.25f);
+                while (this.simulationAccumulator >= 0.1f) {
+                    this.data.advanceSimulationTick();
+                    this.simulationAccumulator -= 0.1f;
+                }
+            }
             if (this.firstRenderNanos == 0L) {
                 this.firstRenderNanos = System.nanoTime();
             }
             float wallSeconds = (System.nanoTime() - this.firstRenderNanos) / 1_000_000_000f;
-            if (this.interactionDemo && this.demoStep == 0 && wallSeconds >= 0.55f) {
+            if (this.interactionDemo && !this.liveSimulation
+                    && this.demoStep == 0 && wallSeconds >= 0.55f) {
                 this.scene.getInteractionLayer().hoverCell(3, 2);
                 this.scene.getInteractionLayer().applyAtCell(3, 2);
                 this.demoStep = 1;
@@ -775,6 +800,8 @@ public final class GraphicsDevHarnessGame extends Game {
         private final ZombieFactory zombieFactory;
         private final ChapterType chapterType;
         private final Board board;
+        private final GameEngine gameEngine;
+        private final CombatSystem combatSystem;
         private final Set<String> selectedNames = new LinkedHashSet<>();
         private final Set<String> boostedNames = new LinkedHashSet<>();
         private final Set<String> lockedNames = new LinkedHashSet<>();
@@ -796,8 +823,15 @@ public final class GraphicsDevHarnessGame extends Game {
             this.zombieFactory = new ZombieFactory(zombieDefinitions);
             this.chapterType = chapterType;
             this.board = new Board();
+            this.gameEngine = new GameEngine(this.board);
+            this.combatSystem = new CombatSystem(this.board);
+            this.gameEngine.register(this.combatSystem);
             prepareProgress();
             prepareBoard();
+        }
+
+        private void advanceSimulationTick() {
+            this.gameEngine.advanceTime();
         }
 
         private void prepareProgress() {
@@ -808,9 +842,6 @@ public final class GraphicsDevHarnessGame extends Game {
                     continue;
                 }
                 this.upgrades.addSeedPackets(definition.getName(), 40 + index % 5 * 5);
-                if (index >= Math.max(0, definitions.size() - 7)) {
-                    this.lockedNames.add(normalize(definition.getName()));
-                }
             }
             addSelected("Peashooter");
             addSelected("Sunflower");

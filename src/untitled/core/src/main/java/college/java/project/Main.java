@@ -1,5 +1,6 @@
 package college.java.project;
 
+import college.java.project.graphics.AdventureLevelSelectionScreen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -42,6 +43,7 @@ public final class Main extends Game {
     private CollectionController collectionController;
     private CollectionMenuCoordinator collectionMenuCoordinator;
     private Screen collectionReturnScreen;
+    private AdventureLevelSelectionScreen adventureLevelSelectionScreen;
 
     private Skin skin;
 
@@ -73,6 +75,7 @@ public final class Main extends Game {
         this.skin = PvzSkin.get();
         this.authBackground = new Texture(Gdx.files.internal("ui/auth_background.png"));
         this.authBackground.setFilter(TextureFilter.Linear, TextureFilter.Linear);
+        this.adventureLevelSelectionScreen = new AdventureLevelSelectionScreen(this);
 
         if (this.applicationController.getCurrentUser() != null)
             showMainMenuScreen();
@@ -220,7 +223,7 @@ public final class Main extends Game {
         changeScreen(new view.GameMenuScreen(this.applicationController, new view.GameMenuScreen.Navigator() {
             @Override
             public void openChapterMenu(model.chapters.ChapterType chapter) {
-                // TODO: هنوز صفحه‌ی گرافیکی Chapter/Level ساخته نشده
+                showChapterScreen(chapter);
             }
 
             @Override
@@ -248,6 +251,15 @@ public final class Main extends Game {
                 showMainMenuScreen();
             }
         }));
+    }
+
+    public void showChapterScreen(model.chapters.ChapterType chapter) {
+        changeScreen(new view.ChapterScreen(
+            this.applicationController,
+            chapter,
+            this.adventureLevelSelectionScreen::openLevel,
+            () -> showGameMenuScreen()
+        ));
     }
 
     private void showLeaderBoardMenuScreen(Runnable onBack) {

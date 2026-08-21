@@ -11,6 +11,7 @@ import java.util.List;
 
 public class BasicZombieBehavior implements ZombieBehavior {
     private static final int TICKS_PER_SECOND = 10;
+    private static final double PLANT_ATTACK_DISTANCE = 0.55d;
 
     private int eatDamagePerSecond;
     private int damageRemainder;
@@ -37,7 +38,7 @@ public class BasicZombieBehavior implements ZombieBehavior {
             return;
         }
 
-        Plant target = board == null ? null : board.getNearestPlantInZombieAttackRange(zombie.getPosition(), 1);
+        Plant target = this.findPlantInContactRange(zombie, board);
 
         if (target == null || target.isDead()) {
             zombie.setAttacking(false);
@@ -57,6 +58,23 @@ public class BasicZombieBehavior implements ZombieBehavior {
         if (!canEat) {
             this.moveIfAllowed(zombie, board);
         }
+    }
+
+    private Plant findPlantInContactRange(Zombie zombie, Board board) {
+        if (zombie == null || zombie.getPosition() == null || board == null) {
+            return null;
+        }
+
+        for (Plant candidate : board.getPlantsInZombieAttackRange(zombie.getPosition(), 1)) {
+            if (candidate == null || candidate.isDead() || candidate.getPosition() == null) {
+                continue;
+            }
+            double distance = zombie.getExactX() - candidate.getPosition().getX();
+            if (distance >= 0d && distance <= PLANT_ATTACK_DISTANCE) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     @Override

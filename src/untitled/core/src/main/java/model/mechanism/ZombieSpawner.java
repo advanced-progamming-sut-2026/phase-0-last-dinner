@@ -14,9 +14,13 @@ import view.GameEventListener;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
 
 @Getter
 public class ZombieSpawner {
+    private static final double MIN_WAVE_ENTRY_JITTER_SECONDS = 0.30d;
+    private static final double MAX_WAVE_ENTRY_JITTER_SECONDS = 0.60d;
+    private static final double STANDARD_EDGE_ENTRY_OFFSET_TILES = 1.00d;
     private ZombieFactory zombieFactory;
     private ZombieDefinitionRepository definitionRepository;
     private Board board;
@@ -90,7 +94,45 @@ public class ZombieSpawner {
                     + " which costed " + this.getAdjustedWavePointCost(definition) + ".");
         }
 
+        this.applyWaveEntryJitter(spawnedZombies);
         return spawnedZombies;
+    }
+
+    private void applyWaveEntryJitter(List<Zombie> spawnedZombies) {
+        if (spawnedZombies == null || spawnedZombies.size() < 2) {
+            return;
+        }
+
+        double cumulativeEntryDelaySeconds = 0d;
+        boolean firstEdgeZombieSeen = false;
+
+        for (Zombie zombie : spawnedZombies) {
+            if (!this.isStandardEdgeSpawn(zombie)) {
+                continue;
+            }
+
+            if (firstEdgeZombieSeen) {
+                double gapSeconds = ThreadLocalRandom.current().nextDouble(
+                        MIN_WAVE_ENTRY_JITTER_SECONDS,
+                        MAX_WAVE_ENTRY_JITTER_SECONDS
+                );
+                cumulativeEntryDelaySeconds += gapSeconds;
+            } else {
+                firstEdgeZombieSeen = true;
+            }
+
+            zombie.applySpawnEntryOffset(
+                    STANDARD_EDGE_ENTRY_OFFSET_TILES
+                            + zombie.getCurrentSpeed() * cumulativeEntryDelaySeconds
+            );
+        }
+    }
+
+    private boolean isStandardEdgeSpawn(Zombie zombie) {
+        return zombie != null
+                && zombie.getPosition() != null
+                && zombie.getPosition().getX() == 8
+                && !zombie.isDead();
     }
 
     private boolean isValidWaveDifficulty(double difficulty) {

@@ -1,7 +1,6 @@
 package college.java.project.graphics;
 
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.InputListener;
@@ -22,7 +21,7 @@ import java.util.Set;
 import java.util.Collections;
 import java.util.function.Consumer;
 
-/** Shows falling/ground suns and collects them when the pointer passes over them. */
+/** Shows falling and ground suns. */
 public final class GameplaySunLayer extends Group {
     private static final String SUN_RESOURCE = "IMAGE_EFFECTS_SUN_SUN_166X166";
 
@@ -145,38 +144,46 @@ public final class GameplaySunLayer extends Group {
             image.setTouchable(Touchable.enabled);
             image.addListener(new InputListener() {
                 @Override
-                public void enter(InputEvent event, float x, float y, int pointer, Actor fromActor) {
-                    if (collecting.contains(sun) || !collectSun(sun)) {
-                        return;
-                    }
-                    collecting.add(sun);
-                    image.setTouchable(Touchable.disabled);
-                    image.setOrigin(image.getWidth() / 2f, image.getHeight() / 2f);
-                    image.clearActions();
-                    float targetX = hasCollectionTarget
-                            ? collectionTargetX - image.getWidth() / 2f
-                            : image.getX();
-                    float targetY = hasCollectionTarget
-                            ? collectionTargetY - image.getHeight() / 2f
-                            : image.getY() + 54f;
-                    image.addAction(Actions.sequence(
-                            Actions.parallel(
-                                    Actions.fadeOut(0.28f),
-                                    Actions.scaleTo(0.30f, 0.30f, 0.28f),
-                                    Actions.moveTo(targetX, targetY, 0.28f)
-                            ),
-                            Actions.run(() -> {
-                                collecting.remove(sun);
-                                actors.remove(sun);
-                                image.remove();
-                            })
-                    ));
+                public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                    return beginCollection(sun, image);
                 }
             });
             return image;
         } catch (RuntimeException ignored) {
             return null;
         }
+    }
+
+    private boolean beginCollection(Sun sun, Image image) {
+        if (sun == null || image == null || this.collecting.contains(sun)) {
+            return false;
+        }
+        if (!collectSun(sun)) {
+            return false;
+        }
+        this.collecting.add(sun);
+        image.setTouchable(Touchable.disabled);
+        image.setOrigin(image.getWidth() / 2f, image.getHeight() / 2f);
+        image.clearActions();
+        float targetX = this.hasCollectionTarget
+                ? this.collectionTargetX - image.getWidth() / 2f
+                : image.getX();
+        float targetY = this.hasCollectionTarget
+                ? this.collectionTargetY - image.getHeight() / 2f
+                : image.getY() + 54f;
+        image.addAction(Actions.sequence(
+                Actions.parallel(
+                        Actions.fadeOut(0.28f),
+                        Actions.scaleTo(0.30f, 0.30f, 0.28f),
+                        Actions.moveTo(targetX, targetY, 0.28f)
+                ),
+                Actions.run(() -> {
+                    this.collecting.remove(sun);
+                    this.actors.remove(sun);
+                    image.remove();
+                })
+        ));
+        return true;
     }
 
     private void positionSun(Image actor, Sun sun) {

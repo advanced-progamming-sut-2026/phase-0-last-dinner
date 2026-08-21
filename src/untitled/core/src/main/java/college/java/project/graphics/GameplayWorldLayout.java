@@ -32,6 +32,15 @@ public final class GameplayWorldLayout {
     public static final float LAWN_HEIGHT = (BOARD_BOTTOM_SOURCE_Y - BOARD_TOP_SOURCE_Y)
             * BACKGROUND_SCALE;
 
+    /*
+     * Original PvZ2 characters do not stand on the lower tile border. Their
+     * visual ground/contact point sits inside the tile, roughly around the
+     * lower fifth of the cell. Keeping these anchors here makes PAM, static
+     * fallback and cursor-preview placement agree across the whole lawn.
+     */
+    public static final float PLANT_GROUND_ANCHOR_FACTOR = 0.16f;
+    public static final float ZOMBIE_GROUND_ANCHOR_FACTOR = 0.18f;
+
     private GameplayWorldLayout() {
     }
 

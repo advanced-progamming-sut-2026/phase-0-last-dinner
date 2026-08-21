@@ -4,7 +4,10 @@ import com.badlogic.gdx.Game;
 import controller.CollectionController;
 import controller.GameController;
 
-
+/**
+ * Graphics-only coordinator that makes Plants and Zombies the two tabs of one Collection menu.
+ * Existing controllers remain unchanged; graphics talks to them through adapters.
+ */
 public final class CollectionMenuCoordinator {
     private final Game game;
     private final PlantCollectionDataSource plants;
@@ -40,7 +43,7 @@ public final class CollectionMenuCoordinator {
         );
     }
 
-    
+    /** Preferred Phase-2 constructor: gives Collection access to real gems and debug currency cheats. */
     public CollectionMenuCoordinator(
             Game game,
             CollectionController collectionController,
@@ -63,7 +66,7 @@ public final class CollectionMenuCoordinator {
         this.game.setScreen(this.zombiesScreen);
     }
 
-    
+    /** Mirrors the Phase-2 Settings debug checkbox without changing the model/controller layer. */
     public void setDebugModeEnabled(boolean enabled) {
         this.plants.setDebugModeEnabled(enabled);
         this.zombies.setDebugModeEnabled(enabled);

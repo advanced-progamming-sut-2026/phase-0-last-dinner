@@ -123,16 +123,16 @@ public final class PlantDetailsPanel extends Group {
         this.levelLabel = label("", 0.72f, Align.center);
         this.seedLabel = label("", 0.54f, Align.center);
         this.lockLabel = label("", 0.64f, Align.center);
-        this.sunCostValue = label("", 0.72f, Align.left);
-        this.healthValue = label("", 0.72f, Align.left);
-        this.actionValue = label("", 0.68f, Align.left);
-        this.rechargeValue = label("", 0.72f, Align.left);
-        this.damageValue = label("", 0.68f, Align.left);
-        this.specialValue = label("", 0.54f, Align.left);
-        this.familyValue = label("", 0.66f, Align.left);
-        this.plantFoodValue = label("", 0.50f, Align.topLeft);
-        this.abilityValue = label("", 0.56f, Align.topLeft);
-        this.levelEffectsValue = label("", 0.46f, Align.topLeft);
+        this.sunCostValue = detailLabel("", 0.72f, Align.left);
+        this.healthValue = detailLabel("", 0.72f, Align.left);
+        this.actionValue = detailLabel("", 0.68f, Align.left);
+        this.rechargeValue = detailLabel("", 0.72f, Align.left);
+        this.damageValue = detailLabel("", 0.68f, Align.left);
+        this.specialValue = detailLabel("", 0.54f, Align.left);
+        this.familyValue = detailLabel("", 0.66f, Align.left);
+        this.plantFoodValue = detailLabel("", 0.50f, Align.topLeft);
+        this.abilityValue = detailLabel("", 0.56f, Align.topLeft);
+        this.levelEffectsValue = detailLabel("", 0.46f, Align.topLeft);
         this.seedBar = createSeedBar();
         this.resourceStrip = new AlmanacResourceStrip(this.skin);
         this.collectionActionLabel = new Label("FIND MORE", this.skin, "medium_outline");
@@ -341,7 +341,7 @@ public final class PlantDetailsPanel extends Group {
         Label familyHeading = darkLabel("FAMILY", 0.92f, Align.left);
         familyHeading.setBounds(940f, 428f, 260f, 30f);
         addActor(familyHeading);
-        this.familyValue.setFontScale(0.78f);
+        this.familyValue.setFontScale(1.25f);
         this.familyValue.setBounds(940f, 390f, 290f, 44f);
         this.familyValue.setColor(STAT_TEXT);
         addActor(this.familyValue);
@@ -353,7 +353,7 @@ public final class PlantDetailsPanel extends Group {
         Label foodHeading = darkLabel("PLANT FOOD", 0.92f, Align.left);
         foodHeading.setBounds(1405f, 428f, 305f, 30f);
         addActor(foodHeading);
-        this.plantFoodValue.setFontScale(0.60f);
+        this.plantFoodValue.setFontScale(1.00f);
         this.plantFoodValue.setWrap(true);
         this.plantFoodValue.setAlignment(Align.topLeft);
         this.plantFoodValue.setBounds(1405f, 384f, 345f, 50f);
@@ -366,14 +366,14 @@ public final class PlantDetailsPanel extends Group {
         addActor(abilityHeading);
         this.abilityValue.setWrap(true);
         this.abilityValue.setAlignment(Align.topLeft);
-        this.abilityValue.setFontScale(0.70f);
+        this.abilityValue.setFontScale(1.15f);
         this.abilityValue.setBounds(865f, 178f, 885f, 122f);
         this.abilityValue.setColor(STAT_TEXT);
         addActor(this.abilityValue);
 
         this.levelEffectsValue.setWrap(true);
         this.levelEffectsValue.setAlignment(Align.topLeft);
-        this.levelEffectsValue.setFontScale(0.54f);
+        this.levelEffectsValue.setFontScale(0.90f);
         this.levelEffectsValue.setBounds(865f, 126f, 885f, 48f);
         this.levelEffectsValue.setColor(INFO_YELLOW);
         addActor(this.levelEffectsValue);
@@ -395,13 +395,13 @@ public final class PlantDetailsPanel extends Group {
         Label title = darkLabel(heading, 0.92f, Align.left);
         title.setBounds(x + 102f, y + 57f, 285f, 28f);
         addActor(title);
-        value.setFontScale(value == this.specialValue ? 0.56f : 0.78f);
+        value.setFontScale(value == this.specialValue ? 0.96f : 1.34f);
         value.setBounds(x + 102f, y + 15f, 300f, 44f);
         value.setColor(STAT_TEXT);
         value.setAlignment(Align.left);
         if (value == this.specialValue) {
             value.setWrap(true);
-            value.setFontScale(0.58f);
+            value.setFontScale(0.96f);
             value.setBounds(x + 102f, y + 8f, 300f, 54f);
         }
         addActor(value);
@@ -423,9 +423,16 @@ public final class PlantDetailsPanel extends Group {
 
     private Label darkLabel(String text, float scale, int alignment) {
         Label label = new Label(text, this.skin, "secondary");
-        label.setFontScale(scale);
+        label.setFontScale(scale * 1.30f);
         label.setAlignment(alignment);
         label.setColor(STAT_HEADING);
+        return label;
+    }
+
+    private Label detailLabel(String text, float scale, int alignment) {
+        Label label = new Label(text, this.skin, "secondary");
+        label.setFontScale(scale);
+        label.setAlignment(alignment);
         return label;
     }
 

@@ -23,6 +23,16 @@ public final class GameplayWaveProgressBar extends Group {
     private static final Color TRACK_COLOR = new Color(0.08f, 0.08f, 0.06f, 0.82f);
     private static final Color FILL_COLOR = new Color(0.57f, 0.82f, 0.20f, 0.96f);
     private static final Color MARKER_COLOR = new Color(0.95f, 0.86f, 0.54f, 0.96f);
+    private static final float TRACK_SOURCE_WIDTH = 273f;
+    private static final float TRACK_SOURCE_HEIGHT = 33f;
+    private static final float TRACK_INSET_X = 10f / TRACK_SOURCE_WIDTH;
+    private static final float FILL_HEIGHT_RATIO = 17f / TRACK_SOURCE_HEIGHT;
+    private static final float HEAD_WIDTH_RATIO = 40f / TRACK_SOURCE_HEIGHT;
+    private static final float HEAD_HEIGHT_RATIO = 43f / TRACK_SOURCE_HEIGHT;
+    private static final float FLAG_WIDTH_RATIO = 26f / TRACK_SOURCE_HEIGHT;
+    private static final float FLAG_HEIGHT_RATIO = 21f / TRACK_SOURCE_HEIGHT;
+    private static final float POLE_WIDTH_RATIO = 28f / TRACK_SOURCE_HEIGHT;
+    private static final float POLE_HEIGHT_RATIO = 36f / TRACK_SOURCE_HEIGHT;
 
     private final GameplayWorldDataSource dataSource;
     private final GameAssetManager assets;
@@ -117,6 +127,9 @@ public final class GameplayWaveProgressBar extends Group {
             this.markers.add(marker);
             addActor(marker);
         }
+        if (this.zombieHead != null) {
+            this.zombieHead.toFront();
+        }
         layoutBar();
     }
 
@@ -128,11 +141,9 @@ public final class GameplayWaveProgressBar extends Group {
         }
         Group marker = new Group();
         if (pole != null) {
-            pole.setBounds(7f, 0f, 22f, 34f);
             marker.addActor(pole);
         }
         if (flag != null) {
-            flag.setBounds(8f, 17f, 24f, 20f);
             marker.addActor(flag);
         }
         marker.setTouchable(Touchable.disabled);
@@ -144,23 +155,64 @@ public final class GameplayWaveProgressBar extends Group {
         this.track.setBounds(0f, 0f, getWidth(), barHeight);
         layoutProgress();
         int total = Math.max(0, this.markerCount);
+        float leftInset = getWidth() * TRACK_INSET_X;
+        float usableWidth = getWidth() * (1f - 2f * TRACK_INSET_X);
         for (int index = 0; index < this.markers.size(); index++) {
-            float x = getWidth() * (index + 1f) / total;
-            this.markers.get(index).setBounds(x - 18f, -3f, 38f, getHeight() + 8f);
+            float x = leftInset + usableWidth * (1f - (index + 1f) / total);
+            layoutWaveMarker(this.markers.get(index), x);
         }
     }
 
     private void layoutProgress() {
         float progress = getProgress();
-        float leftInset = getWidth() * 0.052f;
-        float usableWidth = getWidth() * 0.885f;
-        float fillHeight = getHeight() * 0.50f;
+        float leftInset = getWidth() * TRACK_INSET_X;
+        float usableWidth = getWidth() * (1f - 2f * TRACK_INSET_X);
+        float fillHeight = getHeight() * FILL_HEIGHT_RATIO;
         float fillY = (getHeight() - fillHeight) * 0.50f;
-        this.fill.setBounds(leftInset, fillY, Math.max(0f, usableWidth * progress), fillHeight);
+        float headCenterX = leftInset + usableWidth * (1f - progress);
+        this.fill.setBounds(
+                headCenterX,
+                fillY,
+                Math.max(0f, usableWidth * progress),
+                fillHeight
+        );
         if (this.zombieHead != null) {
-            float headSize = Math.min(52f, getHeight() * 1.05f);
-            float x = leftInset + usableWidth * progress - headSize * 0.50f;
-            this.zombieHead.setBounds(x, (getHeight() - headSize) * 0.50f, headSize, headSize);
+            float headWidth = getHeight() * HEAD_WIDTH_RATIO;
+            float headHeight = getHeight() * HEAD_HEIGHT_RATIO;
+            this.zombieHead.setBounds(
+                    headCenterX - headWidth * 0.50f,
+                    (getHeight() - headHeight) * 0.50f,
+                    headWidth,
+                    headHeight
+            );
+        }
+    }
+
+    private void layoutWaveMarker(Actor marker, float centerX) {
+        if (!(marker instanceof Group group)) {
+            float markerSize = getHeight() * 0.34f;
+            marker.setBounds(centerX - markerSize * 0.50f, (getHeight() - markerSize) * 0.50f, markerSize, markerSize);
+            return;
+        }
+        float poleWidth = getHeight() * POLE_WIDTH_RATIO;
+        float poleHeight = getHeight() * POLE_HEIGHT_RATIO;
+        float flagWidth = getHeight() * FLAG_WIDTH_RATIO;
+        float flagHeight = getHeight() * FLAG_HEIGHT_RATIO;
+        float markerWidth = Math.max(poleWidth, flagWidth);
+        float markerHeight = poleHeight;
+        group.setBounds(centerX - markerWidth * 0.50f, (getHeight() - markerHeight) * 0.50f, markerWidth, markerHeight);
+        for (Actor child : group.getChildren()) {
+            if (child instanceof Image image) {
+                if (image.getDrawable() == null) {
+                    continue;
+                }
+                float aspect = image.getDrawable().getMinWidth() / Math.max(1f, image.getDrawable().getMinHeight());
+                if (aspect < 1f) {
+                    child.setBounds((markerWidth - poleWidth) * 0.50f, 0f, poleWidth, poleHeight);
+                } else {
+                    child.setBounds((markerWidth - flagWidth) * 0.50f, poleHeight * 0.44f, flagWidth, flagHeight);
+                }
+            }
         }
     }
 
