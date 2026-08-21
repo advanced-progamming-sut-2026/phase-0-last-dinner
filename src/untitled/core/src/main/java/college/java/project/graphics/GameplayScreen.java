@@ -18,6 +18,7 @@ import model.chapters.ChapterType;
 import model.level.Level;
 import model.level.LevelType;
 import model.mechanism.PlantZombieGame;
+import view.GameSettings;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -154,7 +155,7 @@ public final class GameplayScreen implements Screen {
     }
 
     private void advanceModel(float delta) {
-        this.tickRemainder += delta * TICKS_PER_SECOND;
+        this.tickRemainder += delta * TICKS_PER_SECOND * GameSettings.getGameSpeed();
         int ticks = (int) this.tickRemainder;
         if (ticks <= 0) {
             return;
@@ -291,7 +292,7 @@ public final class GameplayScreen implements Screen {
         if (controller.getCurrentMenu() == MenuType.MAIN_MENU) {
             controller.getMenuContext().enterMenu(MenuType.GAME_MENU);
         }
-        switchScreen(new AdventureLevelSelectionScreen(this.application));
+        this.application.showGameMenuScreen();
     }
 
     private void switchScreen(Screen nextScreen) {
