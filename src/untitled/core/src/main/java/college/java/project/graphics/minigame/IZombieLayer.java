@@ -55,7 +55,7 @@ public final class IZombieLayer extends Group {
     private final boolean[] brainEaten = new boolean[ROW_COUNT];
     private final Texture brainTexture;
     private final Image redLine;
-    private final Label sunLabel;
+    private final MiniGameSunCounter sunCounter;
     private final Label stageLabel;
     private final Label statusLabel;
     private IZombieStateResult currentState;
@@ -70,7 +70,9 @@ public final class IZombieLayer extends Group {
         this.assets = assets;
         this.skin = PvzSkin.get();
         this.redLine = new Image(this.skin.newDrawable("white_pixel", RED_LINE));
-        this.sunLabel = new Label("SUN: 0", this.skin, "medium_outline");
+        this.sunCounter = new MiniGameSunCounter(
+            assets, () -> this.currentState == null ? 0 : this.currentState.getSunAmount()
+        );
         this.stageLabel = new Label("I, ZOMBIE", this.skin, "medium_outline");
         this.statusLabel = new Label("", this.skin, "medium_outline");
 
@@ -155,8 +157,7 @@ public final class IZombieLayer extends Group {
         this.stageLabel.setAlignment(Align.center);
         this.stageLabel.setBounds(PANEL_X, 1034f, CARD_WIDTH, 38f);
 
-        this.sunLabel.setAlignment(Align.center);
-        this.sunLabel.setBounds(PANEL_X, 990f, CARD_WIDTH, 38f);
+        this.sunCounter.setBounds(PANEL_X + 20f, 950f, CARD_WIDTH - 40f, 74f);
 
         this.statusLabel.setAlignment(Align.center);
         this.statusLabel.setColor(Color.WHITE);
@@ -164,7 +165,7 @@ public final class IZombieLayer extends Group {
         this.statusLabel.setBounds(650f, 22f, 760f, 46f);
 
         addActor(this.stageLabel);
-        addActor(this.sunLabel);
+        addActor(this.sunCounter);
         addActor(this.statusLabel);
     }
 
@@ -398,7 +399,6 @@ public final class IZombieLayer extends Group {
         if (this.currentState == null)
             return;
 
-        this.sunLabel.setText("SUN: " + this.currentState.getSunAmount());
         this.stageLabel.setText("I, ZOMBIE  " + this.currentState.getStageNumber() + "/" + this.currentState.getStageCount());
     }
 

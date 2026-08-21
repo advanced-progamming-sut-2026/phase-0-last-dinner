@@ -61,7 +61,7 @@ public final class BeghouledScreen implements Screen {
         this.stage = new Stage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
         this.stage.addActor(this.worldScene);
 
-        this.beghouledLayer = new BeghouledLayer(this.controller);
+        this.beghouledLayer = new BeghouledLayer(this.controller, this.worldScene.getPlantLayer(), this.worldScene.getAssets());
         this.beghouledLayer.setBounds(0f, 0f, GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT);
         this.worldScene.addActorBefore(this.worldScene.getInteractionLayer(), this.beghouledLayer);
 

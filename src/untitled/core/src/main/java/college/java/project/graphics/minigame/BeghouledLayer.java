@@ -1,27 +1,33 @@
 package college.java.project.graphics.minigame;
 
+import college.java.project.graphics.GameAssetManager;
+import college.java.project.graphics.GameplayPlantLayer;
+import college.java.project.graphics.PlantPacketCatalog;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import college.java.project.graphics.GameplayWorldLayout;
+import com.badlogic.gdx.utils.Scaling;
 import controller.BeghouledController;
 import model.mechanism.Position;
 import model.minigame.beghouledminigame.BeghouledActionResult;
 import model.minigame.beghouledminigame.BeghouledStateResult;
 import model.minigame.beghouledminigame.PlantUpgradeOption;
+import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public final class BeghouledLayer extends Group {
     private static final int COLUMN_COUNT = BeghouledStateResult.COLUMN_COUNT;
@@ -65,7 +71,7 @@ public final class BeghouledLayer extends Group {
     private final Drawable cardDisabledDrawable;
 
     private final Label stageLabel;
-    private final Label sunLabel;
+    private final MiniGameSunCounter sunCounter;
     private final Label progressLabel;
     private final Label upgradesLabel;
     private final Label statusLabel;
@@ -79,11 +85,25 @@ public final class BeghouledLayer extends Group {
     private boolean successfulFeedback;
     private String lastMessage = "Swap adjacent plants to create a match.";
 
-    public BeghouledLayer(BeghouledController controller) {
-        if (controller == null)
-            throw new IllegalArgumentException("Beghouled controller is required.");
+    private final GameplayPlantLayer plantLayer;
+
+    private final GameAssetManager assets;
+
+    private final Set<String> usedUpgradeSources = new HashSet<>();
+
+    private static final Color MATCH_COLOR = new Color(1f, 0.84f, 0.12f, 0.42f);
+
+    private final Set<Integer> changedMatchCells = new HashSet<>();
+    private final Drawable matchDrawable;
+    private float matchFeedbackTime;
+
+    public BeghouledLayer(BeghouledController controller, GameplayPlantLayer plantLayer, GameAssetManager assets) {
+        if (controller == null || plantLayer == null || assets == null)
+            throw new IllegalArgumentException("Beghouled layer dependencies are required.");
 
         this.controller = controller;
+        this.plantLayer = plantLayer;
+        this.assets = assets;
         this.skin = PvzSkin.get();
 
         this.selectedDrawable = this.skin.newDrawable("white_pixel", SELECTED_COLOR);
@@ -102,13 +122,16 @@ public final class BeghouledLayer extends Group {
 
         this.stageLabel = new Label("BEGHOULed", this.skin, "medium_outline");
 
-        this.sunLabel = new Label("SUN: 0", this.skin, "medium_outline");
+        this.sunCounter = new MiniGameSunCounter(
+            assets, () -> this.currentState == null ? 0 : this.currentState.getSunAmount());
 
         this.progressLabel = new Label("MATCHES: 0 / 0", this.skin, "secondary");
 
         this.upgradesLabel = new Label("UPGRADES", this.skin, "medium_outline");
 
         this.statusLabel = new Label(this.lastMessage, this.skin, "secondary");
+
+        this.matchDrawable = this.skin.newDrawable("white_pixel", MATCH_COLOR);
 
         setTouchable(Touchable.childrenOnly);
 
@@ -170,11 +193,10 @@ public final class BeghouledLayer extends Group {
         this.stageLabel.setAlignment(Align.center);
         this.stageLabel.setBounds(PANEL_X, 1018f, PANEL_WIDTH, 42f);
 
-        this.sunLabel.setAlignment(Align.center);
-        this.sunLabel.setBounds(PANEL_X, 970f, PANEL_WIDTH, 40f);
+        this.sunCounter.setBounds(PANEL_X + 45f, 935f, PANEL_WIDTH - 90f, 76f);
 
         this.progressLabel.setAlignment(Align.center);
-        this.progressLabel.setBounds(PANEL_X, 920f, PANEL_WIDTH, 38f);
+        this.progressLabel.setBounds(PANEL_X, 888f, PANEL_WIDTH, 38f);
 
         this.upgradesLabel.setAlignment(Align.center);
         this.upgradesLabel.setBounds(PANEL_X, 835f, PANEL_WIDTH, 42f);
@@ -185,7 +207,7 @@ public final class BeghouledLayer extends Group {
         this.statusLabel.setBounds(650f, 18f, 760f, 58f);
 
         addActor(this.stageLabel);
-        addActor(this.sunLabel);
+        addActor(this.sunCounter);
         addActor(this.progressLabel);
         addActor(this.upgradesLabel);
         addActor(this.statusLabel);
@@ -230,10 +252,17 @@ public final class BeghouledLayer extends Group {
         Position first = this.selectedPosition;
         this.selectedPosition = null;
 
+        BeghouledStateResult beforeState = this.currentState;
         BeghouledActionResult result = this.controller.onSwapRequested(first, position);
 
-        this.lastMessage = result.getMessage();
+        if (result.isSuccessful()) {
+            BeghouledStateResult afterState = this.controller.onShowBeghouledRequested();
+            rememberChangedCells(beforeState, afterState);
+            this.currentState = afterState;
+            this.plantLayer.animateNextBoardTransition();
+        }
 
+        this.lastMessage = result.getMessage();
         startFeedback(first, position, result.isSuccessful());
     }
 
@@ -246,17 +275,29 @@ public final class BeghouledLayer extends Group {
     }
 
     private void updateFeedback(float delta) {
-        if (this.feedbackTime <= 0f)
-            return;
+        boolean refreshRequired = false;
 
-        this.feedbackTime = Math.max(0f, this.feedbackTime - delta);
+        if (this.feedbackTime > 0f) {
+            this.feedbackTime = Math.max(0f, this.feedbackTime - delta);
 
-        if (this.feedbackTime > 0f)
-            return;
+            if (this.feedbackTime <= 0f) {
+                this.firstFeedbackPosition = null;
+                this.secondFeedbackPosition = null;
+                refreshRequired = true;
+            }
+        }
 
-        this.firstFeedbackPosition = null;
-        this.secondFeedbackPosition = null;
-        refreshBoardCells();
+        if (this.matchFeedbackTime > 0f) {
+            this.matchFeedbackTime = Math.max(0f, this.matchFeedbackTime - delta);
+
+            if (this.matchFeedbackTime <= 0f) {
+                this.changedMatchCells.clear();
+                refreshRequired = true;
+            }
+        }
+
+        if (refreshRequired)
+            refreshBoardCells();
     }
 
     private void refreshBoardCells() {
@@ -280,6 +321,11 @@ public final class BeghouledLayer extends Group {
                     continue;
                 }
 
+                if (this.matchFeedbackTime > 0f && this.changedMatchCells.contains(boardCellKey(position))) {
+                    cell.setBackground(this.matchDrawable);
+                    continue;
+                }
+
                 if (samePosition(this.selectedPosition, position)) {
                     cell.setBackground(this.selectedDrawable);
                     continue;
@@ -288,6 +334,37 @@ public final class BeghouledLayer extends Group {
                 cell.setBackground((Drawable) null);
             }
         }
+    }
+
+    private void rememberChangedCells(BeghouledStateResult beforeState, BeghouledStateResult afterState) {
+        this.changedMatchCells.clear();
+
+        if (beforeState == null || afterState == null)
+            return;
+
+        for (int row = 1; row <= ROW_COUNT; row++) {
+            for (int column = 1; column <= COLUMN_COUNT; column++) {
+                Position position = new Position(column, row);
+                String beforeName = beforeState.getPlantNameAt(position);
+                String afterName = afterState.getPlantNameAt(position);
+
+                if (!samePlantName(beforeName, afterName))
+                    this.changedMatchCells.add(boardCellKey(position));
+            }
+        }
+
+        this.matchFeedbackTime = this.changedMatchCells.isEmpty() ? 0f : 0.48f;
+    }
+
+    private int boardCellKey(Position position) {
+        return (position.getY() - 1) * COLUMN_COUNT + position.getX() - 1;
+    }
+
+    private boolean samePlantName(String first, String second) {
+        if (first == null)
+            return second == null;
+
+        return second != null && first.equalsIgnoreCase(second);
     }
 
     private boolean isFeedbackPosition(Position position) {
@@ -353,29 +430,46 @@ public final class BeghouledLayer extends Group {
         background.setTouchable(Touchable.disabled);
         root.addActor(background);
 
-        Label sourceLabel = new Label(option.getSourcePlant().getName(), this.skin, "secondary");
+        Image sourceImage = createPlantPacketImage(option.getSourcePlant().getName());
+        if (sourceImage != null) {
+            sourceImage.setBounds(5f, 7f, 64f, 64f);
+            root.addActor(sourceImage);
+        }
 
+        Label arrowLabel = new Label(">", this.skin, "medium_outline");
+        arrowLabel.setAlignment(Align.center);
+        arrowLabel.setFontScale(0.65f);
+        arrowLabel.setBounds(68f, 18f, 28f, 40f);
+        arrowLabel.setTouchable(Touchable.disabled);
+        root.addActor(arrowLabel);
+
+        Image targetImage = createPlantPacketImage(option.getTargetPlant().getName());
+        if (targetImage != null) {
+            targetImage.setBounds(96f, 7f, 64f, 64f);
+            root.addActor(targetImage);
+        }
+
+        Label sourceLabel = new Label(option.getSourcePlant().getName(), this.skin, "medium_outline");
         sourceLabel.setAlignment(Align.left);
         sourceLabel.setEllipsis(true);
-        sourceLabel.setFontScale(0.60f);
-        sourceLabel.setBounds(12f, 39f, 178f, 32f);
+        sourceLabel.setFontScale(0.52f);
+        sourceLabel.setBounds(166f, 40f, 132f, 32f);
         sourceLabel.setTouchable(Touchable.disabled);
         root.addActor(sourceLabel);
 
-        Label targetLabel = new Label(option.getTargetPlant().getName(), this.skin, "secondary");
-
+        Label targetLabel = new Label(option.getTargetPlant().getName(), this.skin, "medium_outline");
         targetLabel.setAlignment(Align.left);
         targetLabel.setEllipsis(true);
-        targetLabel.setFontScale(0.56f);
-        targetLabel.setBounds(12f, 7f, 230f, 30f);
+        targetLabel.setFontScale(0.48f);
+        targetLabel.setBounds(166f, 7f, 132f, 31f);
         targetLabel.setTouchable(Touchable.disabled);
         root.addActor(targetLabel);
 
-        Label costLabel = new Label(option.getSunCost() + " SUN", this.skin, "secondary");
-
+        Label costLabel = new Label(option.getSunCost() + " SUN", this.skin, "medium_outline");
         costLabel.setAlignment(Align.center);
-        costLabel.setFontScale(0.58f);
-        costLabel.setBounds(248f, 18f, 130f, 40f);
+        costLabel.setColor(Color.YELLOW);
+        costLabel.setFontScale(0.50f);
+        costLabel.setBounds(300f, 17f, 84f, 44f);
         costLabel.setTouchable(Touchable.disabled);
         root.addActor(costLabel);
 
@@ -403,6 +497,39 @@ public final class BeghouledLayer extends Group {
         addActor(root);
     }
 
+    private Image createPlantPacketImage(String plantName) {
+        PlantPacketCatalog.PacketVisual visual = PlantPacketCatalog.findPacket(plantName);
+
+        if (visual == null || visual.getResourceId() == null)
+            return null;
+
+        if ("IMAGE_UI_PACKETS_EMPTY_PACKET".equals(visual.getResourceId()))
+            return null;
+
+        Drawable drawable = resourceDrawable(visual.getResourceId());
+
+        if (drawable == null)
+            return null;
+
+        Image image = new Image(drawable);
+        image.setScaling(Scaling.fit);
+        image.setTouchable(Touchable.disabled);
+        return image;
+    }
+
+    private Drawable resourceDrawable(String resourceId) {
+        try {
+            TextureBank bank = this.assets.getTextureBank();
+
+            if (bank != null && bank.region(resourceId) != null)
+                return new TextureRegionDrawable(bank.region(resourceId));
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+
+        return null;
+    }
+
     private void requestUpgrade(UpgradeCard card) {
         if (!canInteract() || card == null)
             return;
@@ -410,24 +537,21 @@ public final class BeghouledLayer extends Group {
         String sourceName = card.option.getSourcePlant().getName();
 
         BeghouledActionResult result = this.controller.onUpgradeRequested(sourceName);
-
         this.lastMessage = result.getMessage();
 
         if (result.isSuccessful()) {
-            card.root.addAction(
-                Actions.sequence(
-                    Actions.scaleTo(1.08f, 1.08f, 0.10f),
-                    Actions.scaleTo(1f, 1f, 0.14f)
-                )
-            );
+            this.usedUpgradeSources.add(normalize(sourceName));
+
+            card.root.addAction(Actions.sequence(
+                Actions.scaleTo(1.08f, 1.08f, 0.10f),
+                Actions.scaleTo(1f, 1f, 0.14f)
+            ));
         } else {
-            card.root.addAction(
-                Actions.sequence(
-                    Actions.moveBy(-8f, 0f, 0.05f),
-                    Actions.moveBy(16f, 0f, 0.08f),
-                    Actions.moveBy(-8f, 0f, 0.05f)
-                )
-            );
+            card.root.addAction(Actions.sequence(
+                Actions.moveBy(-8f, 0f, 0.05f),
+                Actions.moveBy(16f, 0f, 0.08f),
+                Actions.moveBy(-8f, 0f, 0.05f)
+            ));
         }
     }
 
@@ -439,9 +563,12 @@ public final class BeghouledLayer extends Group {
         boolean running = canInteract();
 
         for (UpgradeCard card : this.upgradeCards) {
+            String sourceName = card.option.getSourcePlant().getName();
+            boolean used = this.usedUpgradeSources.contains(normalize(sourceName));
             boolean affordable = card.option.canUpgrade(sunAmount);
+            boolean enabled = running && !used;
 
-            if (!running) {
+            if (!enabled) {
                 card.background.setBackground(this.cardDisabledDrawable);
             } else if (affordable) {
                 card.background.setBackground(this.cardAvailableDrawable);
@@ -449,10 +576,20 @@ public final class BeghouledLayer extends Group {
                 card.background.setBackground(this.cardNormalDrawable);
             }
 
-            card.costLabel.setColor(affordable ? Color.WHITE : Color.LIGHT_GRAY);
+            if (used) {
+                card.costLabel.setText("DONE");
+                card.costLabel.setColor(Color.LIGHT_GRAY);
+            } else {
+                card.costLabel.setText(card.option.getSunCost() + " SUN");
+                card.costLabel.setColor(affordable ? Color.YELLOW : Color.LIGHT_GRAY);
+            }
 
-            card.root.setTouchable(running ? Touchable.enabled : Touchable.disabled);
+            card.root.setTouchable(enabled ? Touchable.enabled : Touchable.disabled);
         }
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 
     private void refreshLabels() {
@@ -460,8 +597,6 @@ public final class BeghouledLayer extends Group {
             return;
 
         this.stageLabel.setText("BEGHOULed - STAGE " + this.currentState.getStageNumber());
-
-        this.sunLabel.setText("SUN: " + this.currentState.getSunAmount());
 
         this.progressLabel.setText("MATCHES: " + this.currentState.getCompletedMatchCount() + " / "
                 + this.currentState.getTargetMatchCount());
