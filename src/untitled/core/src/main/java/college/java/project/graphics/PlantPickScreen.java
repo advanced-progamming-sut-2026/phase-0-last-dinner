@@ -748,19 +748,21 @@ public final class PlantPickScreen implements Screen {
         this.upgradeButton.setText(requiredCoins > 0
                 ? "UPGRADE  " + formatNumber(requiredCoins)
                 : "UPGRADE");
-        boolean canUpgrade = state.isUnlocked()
-                && state.getCurrentLevel() < state.getMaximumLevel()
-                && state.getRequiredSeedPackets() > 0
-                && state.getSeedPackets() >= state.getRequiredSeedPackets()
-                && this.dataSource.getCoins() >= requiredCoins;
+        boolean canUpgrade = this.dataSource.supportsUpgrades()
+            && state.isUnlocked()
+            && state.getCurrentLevel() < state.getMaximumLevel()
+            && state.getRequiredSeedPackets() > 0
+            && state.getSeedPackets() >= state.getRequiredSeedPackets()
+            && this.dataSource.getCoins() >= requiredCoins;
         this.upgradeButton.setDisabled(!canUpgrade);
         this.upgradeButton.setTouchable(canUpgrade ? Touchable.enabled : Touchable.disabled);
         this.upgradeButton.setColor(canUpgrade ? Color.WHITE : PvzVisualTheme.DISABLED_TINT);
         boolean selected = this.dataSource.isSelected(state.getName());
         boolean boosted = this.dataSource.isBoosted(state.getName());
-        boolean canBoost = selected
-                && !boosted
-                && this.dataSource.getGems() >= PlantPickController.BOOST_COST;
+        boolean canBoost = this.dataSource.supportsBoosts()
+            && selected
+            && !boosted
+            && this.dataSource.getGems() >= PlantPickController.BOOST_COST;
         this.boostButton.setText(boosted
                 ? "BOOSTED"
                 : selected ? "BOOST  " + PlantPickController.BOOST_COST : "SELECT FIRST");

@@ -122,9 +122,7 @@ public final class WallnutBowlingScreen implements Screen {
         );
 
         this.worldScene.setOutcomeAction(
-            () -> this.application
-                .getApplicationController()
-                .save()
+            () -> this.application.recordMiniGameOutcome(this.game)
         );
     }
 
@@ -176,21 +174,14 @@ public final class WallnutBowlingScreen implements Screen {
             .getApplicationController()
             .save();
 
-        WallnutBowlingMiniGame restartedGame =
-            (WallnutBowlingMiniGame) this.application
-                .createMiniGameFactory()
-                .create(MiniGameType.WALLNUT_BOWLING);
-
-        restartedGame.restoreHighestUnlockedStage(
-            this.game.getHighestUnlockedStage()
+        switchScreen(
+            new WallnutBowlingScreen(
+                this.application,
+                this.game,
+                this.stageNumber,
+                this.onBack
+            )
         );
-
-        switchScreen(new WallnutBowlingScreen(
-            this.application,
-            restartedGame,
-            this.stageNumber,
-            this.onBack
-        ));
     }
 
     private void exitScreen() {

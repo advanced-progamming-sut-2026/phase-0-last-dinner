@@ -78,8 +78,8 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
         this.lost = false;
         this.lastSetupError = "";
 
-        this.lastActionResult =
-            IZombieActionResult.failure(IZombieActionStatus.NOT_STARTED, "I, Zombie has not started yet.", 0);
+        this.lastActionResult = IZombieActionResult.failure(IZombieActionStatus.NOT_STARTED,
+            "I, Zombie has not started yet.", 0);
 
         this.zombieCooldownTicks = new LinkedHashMap<>();
     }
@@ -91,87 +91,83 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
 
     public IZombieActionResult startGame() {
         if (isStarted() && !isCompleted()) {
-            return remember(
-                IZombieActionResult.failure(
-                    IZombieActionStatus.ALREADY_STARTED, "I, Zombie has already started.", sunAmount));
+            return remember(IZombieActionResult.failure(IZombieActionStatus.ALREADY_STARTED,
+                "I, Zombie has already started.", sunAmount));
+        }
+
+        return startStage(highestUnlockedStage);
+    }
+
+    public IZombieActionResult startStage(int stageNumber) {
+        int stageCount = stageGenerator.getStageCount();
+
+        if (stageNumber < 1 || stageNumber > stageCount) {
+            return remember(IZombieActionResult.failure(IZombieActionStatus.INVALID_STAGE,
+                "Stage number must be between 1 and " + stageCount + ".", sunAmount));
+        }
+
+        if (stageNumber > highestUnlockedStage) {
+            return remember(IZombieActionResult.failure(IZombieActionStatus.STAGE_LOCKED,
+                "I, Zombie stage " + stageNumber + " is locked.", sunAmount));
         }
 
         if (!integration.isReady()) {
-            return remember(
-                IZombieActionResult.failure(
-                    IZombieActionStatus.INTEGRATION_NOT_READY,
-                    "I, Zombie integration is not ready.",
-                    sunAmount));
+            return remember(IZombieActionResult.failure(IZombieActionStatus.INTEGRATION_NOT_READY,
+                "I, Zombie integration is not ready.", sunAmount));
         }
 
-        currentStageNumber = highestUnlockedStage;
         won = false;
         lost = false;
-        setCompleted(false);
 
-        if (!setupStage(currentStageNumber)) {
-            return remember(
-                IZombieActionResult.failure(
-                    IZombieActionStatus.INTEGRATION_NOT_READY, lastSetupError, sunAmount));
+        setStarted(false);
+        setCompleted(false);
+        setAllStagesCompleted(false);
+
+        if (!setupStage(stageNumber)) {
+            return remember(IZombieActionResult.failure(IZombieActionStatus.INTEGRATION_NOT_READY, lastSetupError, sunAmount));
         }
 
         markStarted();
 
-        return remember(
-            IZombieActionResult.success(
-                "I, Zombie stage " + currentStageNumber + " started.", sunAmount));
+        return remember(IZombieActionResult.success("I, Zombie stage " + stageNumber + " started.", sunAmount));
     }
 
     public IZombieActionResult placeZombie(ZombieDefinition definition, Position position) {
         IZombieActionResult validation = validateGameForPlacement();
-        if (validation == null)
-            validation = validateZombieForPlacement(definition);
+        if (validation == null) validation = validateZombieForPlacement(definition);
 
-        if (validation == null)
-            validation = validatePlacementPosition(position);
+        if (validation == null) validation = validatePlacementPosition(position);
 
-        if (validation == null)
-            validation = validateZombieCooldown(definition);
+        if (validation == null) validation = validateZombieCooldown(definition);
 
-        if (validation != null)
-            return remember(validation);
+        if (validation != null) return remember(validation);
 
         int cost = getZombieCost(definition);
         if (cost < 0) {
-            return remember(
-                failure(
-                    IZombieActionStatus.INVALID_ZOMBIE,
-                    "The selected zombie does not have a valid cost."));
+            return remember(failure(IZombieActionStatus.INVALID_ZOMBIE, "The selected zombie does not have a valid cost."));
         }
         if (sunAmount < cost) {
-            return remember(
-                failure(
-                    IZombieActionStatus.NOT_ENOUGH_SUN, "There is not enough sun to place this zombie."));
+            return remember(failure(IZombieActionStatus.NOT_ENOUGH_SUN, "There is not enough sun to place this zombie."));
         }
         if (!tryPlaceZombie(definition, position)) {
-            return remember(
-                failure(IZombieActionStatus.ZOMBIE_PLACEMENT_FAILED, "The zombie could not be placed."));
+            return remember(failure(IZombieActionStatus.ZOMBIE_PLACEMENT_FAILED, "The zombie could not be placed."));
         }
 
         sunAmount -= cost;
         placedZombieCount++;
 
         startZombieCooldown(definition);
-        return remember(
-            IZombieActionResult.placementSuccess(
-                "Zombie placed successfully.", definition, position, cost, sunAmount));
+        return remember(IZombieActionResult.placementSuccess("Zombie placed successfully.",
+            definition, position, cost, sunAmount));
     }
 
     private IZombieActionResult validateZombieCooldown(ZombieDefinition definition) {
         int remainingTicks = getZombieCooldownTicks(definition);
 
-        if (remainingTicks <= 0)
-            return null;
+        if (remainingTicks <= 0) return null;
 
-        return failure(
-            IZombieActionStatus.ZOMBIE_ON_COOLDOWN,
-            "This zombie is ready in " + cooldownSeconds(remainingTicks) + " seconds."
-        );
+        return failure(IZombieActionStatus.ZOMBIE_ON_COOLDOWN, "This zombie is ready in " +
+            cooldownSeconds(remainingTicks) + " seconds.");
     }
 
     private IZombieActionResult validateGameForPlacement() {
@@ -182,8 +178,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
             return failure(IZombieActionStatus.GAME_ALREADY_COMPLETED, "I, Zombie has already finished.");
         }
         if (!integration.isReady()) {
-            return failure(
-                IZombieActionStatus.INTEGRATION_NOT_READY, "I, Zombie integration is not ready.");
+            return failure(IZombieActionStatus.INTEGRATION_NOT_READY, "I, Zombie integration is not ready.");
         }
         return null;
     }
@@ -193,9 +188,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
             return failure(IZombieActionStatus.INVALID_ZOMBIE, "Zombie definition cannot be null.");
         }
         if (!availableZombies.contains(definition)) {
-            return failure(
-                IZombieActionStatus.ZOMBIE_NOT_AVAILABLE,
-                "This zombie is not available in the current stage.");
+            return failure(IZombieActionStatus.ZOMBIE_NOT_AVAILABLE, "This zombie is not available in the current stage.");
         }
         return null;
     }
@@ -205,13 +198,10 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
             return failure(IZombieActionStatus.INVALID_POSITION, "Zombie position cannot be null.");
         }
         if (!isInsideBoard(position)) {
-            return failure(
-                IZombieActionStatus.INVALID_POSITION, "Position must be inside the 9 by 5 board.");
+            return failure(IZombieActionStatus.INVALID_POSITION, "Position must be inside the 9 by 5 board.");
         }
         if (!stageConfig.isZombiePlacementColumn(position.getX())) {
-            return failure(
-                IZombieActionStatus.POSITION_BEFORE_RED_LINE,
-                "Zombies must be placed after the red line.");
+            return failure(IZombieActionStatus.POSITION_BEFORE_RED_LINE, "Zombies must be placed after the red line.");
         }
         if (integration.isZombiePlacementBlocked(position)) {
             return failure(IZombieActionStatus.POSITION_BLOCKED, "The selected position is blocked.");
@@ -238,17 +228,13 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
 
     public IZombieActionResult advanceOneTick() {
         if (!isStarted()) {
-            return remember(
-                failure(IZombieActionStatus.NOT_STARTED, "Start I, Zombie before advancing the game."));
+            return remember(failure(IZombieActionStatus.NOT_STARTED, "Start I, Zombie before advancing the game."));
         }
         if (isCompleted()) {
-            return remember(
-                failure(IZombieActionStatus.GAME_ALREADY_COMPLETED, "I, Zombie has already finished."));
+            return remember(failure(IZombieActionStatus.GAME_ALREADY_COMPLETED, "I, Zombie has already finished."));
         }
         if (!integration.isReady()) {
-            return remember(
-                failure(
-                    IZombieActionStatus.INTEGRATION_NOT_READY, "I, Zombie integration is not ready."));
+            return remember(failure(IZombieActionStatus.INTEGRATION_NOT_READY, "I, Zombie integration is not ready."));
         }
 
         advanceZombieCooldowns();
@@ -268,7 +254,12 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
     }
 
     private IZombieActionResult handleStageWin() {
-        if (currentStageNumber >= stageGenerator.getStageCount()) {
+        int completedStageNumber = currentStageNumber;
+
+        if (getCurrentStage() != null)
+            getCurrentStage().setCompleted(true);
+
+        if (completedStageNumber >= stageGenerator.getStageCount()) {
             won = true;
             lost = false;
             markAllStagesCompleted();
@@ -276,24 +267,19 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
             return IZombieActionResult.gameWon("All I, Zombie stages completed.", sunAmount);
         }
 
-        int completedStageNumber = currentStageNumber;
-        int nextStageNumber = currentStageNumber + 1;
-
-        if (!setupStage(nextStageNumber)) {
-            return IZombieActionResult.failure(
-                IZombieActionStatus.INTEGRATION_NOT_READY,
-                "Stage "
-                    + completedStageNumber
-                    + " completed, but the next stage could not start. "
-                    + lastSetupError,
-                sunAmount);
-        }
+        int nextStageNumber = completedStageNumber + 1;
 
         highestUnlockedStage = Math.max(highestUnlockedStage, nextStageNumber);
 
-        return IZombieActionResult.stageWon(
-            "Stage " + completedStageNumber + " completed. Stage " + nextStageNumber + " started.",
-            sunAmount);
+        if (getStages() != null && getStages().size() >= nextStageNumber)
+            getStages().get(nextStageNumber - 1).setUnlocked(true);
+
+        won = true;
+        lost = false;
+        markCompleted();
+
+        return IZombieActionResult.stageWon("Stage " + completedStageNumber + " completed. Stage " + nextStageNumber
+                + " unlocked.", sunAmount);
     }
 
     private boolean setupStage(int stageNumber) {
@@ -308,8 +294,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
                 return false;
             }
 
-            Map<ZombieDefinition, Integer> generatedCosts =
-                createZombieCosts(selectedZombies, stageNumber);
+            Map<ZombieDefinition, Integer> generatedCosts = createZombieCosts(selectedZombies, stageNumber);
             if (generatedCosts == null) {
                 return false;
             }
@@ -323,8 +308,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
         }
     }
 
-    private Map<ZombieDefinition, Integer> createZombieCosts(
-        List<ZombieDefinition> selectedZombies, int stageNumber) {
+    private Map<ZombieDefinition, Integer> createZombieCosts(List<ZombieDefinition> selectedZombies, int stageNumber) {
         Map<ZombieDefinition, Integer> generatedCosts = new LinkedHashMap<>();
         for (ZombieDefinition definition : selectedZombies) {
             int cost = integration.getZombieSunCost(definition, stageNumber);
@@ -337,11 +321,8 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
         return generatedCosts;
     }
 
-    private void applyStageState(
-        int stageNumber,
-        IZombieStageConfig generatedConfig,
-        List<ZombieDefinition> selectedZombies,
-        Map<ZombieDefinition, Integer> generatedCosts) {
+    private void applyStageState(int stageNumber, IZombieStageConfig generatedConfig,
+                                 List<ZombieDefinition> selectedZombies, Map<ZombieDefinition, Integer> generatedCosts) {
         currentStageNumber = stageNumber;
         stageConfig = generatedConfig;
         availableZombies = new ArrayList<>(selectedZombies);
@@ -375,8 +356,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
     }
 
     private int cooldownTicksFor(ZombieDefinition definition) {
-        if (definition == null || definition.getType() == null)
-            return 20;
+        if (definition == null || definition.getType() == null) return 20;
 
         return switch (definition.getType()) {
             case BASIC, IMP -> 20;
@@ -389,8 +369,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
     }
 
     public int getZombieCooldownTicks(ZombieDefinition definition) {
-        if (definition == null)
-            return 0;
+        if (definition == null) return 0;
 
         return Math.max(0, zombieCooldownTicks.getOrDefault(definition, 0));
     }
@@ -417,9 +396,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
         Set<String> aliases = new HashSet<>();
 
         for (ZombieDefinition definition : definitions) {
-            if (definition == null
-                || definition.getAlias() == null
-                || definition.getAlias().trim().isEmpty()) {
+            if (definition == null || definition.getAlias() == null || definition.getAlias().trim().isEmpty()) {
                 return false;
             }
 
@@ -452,10 +429,8 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
     }
 
     private boolean isInsideBoard(Position position) {
-        return position.getX() >= 1
-            && position.getX() <= 9
-            && position.getY() >= 1
-            && position.getY() <= IZombieStageConfig.BOARD_ROW_COUNT;
+        return position.getX() >= 1 && position.getX() <= 9 && position.getY() >= 1 &&
+            position.getY() <= IZombieStageConfig.BOARD_ROW_COUNT;
     }
 
     public void addSun(int amount) {
@@ -504,8 +479,7 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
                 return definition;
             }
 
-            if (definition.getDisplayName() != null
-                && definition.getDisplayName().equalsIgnoreCase(searchedValue)) {
+            if (definition.getDisplayName() != null && definition.getDisplayName().equalsIgnoreCase(searchedValue)) {
                 return definition;
             }
         }
@@ -530,11 +504,9 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
 
     @Override
     public boolean isLoseConditionMet() {
-        if (lost)
-            return true;
+        if (lost) return true;
 
-        if (!isStarted() || isCompleted())
-            return false;
+        if (!isStarted() || isCompleted()) return false;
 
         return !canAffordAnyAvailableZombie() && !integration.hasAlivePlayerZombies();
     }
@@ -548,21 +520,9 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
 
         boolean hasAlivePlayerZombies = integration.isReady() && integration.hasAlivePlayerZombies();
 
-        return new IZombieStateResult(
-            currentStageNumber,
-            stageGenerator.getStageCount(),
-            sunAmount,
-            stageConfig.getRedLineColumn(),
-            availableZombies,
-            zombieCosts,
-            brainStates,
-            zombieCooldownTicks,
-            placedZombieCount,
-            hasAlivePlayerZombies,
-            isStarted(),
-            isCompleted(),
-            won,
-            lost);
+        return new IZombieStateResult(currentStageNumber, stageGenerator.getStageCount(), sunAmount,
+            stageConfig.getRedLineColumn(), availableZombies, zombieCosts, brainStates, zombieCooldownTicks,
+            placedZombieCount, hasAlivePlayerZombies, isStarted(), isCompleted(), won, lost);
     }
 
     private IZombieActionResult remember(IZombieActionResult result) {
@@ -584,7 +544,6 @@ public class IZombieMiniGame extends MiniGame implements StageProgressMiniGame {
 
     @Override
     public void restoreHighestUnlockedStage(int stageNumber) {
-        this.highestUnlockedStage =
-            Math.max(1, Math.min(this.stageGenerator.getStageCount(), stageNumber));
+        this.highestUnlockedStage = Math.max(1, Math.min(this.stageGenerator.getStageCount(), stageNumber));
     }
 }

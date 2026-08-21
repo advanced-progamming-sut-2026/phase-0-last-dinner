@@ -8,6 +8,8 @@ public enum IZombieActionStatus {
 
     ALREADY_STARTED,
     NOT_STARTED,
+    INVALID_STAGE,
+    STAGE_LOCKED,
     GAME_ALREADY_COMPLETED,
 
     INVALID_ZOMBIE,

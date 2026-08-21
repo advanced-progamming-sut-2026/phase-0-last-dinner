@@ -1,5 +1,6 @@
 package controller;
 
+import lombok.Getter;
 import model.Plant;
 import model.mechanism.Board;
 import model.mechanism.Position;
@@ -18,18 +19,24 @@ import view.zombotany.ZombotanyViewObserver;
 import java.util.ArrayList;
 import java.util.List;
 
+@Getter
 public class ZombotanyController implements ZombotanyViewObserver {
 
     private final ZombotanyMiniGame game;
 
-    public ZombotanyController(ZombotanyView view, ZombotanyMiniGame game) {
-        if (view == null) {
-            throw new IllegalArgumentException("Zombotany view cannot be null.");
-        }
-        if (game == null) {
+    public ZombotanyController(ZombotanyMiniGame game) {
+        if (game == null)
             throw new IllegalArgumentException("Zombotany game cannot be null.");
-        }
+
         this.game = game;
+    }
+
+    public ZombotanyController(ZombotanyView view, ZombotanyMiniGame game) {
+        this(game);
+
+        if (view == null)
+            throw new IllegalArgumentException("Zombotany view cannot be null.");
+
         view.setObserver(this);
     }
 
@@ -510,7 +517,4 @@ public class ZombotanyController implements ZombotanyViewObserver {
         );
     }
 
-    public ZombotanyMiniGame getGame() {
-        return game;
-    }
 }

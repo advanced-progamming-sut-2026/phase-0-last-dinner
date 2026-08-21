@@ -29,15 +29,43 @@ public class MiniGameGameplayDataSource implements GameplaySeedBankDataSource, G
     private final MiniGame miniGame;
     private final User user;
     private final LongSupplier currentTickSupplier;
-    private final ChapterType chapterType = randomChapter();
+    private final ChapterType chapterType;
 
-    public MiniGameGameplayDataSource(MiniGame miniGame, User user, LongSupplier currentTickSupplier) {
+    public MiniGameGameplayDataSource(
+        MiniGame miniGame,
+        User user,
+        LongSupplier currentTickSupplier
+    ) {
+        this(
+            miniGame,
+            user,
+            currentTickSupplier,
+            null
+        );
+    }
+
+    protected MiniGameGameplayDataSource(
+        MiniGame miniGame,
+        User user,
+        LongSupplier currentTickSupplier,
+        ChapterType chapterType
+    ) {
         if (miniGame == null)
-            throw new IllegalArgumentException("Minigame is required");
+            throw new IllegalArgumentException(
+                "Minigame is required"
+            );
 
         this.miniGame = miniGame;
         this.user = user;
-        this.currentTickSupplier = currentTickSupplier == null ? () -> 0L : currentTickSupplier;
+
+        this.currentTickSupplier =
+            currentTickSupplier == null
+                ? () -> 0L
+                : currentTickSupplier;
+
+        this.chapterType = chapterType == null
+            ? randomChapter()
+            : chapterType;
     }
 
     private static ChapterType randomChapter() {

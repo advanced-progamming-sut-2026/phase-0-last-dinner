@@ -96,7 +96,7 @@ public final class VasebreakerScreen implements Screen {
 
         this.worldScene.setSessionActions(this::restartStage, this::exitScreen, this::exitScreen, this::restartStage);
 
-        this.worldScene.setOutcomeAction(() -> this.application.getApplicationController().save());
+        this.worldScene.setOutcomeAction(() -> this.application.recordMiniGameOutcome(this.game));
     }
 
     @Override

@@ -2,6 +2,7 @@ package model.minigame.zombotanyminigame;
 
 import lombok.Getter;
 import model.mechanism.Position;
+import model.mechanism.Wave;
 import model.minigame.MiniGame;
 import model.minigame.MiniGameType;
 import model.minigame.StageProgressMiniGame;
@@ -356,5 +357,13 @@ public class ZombotanyMiniGame extends MiniGame implements StageProgressMiniGame
     @Override
     public void restoreHighestUnlockedStage(int stageNumber) {
         this.highestUnlockedStage = Math.max(1, Math.min(3, stageNumber));
+    }
+
+    public long getRemainingCooldownTicks(String plantName) {
+        return this.integration.getRemainingCooldownTicks(plantName);
+    }
+
+    public Wave getCurrentWave() {
+        return this.integration.getCurrentWave();
     }
 }

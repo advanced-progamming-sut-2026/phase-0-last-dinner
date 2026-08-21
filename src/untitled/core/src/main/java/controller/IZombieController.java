@@ -40,6 +40,10 @@ public class IZombieController implements IZombieViewObserver {
         return game.startGame();
     }
 
+    public IZombieActionResult onStartIZombieRequested(int stageNumber) {
+        return game.startStage(stageNumber);
+    }
+
     @Override
     public IZombieActionResult onPlaceZombieRequested(
             String zombieAliasOrName,

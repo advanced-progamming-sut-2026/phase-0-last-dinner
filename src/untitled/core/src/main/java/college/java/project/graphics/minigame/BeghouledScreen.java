@@ -84,7 +84,7 @@ public final class BeghouledScreen implements Screen {
             () -> queueSessionAction(this::restartGame)
         );
 
-        this.worldScene.setOutcomeAction(() -> this.application.getApplicationController().save());
+        this.worldScene.setOutcomeAction(() -> this.application.recordMiniGameOutcome(this.game));
     }
 
     @Override
@@ -119,12 +119,7 @@ public final class BeghouledScreen implements Screen {
     private void restartGame() {
         this.application.getApplicationController().save();
 
-        BeghouledMiniGame restartedGame = (BeghouledMiniGame) this.application.createMiniGameFactory()
-            .create(MiniGameType.BEGHOULED);
-
-        restartedGame.restoreHighestUnlockedStage(this.game.getHighestUnlockedStage());
-
-        switchScreen(new BeghouledScreen(this.application, restartedGame, this.stageNumber, this.onBack));
+        switchScreen(new BeghouledScreen(this.application, this.game, this.stageNumber, this.onBack));
     }
 
     private void exitScreen() {

@@ -139,8 +139,9 @@ public class IZombieActionResult {
     }
 
     public boolean isTerminal() {
-        return status == IZombieActionStatus.GAME_WON
-                || status == IZombieActionStatus.GAME_LOST;
+        return status == IZombieActionStatus.STAGE_WON
+            || status == IZombieActionStatus.GAME_WON
+            || status == IZombieActionStatus.GAME_LOST;
     }
 
     public boolean hasPlacementInformation() {
