@@ -4,6 +4,7 @@ import lombok.Getter;
 import model.Greenhouse.Greenhouse;
 import model.Greenhouse.GreenhouseActionResult;
 import model.Greenhouse.GreenhouseActionStatus;
+import model.Greenhouse.GreenhouseBoard;
 import model.Greenhouse.GreenhouseStateResult;
 import model.Greenhouse.Pot;
 import model.User.User;
@@ -17,40 +18,43 @@ import view.shop.ShopView;
 @Getter
 public class GreenhouseController implements GreenhouseViewObserver {
 
+    private static final int BASE_POT_UNLOCK_COST = 1000;
+    private static final int POT_UNLOCK_COST_INCREMENT = 500;
+
     private final User user;
     private final PlantUpgradeService plantUpgradeService;
 
     public GreenhouseController(
-            GreenhouseView view,
-            User user
+        GreenhouseView view,
+        User user
     ) {
         this(
-                view,
-                user,
-                null
+            view,
+            user,
+            null
         );
     }
 
     public GreenhouseController(
-            GreenhouseView view,
-            User user,
-            PlantUpgradeService plantUpgradeService
+        GreenhouseView view,
+        User user,
+        PlantUpgradeService plantUpgradeService
     ) {
         if (view == null) {
             throw new IllegalArgumentException(
-                    "Greenhouse view cannot be null."
+                "Greenhouse view cannot be null."
             );
         }
 
         if (user == null) {
             throw new IllegalArgumentException(
-                    "User cannot be null."
+                "User cannot be null."
             );
         }
 
         this.user = user;
         this.plantUpgradeService =
-                plantUpgradeService;
+            plantUpgradeService;
 
         user.initializeMissingFields();
 
@@ -61,9 +65,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
     public GreenhouseStateResult onShowGreenhouseRequested() {
 
         return GreenhouseStateResult.from(
-                getGreenhouse(),
-                user.getGold(),
-                user.getDiamond()
+            getGreenhouse(),
+            user.getGold(),
+            user.getDiamond()
         );
     }
 
@@ -76,24 +80,24 @@ public class GreenhouseController implements GreenhouseViewObserver {
         }
 
         String plantedPlantName =
-                getGreenhouse().plantRandom(
-                        position,
-                        user.getUnlockedPlants()
-                );
+            getGreenhouse().plantRandom(
+                position,
+                user.getUnlockedPlants()
+            );
 
         if (plantedPlantName == null) {
             return failure(
-                    GreenhouseActionStatus.PLANTING_FAILED,
-                    "Could not plant in this pot.",
-                    position
+                GreenhouseActionStatus.PLANTING_FAILED,
+                "Could not plant in this pot.",
+                position
             );
         }
 
         return GreenhouseActionResult.planted(
-                position,
-                plantedPlantName,
-                user.getGold(),
-                user.getDiamond()
+            position,
+            plantedPlantName,
+            user.getGold(),
+            user.getDiamond()
         );
     }
 
@@ -112,9 +116,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
 
         if (harvestedPlantName == null) {
             return failure(
-                    GreenhouseActionStatus.HARVEST_FAILED,
-                    "Could not collect this plant.",
-                    position
+                GreenhouseActionStatus.HARVEST_FAILED,
+                "Could not collect this plant.",
+                position
             );
         }
 
@@ -125,25 +129,25 @@ public class GreenhouseController implements GreenhouseViewObserver {
             coinsEarned = Greenhouse.MARIGOLD_REWARD_COINS;
 
             user.setGold((int) Math.min(
-                    Integer.MAX_VALUE,
-                    (long) user.getGold() + coinsEarned
+                Integer.MAX_VALUE,
+                (long) user.getGold() + coinsEarned
             ));
         } else {
             boostStored =
-                    !boostAlreadyStored
-                            && getGreenhouse()
-                            .hasStoredBoost(
-                                    harvestedPlantName
-                            );
+                !boostAlreadyStored
+                    && getGreenhouse()
+                    .hasStoredBoost(
+                        harvestedPlantName
+                    );
         }
 
         return GreenhouseActionResult.harvested(
-                position,
-                harvestedPlantName,
-                coinsEarned,
-                boostStored,
-                user.getGold(),
-                user.getDiamond()
+            position,
+            harvestedPlantName,
+            coinsEarned,
+            boostStored,
+            user.getGold(),
+            user.getDiamond()
         );
     }
 
@@ -159,20 +163,20 @@ public class GreenhouseController implements GreenhouseViewObserver {
 
         if (diamondCost <= 0) {
             return failure(
-                    GreenhouseActionStatus.PLANT_ALREADY_READY,
-                    "This plant is already ready to collect.",
-                    position
+                GreenhouseActionStatus.PLANT_ALREADY_READY,
+                "This plant is already ready to collect.",
+                position
             );
         }
 
         if (user.getDiamond() < diamondCost) {
             return failure(
-                    GreenhouseActionStatus.NOT_ENOUGH_DIAMONDS,
-                    "Not enough diamonds. Required: "
-                            + diamondCost
-                            + ", available: "
-                            + user.getDiamond(),
-                    position
+                GreenhouseActionStatus.NOT_ENOUGH_DIAMONDS,
+                "Not enough diamonds. Required: "
+                    + diamondCost
+                    + ", available: "
+                    + user.getDiamond(),
+                position
             );
         }
 
@@ -180,29 +184,82 @@ public class GreenhouseController implements GreenhouseViewObserver {
         boolean accelerated = getGreenhouse().speedUpGrowth(position);
         if (!accelerated) {
             return failure(
-                    GreenhouseActionStatus.INVALID_ACTION,
-                    "Could not accelerate this plant.",
-                    position
+                GreenhouseActionStatus.INVALID_ACTION,
+                "Could not accelerate this plant.",
+                position
             );
         }
 
         user.setDiamond(user.getDiamond() - diamondCost);
         return GreenhouseActionResult.growthAccelerated(
-                position,
-                plantName,
-                diamondCost,
-                user.getGold(),
-                user.getDiamond()
+            position,
+            plantName,
+            diamondCost,
+            user.getGold(),
+            user.getDiamond()
         );
+    }
+
+    @Override
+    public GreenhouseActionResult onBuyPotRequested(Position position) {
+        Pot pot = getPot(position);
+        if (pot == null) {
+            return failure(
+                GreenhouseActionStatus.INVALID_POSITION,
+                "Invalid greenhouse position. X must be from 1 to "
+                    + GreenhouseBoard.COLUMN_COUNT
+                    + " and Y must be from 1 to "
+                    + GreenhouseBoard.ROW_COUNT + ".",
+                position
+            );
+        }
+        if (pot.isUnlocked()) {
+            return failure(
+                GreenhouseActionStatus.POT_ALREADY_UNLOCKED,
+                "This pot is already unlocked.",
+                position
+            );
+        }
+
+        int cost = getPotUnlockCost();
+        if (user.getGold() < cost) {
+            return failure(
+                GreenhouseActionStatus.NOT_ENOUGH_COINS,
+                "Not enough coins. Required: "
+                    + cost
+                    + ", available: "
+                    + user.getGold(),
+                position
+            );
+        }
+
+        user.setGold(user.getGold() - cost);
+        pot.unlock();
+
+        return GreenhouseActionResult.unlocked(
+            position,
+            cost,
+            user.getGold(),
+            user.getDiamond()
+        );
+    }
+
+    @Override
+    public int getPotUnlockCost() {
+        int unlockedCount = getGreenhouse().getBoard().getUnlockedPotCount();
+        int extraUnlocked = Math.max(0, unlockedCount - GreenhouseBoard.COLUMN_COUNT);
+        return BASE_POT_UNLOCK_COST + extraUnlocked * POT_UNLOCK_COST_INCREMENT;
     }
 
     private GreenhouseActionResult validatePlantPot(Position position, Pot pot) {
         if (pot == null) {
             return failure(
-                    GreenhouseActionStatus.INVALID_POSITION,
-                    "Invalid greenhouse position. X must be from 1 to 5 "
-                            + "and Y must be from 1 to 4.",
-                    position
+                GreenhouseActionStatus.INVALID_POSITION,
+                "Invalid greenhouse position. X must be from 1 to "
+                    + GreenhouseBoard.COLUMN_COUNT
+                    + " and Y must be from 1 to "
+                    + GreenhouseBoard.ROW_COUNT + ".",
+                position
             );
         }
         if (!pot.isUnlocked()) {
@@ -210,9 +267,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
         }
         if (!pot.isEmpty()) {
             return failure(
-                    GreenhouseActionStatus.POT_OCCUPIED,
-                    "This pot is already occupied.",
-                    position
+                GreenhouseActionStatus.POT_OCCUPIED,
+                "This pot is already occupied.",
+                position
             );
         }
         return null;
@@ -225,11 +282,11 @@ public class GreenhouseController implements GreenhouseViewObserver {
         }
         if (!pot.isReady()) {
             return failure(
-                    GreenhouseActionStatus.PLANT_NOT_READY,
-                    "This plant is not ready. "
-                            + pot.getRemainingGrowthHours(System.currentTimeMillis())
-                            + " hour(s) remaining.",
-                    position
+                GreenhouseActionStatus.PLANT_NOT_READY,
+                "This plant is not ready. "
+                    + pot.getRemainingGrowthHours(System.currentTimeMillis())
+                    + " hour(s) remaining.",
+                position
             );
         }
         return null;
@@ -242,9 +299,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
         }
         if (pot.isReady()) {
             return failure(
-                    GreenhouseActionStatus.PLANT_ALREADY_READY,
-                    "This plant is already ready to collect.",
-                    position
+                GreenhouseActionStatus.PLANT_ALREADY_READY,
+                "This plant is already ready to collect.",
+                position
             );
         }
         return null;
@@ -253,9 +310,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
     private GreenhouseActionResult validateOccupiedPot(Position position, Pot pot) {
         if (pot == null) {
             return failure(
-                    GreenhouseActionStatus.INVALID_POSITION,
-                    "Invalid greenhouse position.",
-                    position
+                GreenhouseActionStatus.INVALID_POSITION,
+                "Invalid greenhouse position.",
+                position
             );
         }
         if (!pot.isUnlocked()) {
@@ -274,9 +331,9 @@ public class GreenhouseController implements GreenhouseViewObserver {
         ShopView shopView = new ShopView();
 
         new ShopController(
-                shopView,
-                user,
-                user.getPlantUpgradeService()
+            shopView,
+            user,
+            user.getPlantUpgradeService()
         );
 
         return shopView;
@@ -294,39 +351,39 @@ public class GreenhouseController implements GreenhouseViewObserver {
         Greenhouse greenhouse = getGreenhouse();
 
         if (!greenhouse
-                .getBoard()
-                .isValidPosition(
-                        position.getX(),
-                        position.getY()
-                )) {
+            .getBoard()
+            .isValidPosition(
+                position.getX(),
+                position.getY()
+            )) {
 
             return null;
         }
 
         return greenhouse
-                .getBoard()
-                .getPot(position);
+            .getBoard()
+            .getPot(position);
     }
 
     private boolean isMarigold(
-            String plantName
+        String plantName
     ) {
         return plantName != null
-                && Greenhouse.MARIGOLD_NAME
-                .equalsIgnoreCase(plantName);
+            && Greenhouse.MARIGOLD_NAME
+            .equalsIgnoreCase(plantName);
     }
 
     private GreenhouseActionResult failure(
-            GreenhouseActionStatus status,
-            String message,
-            Position position
+        GreenhouseActionStatus status,
+        String message,
+        Position position
     ) {
         return GreenhouseActionResult.failure(
-                status,
-                message,
-                position,
-                user.getGold(),
-                user.getDiamond()
+            status,
+            message,
+            position,
+            user.getGold(),
+            user.getDiamond()
         );
     }
 }

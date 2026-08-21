@@ -8,11 +8,15 @@ public enum GreenhouseActionStatus {
 
     GROWTH_ACCELERATED,
 
+    POT_UNLOCKED,
+
     INVALID_POSITION,
 
     GREENHOUSE_NOT_AVAILABLE,
 
     POT_LOCKED,
+
+    POT_ALREADY_UNLOCKED,
 
     POT_OCCUPIED,
 
@@ -23,6 +27,8 @@ public enum GreenhouseActionStatus {
     PLANT_ALREADY_READY,
 
     NOT_ENOUGH_DIAMONDS,
+
+    NOT_ENOUGH_COINS,
 
     PLANTING_FAILED,
 
