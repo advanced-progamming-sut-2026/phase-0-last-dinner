@@ -18,6 +18,7 @@ import model.chapters.ChapterType;
 import model.level.Level;
 import model.level.LevelType;
 import model.mechanism.PlantZombieGame;
+import view.GameSettings;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -74,6 +75,14 @@ public final class GameplayScreen implements Screen {
                 GameplayWorldLayout.STAGE_HEIGHT
         ));
         this.stage.addActor(this.worldScene);
+        boolean shownIntroDialog = view.NpcDialogOverlay.show(
+            this.stage,
+            view.LevelNpcDialogs.getIntroDialog(this.chapterType, this.levelType),
+            this.worldScene::showInitialMissionIfNeeded
+        );
+        if (!shownIntroDialog) {
+            this.worldScene.showInitialMissionIfNeeded();
+        }
         this.worldScene.setSessionActions(
                 () -> queueSessionAction(this::restartLevel),
                 () -> queueSessionAction(this::saveAndExit),
@@ -146,7 +155,7 @@ public final class GameplayScreen implements Screen {
     }
 
     private void advanceModel(float delta) {
-        this.tickRemainder += delta * TICKS_PER_SECOND;
+        this.tickRemainder += delta * TICKS_PER_SECOND * GameSettings.getGameSpeed();
         int ticks = (int) this.tickRemainder;
         if (ticks <= 0) {
             return;
@@ -246,6 +255,20 @@ public final class GameplayScreen implements Screen {
 
     private void persistOutcome() {
         boolean won = !this.worldScene.getOutcomeOverlay().isLoss();
+        this.worldScene.getOutcomeOverlay().setVisible(false);
+        Runnable revealOutcome = () -> this.worldScene.getOutcomeOverlay().setVisible(true);
+        if (won) {
+            boolean shownWinDialog = view.NpcDialogOverlay.show(
+                this.stage,
+                view.LevelNpcDialogs.getWinDialog(this.chapterType, this.levelType),
+                revealOutcome
+            );
+            if (!shownWinDialog) {
+                revealOutcome.run();
+            }
+        } else {
+            revealOutcome.run();
+        }
         this.application.getApplicationController().finishGraphicalGame(won);
     }
 
@@ -269,7 +292,7 @@ public final class GameplayScreen implements Screen {
         if (controller.getCurrentMenu() == MenuType.MAIN_MENU) {
             controller.getMenuContext().enterMenu(MenuType.GAME_MENU);
         }
-        switchScreen(new AdventureLevelSelectionScreen(this.application));
+        this.application.showGameMenuScreen();
     }
 
     private void switchScreen(Screen nextScreen) {

@@ -13,6 +13,8 @@ public enum GreenhouseCommands {
 
     GROW("^\\s*grow\\s*\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
 
+    BUY_POT("^\\s*buy\\s+pot\\s+at\\s*\\(\\s*(?<x>\\d+)\\s*,\\s*(?<y>\\d+)\\s*\\)\\s*$"),
+
     ENTER_SHOP("^\\s*enter\\s+shop\\s*$");
 
     private final Pattern pattern;

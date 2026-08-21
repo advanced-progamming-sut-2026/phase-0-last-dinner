@@ -8,8 +8,8 @@ import java.util.List;
 
 public class GreenhouseBoard {
 
-    public static final int ROW_COUNT = 4;
-    public static final int COLUMN_COUNT = 5;
+    public static final int ROW_COUNT = 3;
+    public static final int COLUMN_COUNT = 4;
     public static final int MAXIMUM_POT_COUNT =
             ROW_COUNT * COLUMN_COUNT;
 

@@ -61,6 +61,13 @@ public class GreenhouseView implements CommandHandler {
             return;
         }
 
+        matcher = GreenhouseCommands.BUY_POT.getMatcher(input);
+
+        if (matcher != null) {
+            handleBuyPot(matcher);
+            return;
+        }
+
         matcher = GreenhouseCommands.ENTER_SHOP.getMatcher(input);
 
         if (matcher != null) {
@@ -106,14 +113,22 @@ public class GreenhouseView implements CommandHandler {
         printActionResult(result);
     }
 
+    private void handleBuyPot(Matcher matcher) {
+        Position position = parsePosition(matcher);
+
+        GreenhouseActionResult result = observer.onBuyPotRequested(position);
+
+        printActionResult(result);
+    }
+
     private Position parsePosition(Matcher matcher) {
         try {
             int x = Integer.parseInt(
-                    matcher.group("x")
+                matcher.group("x")
             );
 
             int y = Integer.parseInt(
-                    matcher.group("y")
+                matcher.group("y")
             );
 
             return new Position(x, y);
@@ -132,13 +147,13 @@ public class GreenhouseView implements CommandHandler {
 
         if (result.isSuccessful()) {
             System.out.println("Coins: " + result.getRemainingCoins()
-                    + " | Diamonds: " + result.getRemainingDiamonds());
+                + " | Diamonds: " + result.getRemainingDiamonds());
         }
 
     }
 
     private void printGreenhouse(
-            GreenhouseStateResult state
+        GreenhouseStateResult state
     ) {
         System.out.println("Greenhouse");
 
@@ -146,23 +161,23 @@ public class GreenhouseView implements CommandHandler {
 
         System.out.println("--------------------------------------------------");
 
-        for (int y = 1; y <= 4; y++) {
+        for (int y = 1; y <= model.Greenhouse.GreenhouseBoard.ROW_COUNT; y++) {
             StringBuilder row =
-                    new StringBuilder();
+                new StringBuilder();
 
             row.append("Row ")
-                    .append(y)
-                    .append(": ");
+                .append(y)
+                .append(": ");
 
-            for (int x = 1; x <= 5; x++) {
+            for (int x = 1; x <= model.Greenhouse.GreenhouseBoard.COLUMN_COUNT; x++) {
                 GreenhousePotState pot =
-                        state.getPot(x, y);
+                    state.getPot(x, y);
 
                 row.append(
-                        formatPot(pot, x, y)
+                    formatPot(pot, x, y)
                 );
 
-                if (x < 5) {
+                if (x < model.Greenhouse.GreenhouseBoard.COLUMN_COUNT) {
                     row.append(" | ");
                 }
             }
@@ -173,17 +188,17 @@ public class GreenhouseView implements CommandHandler {
         System.out.println("--------------------------------------------------");
 
         printStoredBoosts(
-                state.getStoredBoostPlantNames()
+            state.getStoredBoostPlantNames()
         );
     }
 
     private String formatPot(
-            GreenhousePotState pot,
-            int x,
-            int y
+        GreenhousePotState pot,
+        int x,
+        int y
     ) {
         String coordinate =
-                "(" + x + ", " + y + ")";
+            "(" + x + ", " + y + ")";
 
         if (pot == null) {
             return coordinate + " UNKNOWN";
@@ -199,17 +214,17 @@ public class GreenhouseView implements CommandHandler {
 
         if (pot.isReady()) {
             return coordinate
-                    + " "
-                    + pot.getPlantName()
-                    + " READY";
+                + " "
+                + pot.getPlantName()
+                + " READY";
         }
 
         return coordinate
-                + " "
-                + pot.getPlantName()
-                + " "
-                + pot.getRemainingGrowthHours()
-                + "h remaining";
+            + " "
+            + pot.getPlantName()
+            + " "
+            + pot.getRemainingGrowthHours()
+            + "h remaining";
     }
 
     private void printStoredBoosts(Set<String> storedBoosts) {
@@ -223,7 +238,7 @@ public class GreenhouseView implements CommandHandler {
 
     private void handleEnterShop() {
         CommandHandler shopHandler =
-                observer.onEnterShopRequested();
+            observer.onEnterShopRequested();
 
         if (shopHandler == null) {
             System.out.println("Shop is not available.");

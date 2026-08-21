@@ -261,7 +261,7 @@ public final class AdventureLevelSelectionScreen implements Screen {
     }
 
     private void showAdventureLevelSelection() {
-        switchScreen(new AdventureLevelSelectionScreen(this.game));
+        this.game.showGameMenuScreen();
     }
 
     private void switchScreen(Screen nextScreen) {

@@ -15,5 +15,9 @@ public interface GreenhouseViewObserver {
 
     GreenhouseActionResult onGrowRequested(Position position);
 
+    GreenhouseActionResult onBuyPotRequested(Position position);
+
+    int getPotUnlockCost();
+
     CommandHandler onEnterShopRequested();
 }
