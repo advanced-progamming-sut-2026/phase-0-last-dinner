@@ -5,11 +5,11 @@ import com.badlogic.gdx.graphics.g2d.NinePatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
+import com.badlogic.gdx.scenes.scene2d.InputListener;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.ui.Label;
 import com.badlogic.gdx.scenes.scene2d.ui.Stack;
-import com.badlogic.gdx.scenes.scene2d.ui.Table;
 import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
@@ -19,6 +19,8 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
+
+import java.util.function.Consumer;
 
 /** Mandatory Pause menu arranged to closely mirror the original PvZ2 pause card. */
 public final class GameplayPauseOverlay extends Group {
@@ -39,6 +41,11 @@ public final class GameplayPauseOverlay extends Group {
     private Runnable resumeAction;
     private Runnable restartAction;
     private Runnable saveAndExitAction;
+    private float musicVolume = 0.78f;
+    private float soundFxVolume = 0.88f;
+    private VolumeSlider musicSlider;
+    private VolumeSlider soundFxSlider;
+    private VolumeListener volumeListener;
 
     public GameplayPauseOverlay() {
         this(new GameAssetManager());
@@ -66,6 +73,31 @@ public final class GameplayPauseOverlay extends Group {
         this.resumeAction = resume;
         this.restartAction = restart;
         this.saveAndExitAction = saveAndExit;
+    }
+
+    public float getMusicVolume() {
+        return this.musicVolume;
+    }
+
+    public float getSoundFxVolume() {
+        return this.soundFxVolume;
+    }
+
+    public void setMusicVolume(float volume) {
+        if (this.musicSlider != null) {
+            this.musicSlider.setValue(volume);
+        }
+    }
+
+    public void setSoundFxVolume(float volume) {
+        if (this.soundFxSlider != null) {
+            this.soundFxSlider.setValue(volume);
+        }
+    }
+
+    public void setVolumeListener(VolumeListener listener) {
+        this.volumeListener = listener;
+        notifyVolumeChanged();
     }
 
     public void dispose() {
@@ -120,16 +152,22 @@ public final class GameplayPauseOverlay extends Group {
         Label music = settingLabel("Music");
         music.setBounds(685f, 470f, 145f, 48f);
         addActor(music);
-        Stack musicSlider = displaySlider(0.78f);
-        musicSlider.setBounds(860f, 480f, 400f, 36f);
-        addActor(musicSlider);
+        this.musicSlider = new VolumeSlider(this.musicVolume, value -> {
+            this.musicVolume = value;
+            notifyVolumeChanged();
+        });
+        this.musicSlider.setBounds(860f, 480f, 400f, 36f);
+        addActor(this.musicSlider);
 
         Label soundFx = settingLabel("Sound FX");
         soundFx.setBounds(650f, 390f, 180f, 48f);
         addActor(soundFx);
-        Stack soundSlider = displaySlider(0.88f);
-        soundSlider.setBounds(860f, 400f, 400f, 36f);
-        addActor(soundSlider);
+        this.soundFxSlider = new VolumeSlider(this.soundFxVolume, value -> {
+            this.soundFxVolume = value;
+            notifyVolumeChanged();
+        });
+        this.soundFxSlider.setBounds(860f, 400f, 400f, 36f);
+        addActor(this.soundFxSlider);
 
         TextButton exit = button("EXIT TO MAP", "brown", () -> run(this.saveAndExitAction));
         exit.setBounds(455f, 225f, 275f, 86f);
@@ -162,33 +200,6 @@ public final class GameplayPauseOverlay extends Group {
         label.setColor(Color.WHITE);
         label.setTouchable(Touchable.disabled);
         return label;
-    }
-
-    private Stack displaySlider(float fillAmount) {
-        Stack slider = new Stack();
-        Table trackLayer = new Table();
-        trackLayer.setBackground(roundedCardDrawable(SLIDER_TRACK));
-        trackLayer.pad(5f);
-        Table fillRow = new Table();
-        fillRow.left();
-        Table fill = new Table();
-        fill.setBackground(roundedCardDrawable(SLIDER_FILL));
-        fillRow.add(fill).width(350f * Math.max(0f, Math.min(1f, fillAmount))).growY();
-        fillRow.add().growX();
-        trackLayer.add(fillRow).grow();
-        slider.add(trackLayer);
-
-        Image bolt = resourceImage(SLIDER_BOLT);
-        if (bolt != null) {
-            Table boltLayer = new Table();
-            boltLayer.left();
-            boltLayer.add().width(350f * Math.max(0f, Math.min(1f, fillAmount)) - 28f);
-            boltLayer.add(bolt).size(62f);
-            boltLayer.add().growX();
-            slider.add(boltLayer);
-        }
-        slider.setTouchable(Touchable.disabled);
-        return slider;
     }
 
     private TextButton button(String text, String style, Runnable action) {
@@ -259,6 +270,93 @@ public final class GameplayPauseOverlay extends Group {
     private void run(Runnable action) {
         if (action != null) {
             action.run();
+        }
+    }
+
+    private void notifyVolumeChanged() {
+        if (this.volumeListener != null) {
+            this.volumeListener.onVolumeChanged(this.musicVolume, this.soundFxVolume);
+        }
+    }
+
+    public interface VolumeListener {
+        void onVolumeChanged(float musicVolume, float soundFxVolume);
+    }
+
+    private final class VolumeSlider extends Group {
+        private static final float INSET = 5f;
+        private static final float KNOB_SIZE = 62f;
+
+        private final Image track;
+        private final Image fill;
+        private final Image knob;
+        private final Consumer<Float> changeListener;
+        private float value;
+
+        private VolumeSlider(float initialValue, Consumer<Float> changeListener) {
+            this.changeListener = changeListener;
+            this.track = new Image(roundedCardDrawable(SLIDER_TRACK));
+            this.track.setTouchable(Touchable.disabled);
+            addActor(this.track);
+
+            this.fill = new Image(roundedCardDrawable(SLIDER_FILL));
+            this.fill.setTouchable(Touchable.disabled);
+            addActor(this.fill);
+
+            Image sliderKnob = resourceImage(SLIDER_BOLT);
+            if (sliderKnob == null) {
+                sliderKnob = new Image(PvzSkin.get().newDrawable("white_pixel", Color.LIGHT_GRAY));
+                sliderKnob.setTouchable(Touchable.disabled);
+            }
+            this.knob = sliderKnob;
+            addActor(this.knob);
+
+            setTouchable(Touchable.enabled);
+            addListener(new InputListener() {
+                @Override
+                public boolean touchDown(InputEvent event, float x, float y, int pointer, int button) {
+                    updateFromPosition(x);
+                    return true;
+                }
+
+                @Override
+                public void touchDragged(InputEvent event, float x, float y, int pointer) {
+                    updateFromPosition(x);
+                }
+            });
+            setValue(initialValue);
+        }
+
+        private void setValue(float newValue) {
+            float clamped = Math.max(0f, Math.min(1f, newValue));
+            if (Math.abs(this.value - clamped) < 0.0001f) {
+                layoutSlider();
+                return;
+            }
+            this.value = clamped;
+            layoutSlider();
+            this.changeListener.accept(this.value);
+        }
+
+        private void updateFromPosition(float x) {
+            float usableWidth = Math.max(1f, getWidth() - INSET * 2f);
+            setValue((x - INSET) / usableWidth);
+        }
+
+        @Override
+        protected void sizeChanged() {
+            super.sizeChanged();
+            layoutSlider();
+        }
+
+        private void layoutSlider() {
+            float width = getWidth();
+            float height = getHeight();
+            float usableWidth = Math.max(0f, width - INSET * 2f);
+            this.track.setBounds(0f, 0f, width, height);
+            this.fill.setBounds(INSET, INSET, usableWidth * this.value, Math.max(0f, height - INSET * 2f));
+            float knobX = INSET + usableWidth * this.value - KNOB_SIZE / 2f;
+            this.knob.setBounds(knobX, (height - KNOB_SIZE) / 2f, KNOB_SIZE, KNOB_SIZE);
         }
     }
 }
