@@ -1,5 +1,6 @@
 package controller;
 
+import lombok.Getter;
 import model.mechanism.Position;
 import model.minigame.izombieminigame.IZombieActionResult;
 import model.minigame.izombieminigame.IZombieActionStatus;
@@ -9,40 +10,38 @@ import model.zombie.ZombieDefinition;
 import view.izombie.IZombieView;
 import view.izombie.IZombieViewObserver;
 
+@Getter
 public class IZombieController implements IZombieViewObserver {
 
     private final IZombieMiniGame game;
 
-    public IZombieController(IZombieView view) {
-        this(
-                view,
-                new IZombieMiniGame()
-        );
-    }
-
-    public IZombieController(
-            IZombieView view,
-            IZombieMiniGame game
-    ) {
-        if (view == null) {
-            throw new IllegalArgumentException(
-                    "I Zombie view cannot be null."
-            );
-        }
-
-        if (game == null) {
-            throw new IllegalArgumentException(
-                    "I Zombie mini game cannot be null."
-            );
-        }
+    public IZombieController(IZombieMiniGame game) {
+        if (game == null)
+            throw new IllegalArgumentException("I Zombie mini game cannot be null.");
 
         this.game = game;
+    }
+
+    public IZombieController(IZombieView view) {
+        this(view, new IZombieMiniGame());
+    }
+
+    public IZombieController(IZombieView view, IZombieMiniGame game) {
+        this(game);
+
+        if (view == null)
+            throw new IllegalArgumentException("I Zombie view cannot be null.");
+
         view.setObserver(this);
     }
 
     @Override
     public IZombieActionResult onStartIZombieRequested() {
         return game.startGame();
+    }
+
+    public IZombieActionResult onStartIZombieRequested(int stageNumber) {
+        return game.startStage(stageNumber);
     }
 
     @Override
@@ -118,7 +117,4 @@ public class IZombieController implements IZombieViewObserver {
         return game.getState();
     }
 
-    public IZombieMiniGame getGame() {
-        return game;
-    }
 }

@@ -4,6 +4,7 @@ import college.java.project.graphics.GameplaySeedBankDataSource;
 import college.java.project.graphics.GameplayWorldDataSource;
 import model.Plant;
 import model.User.User;
+import model.chapters.ChapterType;
 import model.collection.PlantCollectionState;
 import model.mechanism.Board;
 import model.mechanism.LawnMower;
@@ -21,20 +22,56 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.LongSupplier;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class MiniGameGameplayDataSource implements GameplaySeedBankDataSource, GameplayWorldDataSource {
 
     private final MiniGame miniGame;
     private final User user;
     private final LongSupplier currentTickSupplier;
+    private final ChapterType chapterType;
 
-    public MiniGameGameplayDataSource(MiniGame miniGame, User user, LongSupplier currentTickSupplier) {
+    public MiniGameGameplayDataSource(
+        MiniGame miniGame,
+        User user,
+        LongSupplier currentTickSupplier
+    ) {
+        this(
+            miniGame,
+            user,
+            currentTickSupplier,
+            null
+        );
+    }
+
+    protected MiniGameGameplayDataSource(
+        MiniGame miniGame,
+        User user,
+        LongSupplier currentTickSupplier,
+        ChapterType chapterType
+    ) {
         if (miniGame == null)
-            throw new IllegalArgumentException("Minigame is required");
+            throw new IllegalArgumentException(
+                "Minigame is required"
+            );
 
         this.miniGame = miniGame;
         this.user = user;
-        this.currentTickSupplier = currentTickSupplier == null ? () -> 0L : currentTickSupplier;
+
+        this.currentTickSupplier =
+            currentTickSupplier == null
+                ? () -> 0L
+                : currentTickSupplier;
+
+        this.chapterType = chapterType == null
+            ? randomChapter()
+            : chapterType;
+    }
+
+    private static ChapterType randomChapter() {
+        ChapterType[] chapters = ChapterType.values();
+        int index = ThreadLocalRandom.current().nextInt(chapters.length);
+        return chapters[index];
     }
 
     protected final MiniGame getMiniGame() {
@@ -183,5 +220,10 @@ public class MiniGameGameplayDataSource implements GameplaySeedBankDataSource, G
     private PlantFoodSystem getPlantFoodSystem() {
         Board board = getBoard();
         return board == null ? null : board.getPlantFoodSystem();
+    }
+
+    @Override
+    public ChapterType getChapterType() {
+        return this.chapterType;
     }
 }

@@ -30,6 +30,7 @@ public class IZombieStateResult {
     private final boolean completed;
     private final boolean won;
     private final boolean lost;
+    private final Map<ZombieDefinition, Integer> zombieCooldownTicks;
 
     public IZombieStateResult(
             int stageNumber,
@@ -39,6 +40,7 @@ public class IZombieStateResult {
             List<ZombieDefinition> availableZombies,
             Map<ZombieDefinition, Integer> zombieCosts,
             Map<Integer, Boolean> brainEatenByRow,
+            Map<ZombieDefinition, Integer> zombieCooldownTicks,
             int placedZombieCount,
             boolean alivePlayerZombies,
             boolean started,
@@ -51,23 +53,17 @@ public class IZombieStateResult {
         this.sunAmount = Math.max(0, sunAmount);
         this.redLineColumn = redLineColumn;
 
-        this.availableZombies = availableZombies == null
-                ? Collections.emptyList()
-                : Collections.unmodifiableList(
-                new ArrayList<>(availableZombies)
-        );
+        this.availableZombies = availableZombies == null ? Collections.emptyList()
+                : Collections.unmodifiableList(new ArrayList<>(availableZombies));
 
-        this.zombieCosts = zombieCosts == null
-                ? Collections.emptyMap()
-                : Collections.unmodifiableMap(
-                new LinkedHashMap<>(zombieCosts)
-        );
+        this.zombieCosts = zombieCosts == null ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(zombieCosts));
 
-        this.brainEatenByRow = brainEatenByRow == null
-                ? Collections.emptyMap()
-                : Collections.unmodifiableMap(
-                new LinkedHashMap<>(brainEatenByRow)
-        );
+        this.brainEatenByRow = brainEatenByRow == null ? Collections.emptyMap()
+                : Collections.unmodifiableMap(new LinkedHashMap<>(brainEatenByRow));
+
+        this.zombieCooldownTicks = zombieCooldownTicks == null ? Collections.emptyMap()
+            : Collections.unmodifiableMap(new LinkedHashMap<>(zombieCooldownTicks));
 
         this.placedZombieCount = Math.max(0, placedZombieCount);
         this.alivePlayerZombies = alivePlayerZombies;
@@ -116,5 +112,20 @@ public class IZombieStateResult {
 
     public boolean hasAlivePlayerZombies() {
         return alivePlayerZombies;
+    }
+
+    public int getZombieCooldownTicks(ZombieDefinition definition) {
+        if (definition == null)
+            return 0;
+
+        return Math.max(0, zombieCooldownTicks.getOrDefault(definition, 0));
+    }
+
+    public boolean isZombieReady(ZombieDefinition definition) {
+        return getZombieCooldownTicks(definition) <= 0;
+    }
+
+    public boolean canPlaceZombie(ZombieDefinition definition) {
+        return canAfford(definition) && isZombieReady(definition);
     }
 }
