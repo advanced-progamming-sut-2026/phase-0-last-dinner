@@ -27,7 +27,7 @@ public class PlantZombieIZombieIntegration implements IZombieIntegration {
   private static final String PLANTS_RESOURCE = "data/plants.csv";
   private static final String ZOMBIES_RESOURCE = "data/zombies.json";
   private static final String ARMOR_RESOURCE = "data/ArmorTypeData.json";
-  private static final int FIRST_ZOMBIE_COLUMN = 6;
+  private static final int FIRST_ZOMBIE_COLUMN = 9;
   private static final int BOARD_ROW_COUNT = 5;
   private static final String[][] PLANTS_BY_STAGE = {
     {"Peashooter", "Wall-nut", "Snow Pea", "Repeater", "Bonk Choy"},
