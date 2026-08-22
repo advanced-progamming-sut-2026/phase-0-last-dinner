@@ -18,8 +18,12 @@ import model.mechanism.Position;
 import model.plant.PlantTag;
 import model.plant.Projectile;
 import model.plant.behavior.ExplosiveBehavior;
+import model.plant.behavior.MeleeBehavior;
+import model.plant.behavior.ModifierBehavior;
+import model.plant.behavior.SunProducerBehavior;
 import pvz.libpvz.textures.TextureBank;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -58,6 +62,7 @@ public final class GameplayPlantLayer extends Group {
     private static final String SHEEP_LEG =
             "IMAGE_EFFECTS_DARK_WIZARD_SHEEPENING_DARK_WIZARD_SHEEPENING_9X25";
     private static final float PLANT_FOOD_ANIMATION_SECONDS = 1.35f;
+    private static final float MEGA_GATLING_PLANT_FOOD_SECONDS = 2.00f;
     private static final float ATTACK_ANIMATION_SECONDS = 0.48f;
     private static final float SUN_PRODUCTION_ANIMATION_SECONDS = 0.72f;
     private static final float INTRO_ANIMATION_SECONDS = 0.72f;
@@ -92,6 +97,7 @@ public final class GameplayPlantLayer extends Group {
     private final PamAnimationCatalog animationCatalog;
     private final Map<Plant, RenderedPlant> actors = new IdentityHashMap<>();
     private final Map<String, ProjectileLaunchSample> projectileLaunchSamples = new HashMap<>();
+    private final Map<String, float[]> projectileReleaseFractions = new HashMap<>();
     private final Set<Integer> suppressedRemovalCells = new HashSet<>();
     private final Set<Integer> pendingIntroCells = new HashSet<>();
     private final Set<Integer> pendingPlantFoodCells = new HashSet<>();
@@ -224,8 +230,202 @@ public final class GameplayPlantLayer extends Group {
     }
 
     public float getAttackReleaseDelay(Projectile projectile) {
+        return getAttackReleaseDelay(projectile, 0);
+    }
+
+    public float getAttackReleaseDelay(Projectile projectile, int volleyIndex) {
+        return getAttackReleaseDelay(projectile, volleyIndex, visualBurstSize(
+                projectile == null ? null : projectile.getSourcePlant(), projectile
+        ));
+    }
+
+    public float getAttackReleaseDelay(Projectile projectile, int volleyIndex, int volleySize) {
         Plant plant = projectile == null ? null : projectile.getSourcePlant();
-        return getAttackReleaseDelay(plant, projectile);
+        RenderedPlant rendered = plant == null ? null : this.actors.get(plant);
+        float firstDelay = getAttackReleaseDelay(plant, projectile);
+        if (rendered == null || rendered.animation == null) {
+            return firstDelay;
+        }
+        int normalVolleySize = visualBurstSize(plant, projectile);
+        if (rendered.plantFoodRemaining > 0f && volleySize > normalVolleySize) {
+            return plantFoodReleaseDelay(rendered, plant, projectile, volleyIndex, volleySize);
+        }
+        if (volleySize <= 1 || volleyIndex <= 0) {
+            return firstDelay;
+        }
+        String clip = attackClipForProjectile(rendered, projectile);
+        float duration = rendered.animation.getClipDuration(clip, ATTACK_ANIMATION_SECONDS);
+        ProjectileLaunchProfile profile = projectileLaunchProfile(plant, projectile);
+        float[] fractions = authoredReleaseFractions(rendered.animation, clip, profile);
+        if (fractions.length >= volleySize && volleyIndex < fractions.length) {
+            return firstDelay + duration * Math.max(0f, fractions[volleyIndex] - fractions[0]);
+        }
+        float firstRelease = duration * resolvedReleaseFraction(rendered.animation, clip, profile);
+        float usableSpan = Math.min(duration * 0.72f, Math.max(0.12f, duration - firstRelease - 0.08f));
+        return firstDelay + usableSpan * Math.min(volleyIndex, volleySize - 1) / (volleySize - 1f);
+    }
+
+    private float plantFoodReleaseDelay(
+            RenderedPlant rendered,
+            Plant plant,
+            Projectile projectile,
+            int volleyIndex,
+            int volleySize
+    ) {
+        PlantFoodTiming timing = plantFoodTiming(rendered, plant);
+        int safeSize = Math.max(1, volleySize);
+        int safeIndex = Math.min(Math.max(0, volleyIndex), safeSize - 1);
+        List<Float> authored = new ArrayList<>();
+        ProjectileLaunchProfile profile = projectileLaunchProfile(plant, projectile);
+        for (PlantFoodClipWindow window : timing.windows) {
+            float[] fractions = authoredReleaseFractions(
+                    rendered.animation, window.clip, profile
+            );
+            for (float fraction : fractions) {
+                float time = window.offset + window.duration * fraction;
+                if (time <= timing.intro + timing.firingDuration + 0.0001f) {
+                    authored.add(time);
+                }
+            }
+        }
+        if (authored.size() >= safeSize) {
+            int eventIndex = safeSize <= 1
+                    ? 0
+                    : Math.round(safeIndex * (authored.size() - 1f) / (safeSize - 1f));
+            return authored.get(eventIndex);
+        }
+        float position = (safeIndex + 0.35f) / safeSize;
+        return timing.intro + timing.firingDuration * position;
+    }
+
+    private PlantFoodTiming plantFoodTiming(RenderedPlant rendered, Plant plant) {
+        String name = normalize(plant == null ? null : plant.getName());
+        List<PlantFoodClipWindow> windows = new ArrayList<>();
+        if (name.equals("mega gatling pea")) {
+            float intro = sequenceDuration(rendered, rendered.plantFoodSequence);
+            String clip = rendered.animation.findClip("attack_stage2");
+            float duration = clip == null ? 0f : rendered.animation.getClipDuration(clip, 0f);
+            float firingDuration = Math.max(0.10f, MEGA_GATLING_PLANT_FOOD_SECONDS - intro);
+            if (clip != null && duration > 0f) {
+                for (float offset = 0f; offset < firingDuration; offset += duration) {
+                    windows.add(new PlantFoodClipWindow(
+                            clip, intro + offset, duration
+                    ));
+                }
+            }
+            return new PlantFoodTiming(intro, firingDuration, windows);
+        }
+        if (name.equals("repeater") && rendered.plantFoodSequence.size() > 1) {
+            float intro = rendered.animation.getClipDuration(rendered.plantFoodSequence.get(0), 0f);
+            float offset = intro;
+            for (int index = 1; index < rendered.plantFoodSequence.size(); index++) {
+                String clip = rendered.plantFoodSequence.get(index);
+                float duration = rendered.animation.getClipDuration(clip, 0f);
+                windows.add(new PlantFoodClipWindow(clip, offset, duration));
+                offset += duration;
+            }
+            return new PlantFoodTiming(intro, Math.max(0.10f, offset - intro), windows);
+        }
+
+        boolean hasMainClip = false;
+        for (String clip : rendered.plantFoodSequence) {
+            String value = clip == null ? "" : clip.toLowerCase(Locale.ROOT);
+            if (!isPlantFoodTransitionStart(value) && !isPlantFoodTransitionEnd(value)) {
+                hasMainClip = true;
+                break;
+            }
+        }
+        float intro = 0f;
+        float offset = 0f;
+        float firingDuration = 0f;
+        for (String clip : rendered.plantFoodSequence) {
+            String value = clip == null ? "" : clip.toLowerCase(Locale.ROOT);
+            float duration = rendered.animation.getClipDuration(clip, 0f);
+            if (hasMainClip && isPlantFoodTransitionStart(value) && windows.isEmpty()) {
+                intro += duration;
+            } else if (!isPlantFoodTransitionEnd(value)) {
+                windows.add(new PlantFoodClipWindow(clip, offset, duration));
+                firingDuration += duration;
+            }
+            offset += duration;
+        }
+        if (windows.isEmpty()) {
+            firingDuration = Math.max(0.10f, rendered.plantFoodRemaining);
+        }
+        return new PlantFoodTiming(intro, Math.max(0.10f, firingDuration), windows);
+    }
+
+    private float sequenceDuration(RenderedPlant rendered, List<String> sequence) {
+        float duration = 0f;
+        for (String clip : sequence) {
+            duration += rendered.animation.getClipDuration(clip, 0f);
+        }
+        return duration;
+    }
+
+    private boolean isPlantFoodTransitionStart(String clip) {
+        return clip.contains("_on") || clip.contains("_start");
+    }
+
+    private boolean isPlantFoodTransitionEnd(String clip) {
+        return clip.contains("_off") || clip.contains("_end") || clip.contains("idle");
+    }
+
+    private float[] authoredReleaseFractions(
+            PamAnimationCatalog.AnimationInfo animation,
+            String clip,
+            ProjectileLaunchProfile profile
+    ) {
+        if (animation == null || clip == null || profile == null || profile.partCandidates.length == 0) {
+            return new float[0];
+        }
+        String key = animation.getPath() + "|" + clip + "|" + String.join(",", profile.partCandidates);
+        float[] cached = this.projectileReleaseFractions.get(key);
+        if (cached != null) {
+            return cached;
+        }
+        for (String partName : profile.partCandidates) {
+            Rectangle[] frames = PamPartGeometry.partBoundsByFrame(
+                    this.assets.getPamPlayer(), animation.getPath(), clip, partName
+            );
+            List<Float> starts = new ArrayList<>();
+            boolean visible = false;
+            for (int index = 0; index < frames.length; index++) {
+                Rectangle frame = frames[index];
+                boolean nowVisible = frame != null && frame.width > 0f && frame.height > 0f;
+                if (nowVisible && !visible) {
+                    starts.add(frames.length <= 1 ? 0f : index / (float) (frames.length - 1));
+                }
+                visible = nowVisible;
+            }
+            if (!starts.isEmpty()) {
+                float[] result = new float[starts.size()];
+                for (int index = 0; index < starts.size(); index++) {
+                    result[index] = starts.get(index);
+                }
+                this.projectileReleaseFractions.put(key, result);
+                return result;
+            }
+        }
+        float[] missing = new float[0];
+        this.projectileReleaseFractions.put(key, missing);
+        return missing;
+    }
+
+    private int visualBurstSize(Plant plant, Projectile projectile) {
+        Object behavior = plant == null ? null : plant.getBehavior();
+        String pattern = String.valueOf(readFieldValue(behavior, "shooterPattern"))
+                .toUpperCase(Locale.ROOT);
+        if (pattern.contains("THREE_LANE") || pattern.contains("FOUR_DIAGONAL")
+                || pattern.contains("STAR_FIVE") || pattern.contains("STACKED_FORWARD")
+                || pattern.contains("BOUNCING")) {
+            return 1;
+        }
+        String field = projectile != null && projectile.getHorizontalDirection() < 0
+                ? "backwardShotCount"
+                : "forwardShotCount";
+        Object count = readFieldValue(behavior, field);
+        return count instanceof Number ? Math.max(1, ((Number) count).intValue()) : 1;
     }
 
     /**
@@ -317,6 +517,13 @@ public final class GameplayPlantLayer extends Group {
         String name = normalize(projectile == null || projectile.getSourcePlant() == null
                 ? null : projectile.getSourcePlant().getName());
 
+        if (name.equals("mega gatling pea") && rendered.megaGatlingStageTwo) {
+            String stageTwo = rendered.animation.findClip("attack_stage2");
+            if (stageTwo != null) {
+                return stageTwo;
+            }
+        }
+
         if (name.contains("kernel-pult") || name.contains("kernel pult")) {
             if (projectile != null && projectile.getStunChancePercent() >= 100) {
                 String butter = rendered.animation.findClip("attack2", "attack 2");
@@ -335,9 +542,7 @@ public final class GameplayPlantLayer extends Group {
         }
 
         if (name.contains("puff-shroom")) {
-            String puffAttack = rendered.animation.findClip(
-                    "special_stage1", "special_stage2", "special_stage3", "special"
-            );
+            String puffAttack = puffShroomAttackClip(rendered.animation, rendered.puffShroomStage);
             if (puffAttack != null) {
                 return puffAttack;
             }
@@ -728,14 +933,89 @@ public final class GameplayPlantLayer extends Group {
             ));
             return false;
         }
-        String clip = rendered.animation.getPlantFoodClip();
-        if (clip == null) {
+        List<String> sequence = plantFoodSequenceForPlant(rendered, plant);
+        if (sequence.isEmpty()) {
             return false;
         }
         if (isPotatoMine(plant.getName())) {
             rendered.mineArmRemaining = 0f;
             rendered.mineRecoverPlayed = true;
         }
+        rendered.plantFoodSequence = sequence;
+        rendered.plantFoodSequenceIndex = 0;
+        rendered.megaGatlingPlantFoodBurstPlayed = false;
+        if (isMegaGatlingPea(plant.getName())) {
+            rendered.megaGatlingStageTwo = true;
+        }
+        armDefenderPlantFoodVisual(rendered, plant);
+        startPlantFoodClip(rendered, sequence.get(0));
+        return true;
+    }
+
+    private List<String> plantFoodSequenceForPlant(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || rendered.animation == null || plant == null) {
+            return List.of();
+        }
+        String name = normalize(plant.getName());
+        if (name.equals("sun-shroom")) {
+            return sunShroomPlantFoodSequence(rendered.animation, sunShroomStage(plant, rendered));
+        }
+        if (name.equals("chomper")) {
+            return orderedExistingClips(
+                    rendered.animation,
+                    "plantfood_on", "plantfood", "plantfood_burp", "plantfood_burp_end", "plantfood_off"
+            );
+        }
+        if (name.equals("sunflower") || name.equals("twin sunflower") || name.equals("twin-sunflower")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+        }
+        if (name.equals("cactus")) {
+            return orderedExistingClips(rendered.animation, "plantfood", "attack_plantfood");
+        }
+        if (name.equals("torchwood")) {
+            return rendered.torchwoodBoosted
+                    ? orderedExistingClips(rendered.animation, "plantfood_on_t2", "plantfood_t2")
+                    : orderedExistingClips(rendered.animation, "plantfood_on", "plantfood");
+        }
+        if (name.equals("explode-o-nut")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+        }
+        if (name.equals("repeater")) {
+            return orderedExistingClips(rendered.animation, "plantfood", "plantfood2");
+        }
+        if (name.equals("bonk choy") || name.equals("wasabi whip")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+        }
+        if (name.equals("sun bean")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood");
+        }
+        if (name.equals("starfruit")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+        }
+        if (isLobberPlant(name)) {
+            return orderedExistingClips(rendered.animation, "plantfood", "plantfood2", "plantfood3");
+        }
+        if (isDefenderNut(name)) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+        }
+        return rendered.animation.getPlantFoodSequence();
+    }
+
+    private List<String> orderedExistingClips(
+            PamAnimationCatalog.AnimationInfo animation,
+            String... candidates
+    ) {
+        List<String> sequence = new ArrayList<>();
+        for (String candidate : candidates) {
+            String clip = animation.findClip(candidate);
+            if (clip != null && !sequence.contains(clip)) {
+                sequence.add(clip);
+            }
+        }
+        return sequence;
+    }
+
+    private void startPlantFoodClip(RenderedPlant rendered, String clip) {
         PamAnimationActor actor = (PamAnimationActor) rendered.body;
         actor.setAnimation(rendered.animation.getPath(), clip);
         actor.setLooping(false);
@@ -743,7 +1023,6 @@ public final class GameplayPlantLayer extends Group {
                 clip,
                 PLANT_FOOD_ANIMATION_SECONDS
         );
-        return true;
     }
 
     void setRenderHost(Group renderHost) {
@@ -871,6 +1150,27 @@ public final class GameplayPlantLayer extends Group {
         if (name.equals("kiwibeast")) {
             syncKiwibeastStage(rendered, plant);
         }
+        if (name.equals("sun-shroom")) {
+            syncSunShroomStage(rendered, plant);
+        }
+        if (name.equals("chomper")) {
+            syncChomperState(rendered, plant);
+        }
+        if (name.equals("puff-shroom")) {
+            syncPuffShroomStage(rendered, plant);
+        }
+        if (name.equals("pea pod")) {
+            syncPeaPodStage(rendered, plant);
+        }
+        if (name.equals("endurian")) {
+            syncEndurianState(rendered, plant, delta);
+        }
+        if (name.equals("torchwood")) {
+            syncTorchwoodBoostState(rendered, plant);
+        }
+        if (name.equals("pumpkin")) {
+            syncPumpkinPlantFoodArmor(rendered, plant);
+        }
         if (plant.isDisabled() || plant.isDead()) {
             return;
         }
@@ -961,6 +1261,312 @@ public final class GameplayPlantLayer extends Group {
             actor.setAnimation(rendered.animation.getPath(), idle);
             actor.setLooping(true);
         }
+    }
+
+    private void syncSunShroomStage(RenderedPlant rendered, Plant plant) {
+        int stage = sunShroomStage(plant, rendered);
+        if (stage == rendered.sunShroomStage) {
+            return;
+        }
+        int previous = rendered.sunShroomStage;
+        rendered.sunShroomStage = stage;
+        if (!(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        String growth = previous <= 1 && stage == 2
+                ? rendered.animation.findClip("growth_stage1")
+                : previous <= 2 && stage >= 3
+                ? rendered.animation.findClip("growth_stage2")
+                : null;
+        PamAnimationActor actor = (PamAnimationActor) rendered.body;
+        if (growth != null && rendered.plantFoodRemaining <= 0f) {
+            actor.setAnimation(rendered.animation.getPath(), growth);
+            actor.setLooping(false);
+            rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(growth, 0.80f);
+            return;
+        }
+        if (rendered.temporaryAnimationRemaining <= 0f && rendered.plantFoodRemaining <= 0f) {
+            String idle = sunShroomIdleClip(rendered.animation, stage);
+            if (idle != null) {
+                actor.setAnimation(rendered.animation.getPath(), idle);
+                actor.setLooping(true);
+            }
+        }
+    }
+
+    private int sunShroomStage(Plant plant, RenderedPlant rendered) {
+        if (plant == null || !(plant.getBehavior() instanceof SunProducerBehavior)) {
+            return fallbackSunShroomStage(rendered);
+        }
+        SunProducerBehavior behavior = (SunProducerBehavior) plant.getBehavior();
+        long ageTicks = readLongField(behavior, "ageTicks", Math.max(
+                0L, this.worldDataSource.getCurrentTick() - Math.max(0L, rendered.firstSeenTick)
+        ));
+        long stageTwoTicks = readLongField(behavior, "rampStageTwoTicks", 240L);
+        long stageThreeTicks = readLongField(behavior, "rampStageThreeTicks", 720L);
+        return ageTicks >= stageThreeTicks ? 3 : ageTicks >= stageTwoTicks ? 2 : 1;
+    }
+
+    private int fallbackSunShroomStage(RenderedPlant rendered) {
+        long ageTicks = rendered == null || rendered.firstSeenTick < 0L
+                ? 0L
+                : Math.max(0L, this.worldDataSource.getCurrentTick() - rendered.firstSeenTick);
+        return ageTicks >= 720L ? 3 : ageTicks >= 240L ? 2 : 1;
+    }
+
+    private String sunShroomIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation == null ? null : animation.findClip(
+                "idle_stage" + safe, "idle2_stage" + safe, "idle"
+        );
+    }
+
+    private String sunShroomSunProductionClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation == null ? null : animation.findClip("special_stage" + safe, "special");
+    }
+
+    private List<String> sunShroomPlantFoodSequence(
+            PamAnimationCatalog.AnimationInfo animation,
+            int stage
+    ) {
+        if (animation == null) {
+            return List.of();
+        }
+        String clip = animation.findClip("plantfood_stage" + Math.max(1, Math.min(3, stage)), "plantfood");
+        return clip == null ? List.of() : List.of(clip);
+    }
+
+    private void syncChomperState(RenderedPlant rendered, Plant plant) {
+        if (plant == null || !(plant.getBehavior() instanceof MeleeBehavior)) {
+            return;
+        }
+        long digestTicks = readLongField(plant.getBehavior(), "remainingDigestTicks", 0L);
+        boolean digesting = digestTicks > 0L;
+        if (digesting && rendered.lastChomperDigestTicks <= 0L) {
+            rendered.chomperDigesting = true;
+            rendered.chomperBiteEndPending = true;
+            playChomperClip(rendered, "bite", 0.50f);
+        } else if (!digesting && rendered.lastChomperDigestTicks > 0L) {
+            rendered.chomperDigesting = false;
+            playChomperClip(rendered, "special_end", 0.45f);
+        } else {
+            rendered.chomperDigesting = digesting;
+        }
+        rendered.lastChomperDigestTicks = digestTicks;
+    }
+
+    private void playChomperClip(RenderedPlant rendered, String preferredClip, float fallbackSeconds) {
+        if (rendered == null || rendered.plantFoodRemaining > 0f
+                || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        String clip = rendered.animation.findClip(preferredClip);
+        if (clip != null) {
+            PamAnimationActor actor = (PamAnimationActor) rendered.body;
+            actor.setAnimation(rendered.animation.getPath(), clip);
+            actor.setLooping(false);
+            rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(clip, fallbackSeconds);
+        }
+    }
+
+    private void syncPuffShroomStage(RenderedPlant rendered, Plant plant) {
+        int stage = puffShroomStage(plant);
+        if (stage == rendered.puffShroomStage) {
+            return;
+        }
+        rendered.puffShroomStage = stage;
+        if (rendered.temporaryAnimationRemaining > 0f || rendered.plantFoodRemaining > 0f
+                || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        String idle = puffShroomIdleClip(rendered.animation, stage);
+        if (idle != null) {
+            PamAnimationActor actor = (PamAnimationActor) rendered.body;
+            actor.setAnimation(rendered.animation.getPath(), idle);
+            actor.setLooping(true);
+        }
+    }
+
+    private int puffShroomStage(Plant plant) {
+        long full = readLongField(plant, "fullLifespanTicks", 0L);
+        long remaining = readLongField(plant, "lifespanTicks", 0L);
+        if (full <= 0L) {
+            return 1;
+        }
+        float ratio = Math.max(0L, Math.min(full, remaining)) / (float) full;
+        return ratio > 0.75f ? 1 : ratio > 0.50f ? 2 : ratio > 0.25f ? 3 : 4;
+    }
+
+    private String puffShroomIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(4, stage));
+        return animation == null ? null : animation.findClip(
+                "idle_stage" + safe, "idle2_stage" + safe, "idle"
+        );
+    }
+
+    private String puffShroomAttackClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation == null ? null : animation.findClip(
+                "special_stage" + safe, "special", "attack"
+        );
+    }
+
+    private void syncTorchwoodBoostState(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null || !(plant.getBehavior() instanceof ModifierBehavior)) {
+            return;
+        }
+        boolean boosted = readLongField(plant.getBehavior(), "projectileBoostTicks", 0L) > 0L;
+        if (boosted == rendered.torchwoodBoosted) {
+            return;
+        }
+        rendered.torchwoodBoosted = boosted;
+        if (rendered.plantFoodRemaining <= 0f && rendered.temporaryAnimationRemaining <= 0f
+                && rendered.body instanceof PamAnimationActor && rendered.animation != null) {
+            restoreStableClip(rendered);
+        }
+    }
+
+    private void armDefenderPlantFoodVisual(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null || !normalize(plant.getName()).equals("pumpkin")) {
+            return;
+        }
+        rendered.pumpkinPlantFoodArmorVisual = true;
+        rendered.pumpkinPlantFoodArmorAmount = 3000;
+        rendered.pumpkinPlantFoodArmorBaselineHealth = Math.max(0, plant.getHealth() - 3000);
+        rendered.pumpkinPlantFoodArmorStage = 1;
+    }
+
+    private void syncPumpkinPlantFoodArmor(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null || !rendered.pumpkinPlantFoodArmorVisual) {
+            return;
+        }
+        int remaining = plant.getHealth() - rendered.pumpkinPlantFoodArmorBaselineHealth;
+        if (remaining <= 0) {
+            rendered.pumpkinPlantFoodArmorVisual = false;
+            rendered.pumpkinPlantFoodArmorStage = 0;
+            if (rendered.plantFoodRemaining <= 0f && rendered.temporaryAnimationRemaining <= 0f) {
+                restoreStableClip(rendered);
+            }
+            return;
+        }
+        float ratio = Math.max(0f, Math.min(1f, remaining / (float) Math.max(1, rendered.pumpkinPlantFoodArmorAmount)));
+        int stage = ratio > 0.75f ? 1 : ratio > 0.50f ? 2 : ratio > 0.25f ? 3 : 4;
+        if (stage == rendered.pumpkinPlantFoodArmorStage) {
+            return;
+        }
+        rendered.pumpkinPlantFoodArmorStage = stage;
+        if (rendered.plantFoodRemaining <= 0f && rendered.temporaryAnimationRemaining <= 0f
+                && rendered.body instanceof PamAnimationActor && rendered.animation != null) {
+            String clip = pumpkinPlantFoodArmorClip(rendered.animation, stage);
+            if (clip != null) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), clip);
+                actor.setLooping(true);
+            }
+        }
+    }
+
+    private String pumpkinPlantFoodArmorClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        if (animation == null) {
+            return null;
+        }
+        int safe = Math.max(1, Math.min(4, stage));
+        return safe == 1
+                ? animation.findClip("idle_plantfood")
+                : animation.findClip("idle_plantfood" + safe, "idle_plantfood");
+    }
+
+    private void syncPeaPodStage(RenderedPlant rendered, Plant plant) {
+        int stage = peaPodStackCount(plant);
+        if (stage == rendered.peaPodStage) {
+            return;
+        }
+        rendered.peaPodStage = stage;
+        if (rendered.temporaryAnimationRemaining > 0f || rendered.plantFoodRemaining > 0f
+                || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        String idle = peaPodIdleClip(rendered.animation, stage);
+        if (idle != null) {
+            PamAnimationActor actor = (PamAnimationActor) rendered.body;
+            actor.setAnimation(rendered.animation.getPath(), idle);
+            actor.setLooping(true);
+        }
+    }
+
+    private int peaPodStackCount(Plant plant) {
+        return Math.max(1, Math.min(5, countSamePlantAt(plant)));
+    }
+
+    private String peaPodIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(5, stage));
+        return animation == null ? null : safe <= 1
+                ? animation.findClip("idle")
+                : animation.findClip("idle" + safe, "idle " + safe, "idle");
+    }
+
+    private String peaPodAttackClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        int safe = Math.max(1, Math.min(5, stage));
+        return animation == null ? null : safe <= 1
+                ? animation.findClip("attack")
+                : animation.findClip("attack " + safe, "attack" + safe, "attack");
+    }
+
+    private void syncEndurianState(RenderedPlant rendered, Plant plant, float delta) {
+        if (rendered == null || plant == null) {
+            return;
+        }
+        rendered.endurianLoopHoldRemaining = Math.max(0f, rendered.endurianLoopHoldRemaining - delta);
+        if (rendered.endurianLooping && rendered.endurianLoopHoldRemaining <= 0f
+                && rendered.temporaryAnimationRemaining <= 0f && rendered.plantFoodRemaining <= 0f) {
+            String end = endurianReactionClip(rendered, "attack_end");
+            if (end != null && rendered.body instanceof PamAnimationActor) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), end);
+                actor.setLooping(false);
+                rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(end, 0.32f);
+            }
+            rendered.endurianLooping = false;
+            return;
+        }
+        if (!rendered.endurianLooping && rendered.endurianLoopHoldRemaining > 0f
+                && rendered.temporaryAnimationRemaining <= 0f && rendered.plantFoodRemaining <= 0f) {
+            String loop = endurianReactionClip(rendered, "attack_loop");
+            if (loop != null && rendered.body instanceof PamAnimationActor) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), loop);
+                actor.setLooping(true);
+                rendered.endurianLooping = true;
+            }
+        }
+        if (rendered.tookDamageThisFrame && hasHostileZombieInRadius(plant, 1)
+                && rendered.endurianLoopHoldRemaining <= 0f && rendered.plantFoodRemaining <= 0f) {
+            String start = endurianReactionClip(rendered, "attack_start");
+            if (start != null && rendered.body instanceof PamAnimationActor) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), start);
+                actor.setLooping(false);
+                rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(start, 0.26f);
+                rendered.endurianLoopHoldRemaining = 0.42f;
+                rendered.endurianLooping = false;
+            }
+        }
+    }
+
+    private String endurianReactionClip(RenderedPlant rendered, String base) {
+        if (rendered == null || rendered.animation == null) {
+            return null;
+        }
+        int stage = Math.max(0, rendered.damageStage);
+        for (int level = Math.min(3, stage); level >= 1; level--) {
+            String suffix = level == 1 ? "_damage" : "_damage" + level;
+            String clip = rendered.animation.findClip(base + suffix);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        return rendered.animation.findClip(base);
     }
 
     private String kiwibeastIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
@@ -1740,8 +2346,12 @@ public final class GameplayPlantLayer extends Group {
             return false;
         }
         String clip = switch (kind) {
-            case ATTACK -> rendered.animation.getAttackClip();
-            case SUN_PRODUCTION -> rendered.animation.getSunProductionClip();
+            case ATTACK -> attackClipForPlantState(rendered, plant);
+            case SUN_PRODUCTION -> isSunShroom(plant)
+                    ? sunShroomSunProductionClip(rendered.animation, sunShroomStage(plant, rendered))
+                    : isGoldBloom(plant)
+                    ? goldBloomSunProductionClip(rendered.animation)
+                    : rendered.animation.getSunProductionClip();
             case INTRO -> rendered.animation.getIntroClip();
         };
         if (clip == null) {
@@ -1758,6 +2368,58 @@ public final class GameplayPlantLayer extends Group {
         };
         rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(clip, fallbackDuration);
         return true;
+    }
+
+    private String attackClipForPlantState(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || rendered.animation == null) {
+            return null;
+        }
+        String name = plant == null ? "" : normalize(plant.getName());
+        if (name.equals("mega gatling pea") && rendered.megaGatlingStageTwo) {
+            String clip = rendered.animation.findClip("attack_stage2");
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (name.equals("puff-shroom")) {
+            String clip = puffShroomAttackClip(rendered.animation, rendered.puffShroomStage);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (name.equals("pea pod")) {
+            String clip = peaPodAttackClip(rendered.animation, rendered.peaPodStage);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (isComboMeleePlant(name)) {
+            String clip = nextComboMeleeAttackClip(rendered);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        return rendered.animation.getAttackClip();
+    }
+
+    private boolean isComboMeleePlant(String plantName) {
+        String name = normalize(plantName);
+        return name.equals("bonk choy") || name.equals("wasabi whip");
+    }
+
+    private String nextComboMeleeAttackClip(RenderedPlant rendered) {
+        int next = rendered.comboMeleeAttackIndex + 1;
+        if (next < 1 || next > 5) {
+            next = 1;
+        }
+        rendered.comboMeleeAttackIndex = next;
+        return next == 1
+                ? rendered.animation.findClip("attack")
+                : rendered.animation.findClip("attack" + next, "attack " + next, "attack");
+    }
+
+    private boolean isMegaGatlingPea(String plantName) {
+        return normalize(plantName).equals("mega gatling pea");
     }
 
     private void playFallbackMotion(RenderedPlant rendered, AnimationKind kind) {
@@ -1780,6 +2442,19 @@ public final class GameplayPlantLayer extends Group {
         ));
     }
 
+    private boolean isGoldBloom(Plant plant) {
+        return plant != null && "gold bloom".equals(normalize(plant.getName()));
+    }
+
+    private String goldBloomSunProductionClip(PamAnimationCatalog.AnimationInfo animation) {
+        String explicit = animation.getSunProductionClip();
+        return explicit != null ? explicit : animation.findClip("attack", "attack1", "special");
+    }
+
+    private boolean isSunShroom(Plant plant) {
+        return plant != null && normalize(plant.getName()).equals("sun-shroom");
+    }
+
     private void advanceTemporaryAnimation(RenderedPlant rendered, float delta) {
         if (rendered.temporaryAnimationRemaining <= 0f || rendered.plantFoodRemaining > 0f) {
             return;
@@ -1789,6 +2464,17 @@ public final class GameplayPlantLayer extends Group {
                 || !(rendered.body instanceof PamAnimationActor)
                 || rendered.animation == null) {
             return;
+        }
+        if (rendered.chomperBiteEndPending) {
+            rendered.chomperBiteEndPending = false;
+            String biteEnd = rendered.animation.findClip("bite_end");
+            if (biteEnd != null) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), biteEnd);
+                actor.setLooping(false);
+                rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(biteEnd, 0.55f);
+                return;
+            }
         }
         restoreStableClip(rendered);
         rendered.damageStage = -1;
@@ -1804,6 +2490,31 @@ public final class GameplayPlantLayer extends Group {
                 || rendered.animation == null) {
             return;
         }
+        int nextIndex = rendered.plantFoodSequenceIndex + 1;
+        if (nextIndex < rendered.plantFoodSequence.size()) {
+            rendered.plantFoodSequenceIndex = nextIndex;
+            startPlantFoodClip(rendered, rendered.plantFoodSequence.get(nextIndex));
+            return;
+        }
+        if (rendered.megaGatlingStageTwo && !rendered.megaGatlingPlantFoodBurstPlayed) {
+            String burst = rendered.animation.findClip("attack_stage2");
+            if (burst != null) {
+                rendered.megaGatlingPlantFoodBurstPlayed = true;
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), burst);
+                actor.setLooping(true);
+                float transitionSeconds = 0f;
+                for (String clip : rendered.plantFoodSequence) {
+                    transitionSeconds += rendered.animation.getClipDuration(clip, 0f);
+                }
+                rendered.plantFoodRemaining = Math.max(
+                        0.10f, MEGA_GATLING_PLANT_FOOD_SECONDS - transitionSeconds
+                );
+                return;
+            }
+        }
+        rendered.plantFoodSequence = List.of();
+        rendered.plantFoodSequenceIndex = -1;
         restoreStableClip(rendered);
         rendered.damageStage = -1;
     }
@@ -1919,7 +2630,7 @@ public final class GameplayPlantLayer extends Group {
         } else if (rendered.kiwiStage > 0) {
             clip = kiwibeastIdleClip(rendered.animation, rendered.kiwiStage);
         } else {
-            clip = rendered.animation.getPreviewClip();
+            clip = stableIdleClip(rendered);
         }
         if (clip == null) {
             return;
@@ -1927,6 +2638,87 @@ public final class GameplayPlantLayer extends Group {
         PamAnimationActor actor = (PamAnimationActor) rendered.body;
         actor.setAnimation(rendered.animation.getPath(), clip);
         actor.setLooping(true);
+    }
+
+    private String stableIdleClip(RenderedPlant rendered) {
+        if (rendered.chomperDigesting) {
+            String clip = rendered.animation.findClip("special_idle", "special");
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.sunShroomStage > 0) {
+            String clip = sunShroomIdleClip(rendered.animation, rendered.sunShroomStage);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.puffShroomStage > 0) {
+            String clip = puffShroomIdleClip(rendered.animation, rendered.puffShroomStage);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.peaPodStage > 0) {
+            String clip = peaPodIdleClip(rendered.animation, rendered.peaPodStage);
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.pumpkinPlantFoodArmorVisual) {
+            String clip = pumpkinPlantFoodArmorClip(
+                    rendered.animation, rendered.pumpkinPlantFoodArmorStage
+            );
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.torchwoodBoosted) {
+            String clip = rendered.animation.findClip("plantfood_t2", "plantfood");
+            if (clip != null) {
+                return clip;
+            }
+        }
+        if (rendered.megaGatlingStageTwo) {
+            String clip = rendered.animation.findClip("idle_stage2");
+            if (clip != null) {
+                return clip;
+            }
+        }
+        return rendered.animation.getPreviewClip();
+    }
+
+    private boolean isLobberPlant(String name) {
+        return name != null && (name.equals("melon-pult")
+                || name.equals("winter melon")
+                || name.equals("cabbage-pult")
+                || name.equals("kernel-pult"));
+    }
+
+    private boolean isDefenderNut(String plantName) {
+        String name = normalize(plantName);
+        return name.contains("wall-nut") || name.contains("wall nut")
+                || name.contains("tall-nut") || name.contains("tall nut")
+                || name.contains("infi-nut") || name.contains("infi nut");
+    }
+
+    private long readLongField(Object target, String fieldName, long fallback) {
+        Object value = readFieldValue(target, fieldName);
+        return value instanceof Number ? ((Number) value).longValue() : fallback;
+    }
+
+    private Object readFieldValue(Object target, String fieldName) {
+        Class<?> type = target == null ? null : target.getClass();
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (ReflectiveOperationException ignored) {
+                type = type.getSuperclass();
+            }
+        }
+        return null;
     }
 
     private boolean isPotatoMine(String plantName) {
@@ -1957,7 +2749,10 @@ public final class GameplayPlantLayer extends Group {
                 || rendered.animation == null
                 || rendered.temporaryAnimationRemaining > 0f
                 || rendered.plantFoodRemaining > 0f
-                || rendered.mineArmRemaining > 0f) {
+                || rendered.mineArmRemaining > 0f
+                || rendered.endurianLoopHoldRemaining > 0f
+                || rendered.endurianLooping
+                || rendered.pumpkinPlantFoodArmorVisual) {
             return;
         }
         int maximumHealth = plant.getMaximumHealth();
@@ -1969,7 +2764,7 @@ public final class GameplayPlantLayer extends Group {
         if (stage == rendered.damageStage) {
             return;
         }
-        String clip = stage == 0 ? rendered.animation.getPreviewClip() : rendered.animation.getDamageClip(stage);
+        String clip = stage == 0 ? stableIdleClip(rendered) : rendered.animation.getDamageClip(stage);
         if (clip == null && isPumpkin(plant.getName())) {
             clip = pumpkinDamageClip(rendered.animation, stage);
         }
@@ -2001,7 +2796,8 @@ public final class GameplayPlantLayer extends Group {
 
     private void updateDamageFlash(RenderedPlant rendered, Plant plant, float delta) {
         int health = plant == null ? 0 : plant.getHealth();
-        if (rendered.lastHealth >= 0 && health < rendered.lastHealth) {
+        rendered.tookDamageThisFrame = rendered.lastHealth >= 0 && health < rendered.lastHealth;
+        if (rendered.tookDamageThisFrame) {
             rendered.damageFlashRemaining = DAMAGE_FLASH_SECONDS;
         }
         rendered.lastHealth = health;
@@ -2194,6 +2990,34 @@ public final class GameplayPlantLayer extends Group {
         INTRO
     }
 
+    private static final class PlantFoodTiming {
+        private final float intro;
+        private final float firingDuration;
+        private final List<PlantFoodClipWindow> windows;
+
+        private PlantFoodTiming(
+                float intro,
+                float firingDuration,
+                List<PlantFoodClipWindow> windows
+        ) {
+            this.intro = intro;
+            this.firingDuration = firingDuration;
+            this.windows = windows;
+        }
+    }
+
+    private static final class PlantFoodClipWindow {
+        private final String clip;
+        private final float offset;
+        private final float duration;
+
+        private PlantFoodClipWindow(String clip, float offset, float duration) {
+            this.clip = clip;
+            this.offset = offset;
+            this.duration = duration;
+        }
+    }
+
     private static final class PlantShadowProfile {
         private final float widthFactor;
         private final float heightFactor;
@@ -2340,6 +3164,10 @@ public final class GameplayPlantLayer extends Group {
         private final PamAnimationCatalog.AnimationInfo animation;
         private final float pamCenterOffsetX;
         private final float pamGroundOffset;
+        private List<String> plantFoodSequence = List.of();
+        private int plantFoodSequenceIndex = -1;
+        private boolean megaGatlingStageTwo;
+        private boolean megaGatlingPlantFoodBurstPlayed;
         private float plantFoodRemaining;
         private float temporaryAnimationRemaining;
         private float damageFlashRemaining;
@@ -2358,6 +3186,21 @@ public final class GameplayPlantLayer extends Group {
         private float meleeVisualElapsed;
         private float idlePulseElapsed;
         private int kiwiStage;
+        private int sunShroomStage;
+        private int puffShroomStage;
+        private int peaPodStage;
+        private int comboMeleeAttackIndex;
+        private long lastChomperDigestTicks;
+        private boolean chomperDigesting;
+        private boolean chomperBiteEndPending;
+        private boolean torchwoodBoosted;
+        private boolean pumpkinPlantFoodArmorVisual;
+        private int pumpkinPlantFoodArmorAmount;
+        private int pumpkinPlantFoodArmorBaselineHealth;
+        private int pumpkinPlantFoodArmorStage;
+        private boolean tookDamageThisFrame;
+        private float endurianLoopHoldRemaining;
+        private boolean endurianLooping;
 
         private RenderedPlant(
                 Group root,

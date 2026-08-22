@@ -15,6 +15,7 @@ import model.plant.Projectile;
 import model.plant.ProjectileType;
 import pvz.libpvz.textures.TextureBank;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -22,7 +23,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.ToDoubleFunction;
 
 /** Renders direct and lobbed projectiles using live Phase 1 projectile coordinates. */
 public final class GameplayProjectileLayer extends Group {
@@ -42,7 +42,7 @@ public final class GameplayProjectileLayer extends Group {
     private boolean ownsAssets;
     private Consumer<Projectile> spawnListener;
     private Consumer<Projectile> impactListener;
-    private ToDoubleFunction<Projectile> releaseDelayProvider;
+    private ProjectileReleaseDelayProvider releaseDelayProvider;
     private Function<Projectile, Vector2> launchPointProvider;
     private final Map<Projectile, RenderedProjectile> actors = new IdentityHashMap<>();
 
@@ -84,7 +84,7 @@ public final class GameplayProjectileLayer extends Group {
         this.impactListener = impactListener;
     }
 
-    public void setReleaseDelayProvider(ToDoubleFunction<Projectile> releaseDelayProvider) {
+    public void setReleaseDelayProvider(ProjectileReleaseDelayProvider releaseDelayProvider) {
         this.releaseDelayProvider = releaseDelayProvider;
     }
 
@@ -106,8 +106,10 @@ public final class GameplayProjectileLayer extends Group {
     private void syncProjectiles(float delta) {
         List<Projectile> projectiles = new ArrayList<>(this.dataSource.getProjectiles());
         projectiles.removeIf(projectile -> projectile == null || projectile.isExpired());
-        removeMissing(projectiles);
-        Map<Plant, int[]> newVolleyOrdinals = new IdentityHashMap<>();
+        removeMissing(projectiles, delta);
+        Map<Plant, Map<VolleyKey, Integer>> newVolleySizes = countNewVolleyProjectiles(projectiles);
+        Map<Plant, Map<VolleyKey, Integer>> newVolleyOrdinals = new IdentityHashMap<>();
+        Map<Plant, Boolean> attackNotified = new IdentityHashMap<>();
         for (Projectile projectile : projectiles) {
             RenderedProjectile rendered = this.actors.get(projectile);
             if (rendered == null) {
@@ -115,10 +117,12 @@ public final class GameplayProjectileLayer extends Group {
                 if (rendered == null) {
                     continue;
                 }
-                assignVolleyVisualSlot(rendered, projectile, newVolleyOrdinals);
+                assignVolleyVisualSlot(rendered, projectile, newVolleyOrdinals, newVolleySizes);
                 this.actors.put(projectile, rendered);
                 this.renderHost.addActor(rendered.root);
-                if (this.spawnListener != null) {
+                Plant source = projectile.getSourcePlant();
+                if (this.spawnListener != null && source != null
+                        && attackNotified.put(source, Boolean.TRUE) == null) {
                     this.spawnListener.accept(projectile);
                 }
                 if (this.launchPointProvider != null) {
@@ -132,7 +136,11 @@ public final class GameplayProjectileLayer extends Group {
                 if (this.releaseDelayProvider != null) {
                     rendered.releaseDelay = Math.max(
                             0f,
-                            (float) this.releaseDelayProvider.applyAsDouble(projectile)
+                            (float) this.releaseDelayProvider.getReleaseDelay(
+                                    projectile,
+                                    rendered.volleyIndex,
+                                    rendered.volleySize
+                            )
                     );
                 }
                 rendered.root.setVisible(rendered.releaseDelay <= 0f);
@@ -151,26 +159,61 @@ public final class GameplayProjectileLayer extends Group {
     private void assignVolleyVisualSlot(
             RenderedProjectile rendered,
             Projectile projectile,
-            Map<Plant, int[]> newVolleyOrdinals
+            Map<Plant, Map<VolleyKey, Integer>> newVolleyOrdinals,
+            Map<Plant, Map<VolleyKey, Integer>> newVolleySizes
     ) {
         if (rendered == null || projectile == null || projectile.getSourcePlant() == null) {
             return;
         }
-        int burstSize = visualBurstSize(projectile);
+        VolleyKey key = volleyKey(projectile);
+        int batchSize = newVolleySizes
+                .getOrDefault(projectile.getSourcePlant(), Map.of())
+                .getOrDefault(key, 0);
+        int burstSize = Math.max(visualBurstSize(projectile), batchSize);
         if (burstSize <= 1) {
             return;
         }
         Plant source = projectile.getSourcePlant();
-        int directionBucket = projectile.getHorizontalDirection() < 0 ? 0 : 1;
-        int[] counts = newVolleyOrdinals.computeIfAbsent(source, ignored -> new int[2]);
-        int ordinal = counts[directionBucket]++;
+        Map<VolleyKey, Integer> counts = newVolleyOrdinals.computeIfAbsent(
+                source, ignored -> new java.util.HashMap<>()
+        );
+        int ordinal = counts.getOrDefault(key, 0) % burstSize;
+        counts.put(key, ordinal + 1);
         rendered.volleySize = burstSize;
-        rendered.volleyIndex = ordinal % burstSize;
+        rendered.volleyIndex = ordinal;
+    }
+
+    private Map<Plant, Map<VolleyKey, Integer>> countNewVolleyProjectiles(List<Projectile> projectiles) {
+        Map<Plant, Map<VolleyKey, Integer>> sizes = new IdentityHashMap<>();
+        for (Projectile projectile : projectiles) {
+            if (projectile == null || this.actors.containsKey(projectile)
+                    || projectile.getSourcePlant() == null) {
+                continue;
+            }
+            VolleyKey key = volleyKey(projectile);
+            Map<VolleyKey, Integer> counts = sizes.computeIfAbsent(
+                    projectile.getSourcePlant(), ignored -> new java.util.HashMap<>()
+            );
+            counts.put(key, counts.getOrDefault(key, 0) + 1);
+        }
+        return sizes;
+    }
+
+    private VolleyKey volleyKey(Projectile projectile) {
+        return new VolleyKey(
+                (int) Math.round(projectile.getExactY()),
+                Integer.compare(projectile.getHorizontalDirection(), 0),
+                Integer.compare(projectile.getVerticalDirection(), 0)
+        );
     }
 
     private int visualBurstSize(Projectile projectile) {
         if (projectile == null || projectile.getSourcePlant() == null) {
             return 1;
+        }
+        int reflected = reflectedBurstSize(projectile);
+        if (reflected > 1) {
+            return reflected;
         }
         String name = projectile.getSourcePlant().getName() == null
                 ? ""
@@ -187,10 +230,55 @@ public final class GameplayProjectileLayer extends Group {
         return 1;
     }
 
-    private void removeMissing(List<Projectile> projectiles) {
+    private int reflectedBurstSize(Projectile projectile) {
+        Plant source = projectile == null ? null : projectile.getSourcePlant();
+        Object behavior = source == null ? null : source.getBehavior();
+        if (behavior == null) {
+            return 1;
+        }
+        String pattern = String.valueOf(readFieldValue(behavior, "shooterPattern")).toUpperCase(Locale.ROOT);
+        if (pattern.contains("THREE_LANE") || pattern.contains("FOUR_DIAGONAL")
+                || pattern.contains("STAR_FIVE") || pattern.contains("STACKED_FORWARD")
+                || pattern.contains("BOUNCING")) {
+            return 1;
+        }
+        String fieldName = projectile.getHorizontalDirection() < 0
+                ? "backwardShotCount"
+                : "forwardShotCount";
+        Object value = readFieldValue(behavior, fieldName);
+        return value instanceof Number ? Math.max(1, ((Number) value).intValue()) : 1;
+    }
+
+    private Object readFieldValue(Object target, String fieldName) {
+        Class<?> type = target == null ? null : target.getClass();
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (ReflectiveOperationException ignored) {
+                type = type.getSuperclass();
+            }
+        }
+        return null;
+    }
+
+    private void removeMissing(List<Projectile> projectiles, float delta) {
         List<Projectile> removed = new ArrayList<>();
         for (Projectile projectile : this.actors.keySet()) {
             if (!containsIdentity(projectiles, projectile)) {
+                RenderedProjectile rendered = this.actors.get(projectile);
+                if (rendered != null && rendered.age < rendered.releaseDelay + 0.20f) {
+                    rendered.age += delta;
+                    advancePamProjectile(rendered);
+                    updateProjectileActor(rendered, projectile);
+                    GameplayBoardDepthOrder.mark(
+                            rendered.root,
+                            (int) Math.round(projectile.getExactY()),
+                            GameplayBoardDepthOrder.PROJECTILE
+                    );
+                    continue;
+                }
                 removed.add(projectile);
             }
         }
@@ -667,5 +755,13 @@ public final class GameplayProjectileLayer extends Group {
             this.pam = pam;
             this.overlayPam = overlayPam;
         }
+    }
+
+    @FunctionalInterface
+    public interface ProjectileReleaseDelayProvider {
+        double getReleaseDelay(Projectile projectile, int volleyIndex, int volleySize);
+    }
+
+    private record VolleyKey(int lane, int horizontalDirection, int verticalDirection) {
     }
 }

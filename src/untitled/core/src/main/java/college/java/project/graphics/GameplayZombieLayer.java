@@ -433,7 +433,7 @@ public final class GameplayZombieLayer extends Group {
         if (fisherman == null) {
             return;
         }
-        playAbilityClip(fisherman, "reel", "cast_loop", "cast");
+        playAbilitySequence(fisherman, "cast", "cast_loop", "reel", "toss");
         RenderedZombie rendered = this.actors.get(fisherman);
         if (rendered != null) {
             spawnFishingHook(rendered, target);
@@ -490,9 +490,47 @@ public final class GameplayZombieLayer extends Group {
         if (clip == null) {
             return;
         }
+        rendered.specialClipSequence = List.of();
+        rendered.specialClipSequenceIndex = -1;
+        startAbilityClip(rendered, clip, false);
+    }
+
+    private void playAbilitySequence(Zombie zombie, String... clips) {
+        RenderedZombie rendered = this.actors.get(zombie);
+        if (rendered == null || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        List<String> sequence = resolveAbilitySequence(rendered.animation, clips);
+        if (sequence.isEmpty()) {
+            playAbilityClip(zombie, clips);
+            return;
+        }
+        rendered.specialClipSequence = sequence;
+        rendered.specialClipSequenceIndex = 0;
+        startAbilityClip(rendered, sequence.get(0), false);
+    }
+
+    private List<String> resolveAbilitySequence(
+            ZombieAnimationCatalog.AnimationInfo animation,
+            String... candidates
+    ) {
+        if (animation == null || candidates == null) {
+            return List.of();
+        }
+        List<String> sequence = new ArrayList<>();
+        for (String candidate : candidates) {
+            String clip = animation.findClip(candidate);
+            if (clip != null && !sequence.contains(clip)) {
+                sequence.add(clip);
+            }
+        }
+        return sequence;
+    }
+
+    private void startAbilityClip(RenderedZombie rendered, String clip, boolean looping) {
         PamAnimationActor actor = (PamAnimationActor) rendered.body;
         actor.setAnimation(rendered.animation.getPath(), clip);
-        actor.setLooping(false);
+        actor.setLooping(looping);
         rendered.currentClip = clip;
         rendered.specialClipRemaining = rendered.animation.getClipDuration(clip, SPECIAL_CLIP_SECONDS);
     }
@@ -731,6 +769,7 @@ public final class GameplayZombieLayer extends Group {
         }
         for (Projectile projectile : removed) {
             this.reflectedProjectiles.remove(projectile);
+            maybePlayReflectionEnd(projectiles, projectile);
         }
         for (Projectile projectile : projectiles) {
             if (projectile == null || !projectile.isHostileToPlants()
@@ -741,8 +780,25 @@ public final class GameplayZombieLayer extends Group {
             Zombie juggler = findNearestZombieInRow(projectile.getPosition().getY(), projectile.getPosition().getX(),
                     "juggler", "jester");
             if (juggler != null) {
-                playAbilityClip(juggler, "spin", "spinup", "spin_walk");
+                playAbilitySequence(juggler, "spinup", "spin");
             }
+        }
+    }
+
+    private void maybePlayReflectionEnd(List<Projectile> projectiles, Projectile removed) {
+        if (removed == null || removed.getPosition() == null || !removed.isHostileToPlants()) {
+            return;
+        }
+        int row = removed.getPosition().getY();
+        for (Projectile projectile : projectiles) {
+            if (projectile != null && projectile.isHostileToPlants() && projectile.getPosition() != null
+                    && projectile.getPosition().getY() == row) {
+                return;
+            }
+        }
+        Zombie juggler = findNearestZombieInRow(row, removed.getPosition().getX(), "juggler", "jester");
+        if (juggler != null) {
+            playAbilityClip(juggler, "spindown");
         }
     }
 
@@ -1363,6 +1419,15 @@ public final class GameplayZombieLayer extends Group {
             return;
         }
         if (rendered.body instanceof PamAnimationActor && rendered.animation != null) {
+            List<String> sequence = resolveAbilitySequence(
+                    rendered.animation, "fire", "cannon_fire", "throw", "toss"
+            );
+            if (!sequence.isEmpty()) {
+                rendered.specialClipSequence = sequence;
+                rendered.specialClipSequenceIndex = 0;
+                startAbilityClip(rendered, sequence.get(0), false);
+                return;
+            }
             String clip = rendered.animation.getThrowClip();
             if (clip != null) {
                 PamAnimationActor actor = (PamAnimationActor) rendered.body;
@@ -1540,6 +1605,7 @@ public final class GameplayZombieLayer extends Group {
         rendered.motionTime += delta;
         rendered.specialClipRemaining = Math.max(0f, rendered.specialClipRemaining - delta);
         rendered.shockDeathWindow = Math.max(0f, rendered.shockDeathWindow - delta);
+        advanceAbilitySequence(rendered);
         updateEntityAbilityState(rendered, zombie, delta);
         position(rendered.root, zombie);
         applyEntityVisualMotion(rendered, zombie);
@@ -1563,9 +1629,24 @@ public final class GameplayZombieLayer extends Group {
         trackDodoState(rendered, zombie, delta);
         trackImpFlightState(rendered, zombie);
         trackGargantuarState(rendered, zombie);
+        trackStunState(rendered, zombie);
         trackAllStarState(rendered, zombie);
         trackCrystalSkullState(rendered, zombie);
         trackHypnotizeState(rendered, zombie);
+    }
+
+    private void advanceAbilitySequence(RenderedZombie rendered) {
+        if (rendered == null || rendered.specialClipRemaining > 0f) {
+            return;
+        }
+        int nextIndex = rendered.specialClipSequenceIndex + 1;
+        if (nextIndex >= 0 && nextIndex < rendered.specialClipSequence.size()) {
+            rendered.specialClipSequenceIndex = nextIndex;
+            startAbilityClip(rendered, rendered.specialClipSequence.get(nextIndex), false);
+            return;
+        }
+        rendered.specialClipSequence = List.of();
+        rendered.specialClipSequenceIndex = -1;
     }
 
     private void trackRowShift(RenderedZombie rendered, Zombie zombie, float delta) {
@@ -1639,7 +1720,7 @@ public final class GameplayZombieLayer extends Group {
         }
         boolean airborne = zombie.isAirborne();
         if (!airborne && rendered.lastAirborne) {
-            playAbilityClip(zombie, "land", "impact", "transition");
+            playAbilitySequence(zombie, "land", "impact", "transition");
         }
         rendered.lastAirborne = airborne;
     }
@@ -1662,7 +1743,7 @@ public final class GameplayZombieLayer extends Group {
 
         boolean smashing = gargantuar.isSmashing();
         if (smashing && !rendered.lastGargSmashing) {
-            playAbilityClip(zombie, "smash_left", "smash_right");
+            playAbilitySequence(zombie, "smash_left", "smash_right", "smash_end", "idle");
             rendered.specialClipRemaining = Math.max(rendered.specialClipRemaining, 2.0f);
         }
         rendered.lastGargSmashing = smashing;
@@ -1672,6 +1753,24 @@ public final class GameplayZombieLayer extends Group {
             this.gargantuarImpactListener.run();
         }
         rendered.lastSmashImpactSerial = impactSerial;
+    }
+
+    private void trackStunState(RenderedZombie rendered, Zombie zombie) {
+        if (rendered == null || zombie == null) {
+            return;
+        }
+        boolean stunned = zombie.hasCondition(ZombieCondition.STUNNED);
+        if (stunned && !rendered.lastStunned) {
+            List<String> sequence = resolveAbilitySequence(rendered.animation, "stun_start", "stun_idle");
+            if (!sequence.isEmpty()) {
+                rendered.specialClipSequence = sequence;
+                rendered.specialClipSequenceIndex = 0;
+                startAbilityClip(rendered, sequence.get(0), false);
+            }
+        } else if (!stunned && rendered.lastStunned) {
+            playAbilityClip(zombie, "stun_end");
+        }
+        rendered.lastStunned = stunned;
     }
 
     private void trackCrystalSkullState(RenderedZombie rendered, Zombie zombie) {
@@ -2427,6 +2526,12 @@ public final class GameplayZombieLayer extends Group {
             String fly = rendered.animation.findClip("fly", "fall", "drop");
             if (fly != null) {
                 return fly;
+            }
+        }
+        if (zombie != null && zombie.hasCondition(ZombieCondition.STUNNED)) {
+            String stunned = rendered.animation.findClip("stun_idle", "stun", "idle_ball2");
+            if (stunned != null) {
+                return stunned;
             }
         }
         if (aliasContains(rendered, "piano")) {
@@ -3240,6 +3345,8 @@ public final class GameplayZombieLayer extends Group {
         private float motionTime;
         private float damageFlashRemaining;
         private float specialClipRemaining;
+        private List<String> specialClipSequence = List.of();
+        private int specialClipSequenceIndex = -1;
         private float butterRemaining;
         private double lastExactX = Double.NaN;
         private int lastRow = -1;
@@ -3258,6 +3365,7 @@ public final class GameplayZombieLayer extends Group {
         private boolean lastGargSmashing;
         private long lastSmashImpactSerial;
         private boolean lastCharging;
+        private boolean lastStunned;
         private int lastHealth = -1;
         private boolean lastAttacking;
         private long firstSeenTick = -1L;
