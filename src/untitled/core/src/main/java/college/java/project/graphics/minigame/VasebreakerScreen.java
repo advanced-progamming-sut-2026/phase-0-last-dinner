@@ -89,6 +89,7 @@ public final class VasebreakerScreen implements Screen {
         this.worldScene.getSeedBank().remove();
         this.worldScene.getConveyorBelt().remove();
         this.worldScene.getSunLayer().remove();
+        this.worldScene.getMowerLayer().remove();
 
         this.worldScene.getWaveProgressBar().setVisible(false);
         this.worldScene.getInteractionHud().setVisible(false);

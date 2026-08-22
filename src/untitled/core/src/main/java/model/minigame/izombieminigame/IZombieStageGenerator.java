@@ -25,37 +25,37 @@ public class IZombieStageGenerator {
 
     private IZombieStageConfig createStageOne() {
         return new IZombieStageConfig(
-                1,
-                STARTING_SUN,
-                RED_LINE_COLUMN,
-                SUN_PRODUCTION_AMOUNT,
-                100,
-                40,
-                5
+            1,
+            STARTING_SUN,
+            RED_LINE_COLUMN,
+            SUN_PRODUCTION_AMOUNT,
+            80,
+            35,
+            5
         );
     }
 
     private IZombieStageConfig createStageTwo() {
         return new IZombieStageConfig(
-                2,
-                STARTING_SUN,
-                RED_LINE_COLUMN,
-                SUN_PRODUCTION_AMOUNT,
-                120,
-                45,
-                4
+            2,
+            STARTING_SUN,
+            RED_LINE_COLUMN,
+            SUN_PRODUCTION_AMOUNT,
+            100,
+            40,
+            5
         );
     }
 
     private IZombieStageConfig createStageThree() {
         return new IZombieStageConfig(
-                3,
-                STARTING_SUN,
-                RED_LINE_COLUMN,
-                SUN_PRODUCTION_AMOUNT,
-                140,
-                50,
-                3
+            3,
+            STARTING_SUN,
+            RED_LINE_COLUMN,
+            SUN_PRODUCTION_AMOUNT,
+            120,
+            45,
+            4
         );
     }
 

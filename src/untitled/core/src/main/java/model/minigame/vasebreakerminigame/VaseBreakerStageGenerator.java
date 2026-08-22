@@ -79,29 +79,29 @@ public class VaseBreakerStageGenerator {
 
     public List<Vase> generateStageTwo() {
         return buildStage(
-                2,
-                6,
-                9,
-                5,
-                4,
-                3,
-                8,
-                4,
-                1
+            2,
+            6,
+            9,
+            5,
+            5,
+            4,
+            8,
+            2,
+            1
         );
     }
 
     public List<Vase> generateStageThree() {
         return buildStage(
-                3,
-                4,
-                9,
-                5,
-                5,
-                5,
-                14,
-                4,
-                2
+            3,
+            4,
+            9,
+            5,
+            6,
+            7,
+            14,
+            1,
+            2
         );
     }
 

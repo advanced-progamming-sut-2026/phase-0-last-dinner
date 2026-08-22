@@ -68,7 +68,7 @@ public final class ZombotanyScreen implements Screen {
 
         this.stage.addActor(this.worldScene);
 
-        this.traitLayer = new ZombotanyTraitLayer(this.game);
+        this.traitLayer = new ZombotanyTraitLayer(this.game, this.worldScene.getZombieLayer());
 
         this.traitLayer.setBounds(GameplayWorldLayout.LAWN_X, GameplayWorldLayout.LAWN_Y, GameplayWorldLayout.LAWN_WIDTH,
             GameplayWorldLayout.LAWN_HEIGHT);

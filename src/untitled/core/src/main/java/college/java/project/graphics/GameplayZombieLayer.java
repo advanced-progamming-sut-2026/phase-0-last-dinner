@@ -5,6 +5,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -99,6 +100,9 @@ public final class GameplayZombieLayer extends Group {
     private final Map<Plant, PlantAbilityState> plantAbilityStates = new IdentityHashMap<>();
     private final Map<Zombie, Integer> knightArmorCounts = new IdentityHashMap<>();
     private final Map<Projectile, Boolean> reflectedProjectiles = new IdentityHashMap<>();
+    private final Map<Zombie, Boolean> hiddenZombieHeads = new IdentityHashMap<>();
+    private final Map<String, Map<String, Boolean>> zombotanyHeadMaskCache = new HashMap<>();
+    private final Map<String, Rectangle> zombotanyHeadBoundsCache = new HashMap<>();
     private Runnable gargantuarImpactListener;
     private Consumer<Plant> magnetCatchListener;
     private final Set<Integer> knownGraveCells = new HashSet<>();
@@ -133,6 +137,100 @@ public final class GameplayZombieLayer extends Group {
         syncZombies(safeDelta);
         syncSpecialAbilityVisuals();
         this.explosionDeathWindow = Math.max(0f, this.explosionDeathWindow - safeDelta);
+    }
+
+    public boolean getZombieHeadAnchor(Zombie zombie, Vector2 output) {
+        if (zombie == null || output == null) return false;
+
+        RenderedZombie rendered = this.actors.get(zombie);
+
+        if (rendered == null || rendered.root.getParent() == null) return false;
+
+        if (rendered.body instanceof PamAnimationActor actor && rendered.animation != null) {
+            String path = rendered.animation.getPath();
+            String clip = actor.getClipName();
+            Rectangle headBounds = getZombotanyHeadBounds(path, clip);
+
+            if (headBounds != null) {
+                float baseScale = Math.min(
+                    actor.getWidth() / actor.getCanvasWidth(),
+                    actor.getHeight() / actor.getCanvasHeight()
+                );
+
+                float headX = headBounds.x + headBounds.width * 0.5f;
+                float headY = headBounds.y + headBounds.height * 0.5f;
+
+                output.set(
+                    actor.getWidth() * 0.5f + headX * baseScale,
+                    actor.getHeight() * 0.5f - headY * baseScale
+                );
+
+                actor.localToStageCoordinates(output);
+                return true;
+            }
+        }
+
+        output.set(
+            rendered.root.getWidth() * 0.50f,
+            rendered.root.getHeight() * 1.02f
+        );
+
+        rendered.root.localToStageCoordinates(output);
+        return true;
+    }
+
+    private Rectangle getZombotanyHeadBounds(String path, String clip) {
+        if (path == null || clip == null) return null;
+
+        String cacheKey = path + "|" + clip;
+
+        if (this.zombotanyHeadBoundsCache.containsKey(cacheKey)) {
+            Rectangle cached = this.zombotanyHeadBoundsCache.get(cacheKey);
+            return cached.width > 0f && cached.height > 0f ? cached : null;
+        }
+
+        Map<String, Boolean> headMask = this.zombotanyHeadMaskCache.computeIfAbsent(
+            cacheKey,
+            ignored -> createZombotanyHeadMask(path, clip)
+        );
+
+        Rectangle merged = null;
+
+        for (Map.Entry<String, Boolean> entry : headMask.entrySet()) {
+            if (!Boolean.FALSE.equals(entry.getValue())) continue;
+
+            Rectangle partBounds = mergePartBounds(
+                PamPartGeometry.partBoundsByFrame(
+                    this.assets.getPamPlayer(),
+                    path,
+                    clip,
+                    entry.getKey()
+                )
+            );
+
+            if (partBounds == null) continue;
+
+            if (merged == null) {
+                merged = new Rectangle(partBounds);
+            } else {
+                merged.merge(partBounds);
+            }
+        }
+
+        Rectangle result = merged == null ? new Rectangle() : new Rectangle(merged);
+        this.zombotanyHeadBoundsCache.put(cacheKey, result);
+
+        return result.width > 0f && result.height > 0f ? result : null;
+    }
+
+    public void setZombieHeadHidden(Zombie zombie, boolean hidden) {
+        if (zombie == null) return;
+
+        if (hidden) {
+            this.hiddenZombieHeads.put(zombie, true);
+        } else {
+            this.hiddenZombieHeads.remove(zombie);
+        }
     }
 
     public int getRenderedZombieCount() {
@@ -684,7 +782,10 @@ public final class GameplayZombieLayer extends Group {
             }
         }
         for (Zombie zombie : removed) {
+            this.hiddenZombieHeads.remove(zombie);
+
             RenderedZombie rendered = this.actors.remove(zombie);
+
             if (rendered != null) {
                 playDeathAndRemove(rendered, zombie);
             }
@@ -2426,17 +2527,140 @@ public final class GameplayZombieLayer extends Group {
             updateStaticArmor(rendered, zombie);
             return;
         }
+
         trackArmorDrops(rendered, zombie);
+
         Map<String, Boolean> visibility = new HashMap<>(ZombieArmorVisibility.forArmors(
-                this.assets.getPamPlayer(),
-                rendered.animation.getPath(),
-                zombie.getArmors()
+            this.assets.getPamPlayer(),
+            rendered.animation.getPath(),
+            zombie.getArmors()
         ));
+
         applyTorchPartVisibility(visibility, rendered, zombie);
         applyProspectorDynamiteVisibility(visibility, rendered);
         applyBarrelPartVisibility(visibility, rendered, zombie);
         applyGargantuarImpVisibility(visibility, rendered, zombie);
+        applyZombotanyHeadVisibility(visibility, rendered, zombie);
         ((PamAnimationActor) rendered.body).setPartsVisibility(visibility);
+    }
+
+    private void applyZombotanyHeadVisibility(
+        Map<String, Boolean> visibility,
+        RenderedZombie rendered,
+        Zombie zombie
+    ) {
+        if (!Boolean.TRUE.equals(this.hiddenZombieHeads.get(zombie))) return;
+        if (!(rendered.body instanceof PamAnimationActor actor)) return;
+
+        String path = rendered.animation.getPath();
+        String clip = actor.getClipName();
+        String cacheKey = path + "|" + clip;
+
+        Map<String, Boolean> headMask = this.zombotanyHeadMaskCache.computeIfAbsent(
+            cacheKey,
+            ignored -> createZombotanyHeadMask(path, clip)
+        );
+
+        visibility.putAll(headMask);
+    }
+
+    private Map<String, Boolean> createZombotanyHeadMask(String path, String clip) {
+        Map<String, Boolean> result = new HashMap<>();
+
+        try {
+            PamPlayer player = this.assets.getPamPlayer();
+            Rectangle fullBounds = player.bounds(path, clip);
+            PamPlayer.AnimationPart root = player.getParts(path);
+
+            if (fullBounds == null || fullBounds.width <= 0f || fullBounds.height <= 0f) return result;
+
+            collectZombotanyHeadParts(player, root, path, clip, fullBounds, result);
+        } catch (RuntimeException ignored) {
+        }
+
+        return result;
+    }
+
+    private void collectZombotanyHeadParts(
+        PamPlayer player,
+        PamPlayer.AnimationPart part,
+        String path,
+        String clip,
+        Rectangle fullBounds,
+        Map<String, Boolean> result
+    ) {
+        if (part == null) return;
+
+        String partName = part.name;
+        String normalisedName = normalizeAlias(partName);
+
+        boolean namedHeadPart = isNamedZombieHeadPart(normalisedName);
+        Rectangle partBounds = mergePartBounds(
+            PamPartGeometry.partBoundsByFrame(player, path, clip, partName)
+        );
+
+        boolean leafPart = part.children == null || part.children.isEmpty();
+        boolean geometricHeadPart = leafPart && isInsideZombieHeadArea(partBounds, fullBounds);
+
+        if (namedHeadPart || geometricHeadPart) {
+            if (partName != null && !partName.isBlank()) result.put(partName, false);
+            return;
+        }
+
+        for (PamPlayer.AnimationPart child : part.children) {
+            collectZombotanyHeadParts(player, child, path, clip, fullBounds, result);
+        }
+    }
+
+    private Rectangle mergePartBounds(Rectangle[] frames) {
+        Rectangle merged = null;
+
+        if (frames == null) return null;
+
+        for (Rectangle frame : frames) {
+            if (frame == null || frame.width <= 0f || frame.height <= 0f) continue;
+
+            if (merged == null) {
+                merged = new Rectangle(frame);
+            } else {
+                merged.merge(frame);
+            }
+        }
+
+        return merged;
+    }
+
+    private boolean isInsideZombieHeadArea(Rectangle part, Rectangle full) {
+        if (part == null) return false;
+
+        float partCentreY = part.y + part.height * 0.5f;
+        float partBottom = part.y + part.height;
+
+        float headCentreLimit = full.y + full.height * 0.36f;
+        float headBottomLimit = full.y + full.height * 0.52f;
+
+        return partCentreY <= headCentreLimit
+            && partBottom <= headBottomLimit
+            && part.height <= full.height * 0.42f
+            && part.width <= full.width * 0.60f;
+    }
+
+    private boolean isNamedZombieHeadPart(String name) {
+        return name.contains("head")
+            || name.contains("face")
+            || name.contains("hair")
+            || name.contains("eye")
+            || name.contains("brow")
+            || name.contains("jaw")
+            || name.contains("mouth")
+            || name.contains("tongue")
+            || name.contains("teeth")
+            || name.contains("nose")
+            || name.contains("ear")
+            || name.contains("cheek")
+            || name.contains("chin")
+            || name.contains("skull")
+            || name.contains("brain");
     }
 
     private void applyTorchPartVisibility(

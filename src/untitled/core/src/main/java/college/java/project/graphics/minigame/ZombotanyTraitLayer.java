@@ -1,7 +1,9 @@
 package college.java.project.graphics.minigame;
 
+import college.java.project.graphics.GameplayZombieLayer;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Interpolation;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
@@ -30,10 +32,15 @@ public final class ZombotanyTraitLayer extends Group {
     private boolean disposed;
     private final Map<Projectile, Boolean> knownProjectiles;
 
-    public ZombotanyTraitLayer(ZombotanyMiniGame game) {
-        if (game == null) throw new IllegalArgumentException("Zombotany game is required.");
+    private final GameplayZombieLayer zombieLayer;
+    private final Vector2 headAnchor = new Vector2();
+
+    public ZombotanyTraitLayer(ZombotanyMiniGame game, GameplayZombieLayer zombieLayer) {
+        if (game == null || zombieLayer == null)
+            throw new IllegalArgumentException("Zombotany game and zombie layer are required.");
 
         this.game = game;
+        this.zombieLayer = zombieLayer;
         this.assets = new GameAssetManager();
         this.visuals = new IdentityHashMap<>();
         this.knownProjectiles = new IdentityHashMap<>();
@@ -152,9 +159,12 @@ public final class ZombotanyTraitLayer extends Group {
         ZombotanyTrait trait = this.game.getTrait(zombie);
 
         if (trait == null) {
+            this.zombieLayer.setZombieHeadHidden(zombie, false);
             removeVisual(zombie);
             return;
         }
+
+        this.zombieLayer.setZombieHeadHidden(zombie, true);
 
         TraitVisual rendered = this.visuals.get(zombie);
 
@@ -165,11 +175,11 @@ public final class ZombotanyTraitLayer extends Group {
             if (rendered == null) return;
 
             this.visuals.put(zombie, rendered);
-            addActor(rendered.actor);
+            addActor(rendered.root);
             playSpawnAnimation(rendered.actor);
         }
 
-        positionVisual(rendered.actor, zombie, trait);
+        positionVisual(rendered, zombie, trait);
         updateTraitCondition(rendered, zombie);
     }
 
@@ -238,11 +248,17 @@ public final class ZombotanyTraitLayer extends Group {
 
         PlantIdleVisual actor = new PlantIdleVisual(this.assets, plantName);
 
-        actor.setGrounded(true);
+        actor.setGrounded(false);
         actor.setContentPadding(0f);
         actor.setTouchable(Touchable.disabled);
 
-        return new TraitVisual(trait, actor);
+        Group root = new Group();
+        root.setTransform(true);
+        root.setTouchable(Touchable.disabled);
+        root.setScaleX(-1f);
+        root.addActor(actor);
+
+        return new TraitVisual(trait, root, actor);
     }
 
     private String getPlantName(ZombotanyTrait trait) {
@@ -255,35 +271,37 @@ public final class ZombotanyTraitLayer extends Group {
         };
     }
 
-    private void positionVisual(PlantIdleVisual actor, Zombie zombie, ZombotanyTrait trait) {
+    private void positionVisual(TraitVisual visual, Zombie zombie, ZombotanyTrait trait) {
+        if (!this.zombieLayer.getZombieHeadAnchor(zombie, this.headAnchor)) return;
+
+        stageToLocalCoordinates(this.headAnchor);
+
         float cellWidth = getWidth() / COLUMN_COUNT;
         float cellHeight = getHeight() / ROW_COUNT;
-
-        float centreX = (float) ((zombie.getExactX() + 0.5d) * cellWidth);
-
-        int row = zombie.getPosition().getY();
-        float tileBottom = (ROW_COUNT - 1 - row) * cellHeight;
 
         TraitLayout layout = getLayout(trait);
 
         float width = cellWidth * layout.widthFactor;
         float height = cellHeight * layout.heightFactor;
 
-        float x = centreX - width * 0.5f + cellWidth * layout.offsetX;
+        float x = this.headAnchor.x - width * 0.5f + cellWidth * layout.offsetX;
+        float y = this.headAnchor.y - height * 0.5f + cellHeight * layout.offsetY;
 
-        float y = tileBottom + cellHeight * layout.offsetY;
+        visual.root.setBounds(x, y, width, height);
+        visual.root.setOrigin(width * 0.5f, height * 0.5f);
+        visual.root.setScaleX(-1f);
 
-        actor.setBounds(x, y, width, height);
-        actor.setOrigin(width * 0.5f, height * 0.5f);
+        visual.actor.setBounds(0f, 0f, width, height);
+        visual.actor.setOrigin(width * 0.5f, height * 0.5f);
     }
 
     private TraitLayout getLayout(ZombotanyTrait trait) {
         return switch (trait) {
-            case PEASHOOTER -> new TraitLayout(0.62f, 0.78f, 0.03f, 0.58f);
-            case WALLNUT -> new TraitLayout(0.55f, 0.65f, 0.01f, 0.60f);
-            case JALAPENO -> new TraitLayout(0.50f, 0.82f, 0.01f, 0.55f);
-            case SQUASH -> new TraitLayout(0.72f, 0.75f, 0.01f, 0.57f);
-            default -> new TraitLayout(0.55f, 0.70f, 0f, 0.58f);
+            case PEASHOOTER -> new TraitLayout(1.08f, 1.22f, 0f, 0.03f);
+            case WALLNUT -> new TraitLayout(1.02f, 1.10f, 0f, 0.02f);
+            case JALAPENO -> new TraitLayout(0.92f, 1.26f, 0f, 0.03f);
+            case SQUASH -> new TraitLayout(1.20f, 1.18f, 0f, 0.03f);
+            default -> new TraitLayout(1.05f, 1.15f, 0f, 0.02f);
         };
     }
 
@@ -321,31 +339,54 @@ public final class ZombotanyTraitLayer extends Group {
 
         ZombotanySquashBehavior squash = zombie.findBehavior(ZombotanySquashBehavior.class);
 
-        if (squash != null && squash.isSquashed()) playSquashImpact(visual.actor);
+        if (squash != null && squash.isSquashed()) playSquashImpact(visual.root);
     }
 
-    private void playSquashImpact(PlantIdleVisual source) {
+    private void playSquashImpact(Group source) {
         if (source == null) return;
 
         PlantIdleVisual impact = new PlantIdleVisual(this.assets, "Squash");
 
-        impact.setGrounded(true);
+        impact.setGrounded(false);
         impact.setContentPadding(0f);
         impact.setTouchable(Touchable.disabled);
 
-        impact.setBounds(source.getX(), source.getY(), source.getWidth(), source.getHeight());
+        impact.setBounds(
+            source.getX(),
+            source.getY(),
+            source.getWidth(),
+            source.getHeight()
+        );
 
-        impact.setOrigin(impact.getWidth() * 0.5f, impact.getHeight() * 0.25f);
+        impact.setOrigin(
+            impact.getWidth() * 0.5f,
+            impact.getHeight() * 0.5f
+        );
 
+        impact.setScaleX(-1f);
         addActor(impact);
 
         float cellWidth = getWidth() / COLUMN_COUNT;
         float cellHeight = getHeight() / ROW_COUNT;
 
-        impact.addAction(Actions.sequence(Actions.parallel(Actions.moveBy(-cellWidth * 0.72f,
-                -cellHeight * 0.18f, 0.16f, Interpolation.pow2In), Actions.scaleTo(1.30f, 0.68f, 0.16f),
-            Actions.rotateBy(-12f, 0.16f)), Actions.parallel(Actions.scaleTo(1.08f, 1.08f, 0.10f)
-            , Actions.rotateTo(0f, 0.10f)), Actions.fadeOut(0.16f), Actions.removeActor()));
+        impact.addAction(Actions.sequence(
+            Actions.parallel(
+                Actions.moveBy(
+                    -cellWidth * 0.72f,
+                    -cellHeight * 0.18f,
+                    0.16f,
+                    Interpolation.pow2In
+                ),
+                Actions.scaleTo(-1.30f, 0.68f, 0.16f),
+                Actions.rotateBy(12f, 0.16f)
+            ),
+            Actions.parallel(
+                Actions.scaleTo(-1.08f, 1.08f, 0.10f),
+                Actions.rotateTo(0f, 0.10f)
+            ),
+            Actions.fadeOut(0.16f),
+            Actions.removeActor()
+        ));
     }
 
     private void playJalapenoExplosion(Zombie zombie) {
@@ -432,7 +473,7 @@ public final class ZombotanyTraitLayer extends Group {
         for (int index = 0; index < zombies.size(); index++) {
             TraitVisual visual = this.visuals.get(zombies.get(index));
 
-            if (visual != null) visual.actor.setZIndex(index);
+            if (visual != null) visual.root.setZIndex(index);
         }
     }
 
@@ -441,14 +482,14 @@ public final class ZombotanyTraitLayer extends Group {
 
         if (visual != null) {
             visual.actor.clearActions();
-            visual.actor.remove();
+            visual.root.remove();
         }
     }
 
     private void clearTraitVisuals() {
         for (TraitVisual visual : this.visuals.values()) {
             visual.actor.clearActions();
-            visual.actor.remove();
+            visual.root.remove();
         }
 
         this.visuals.clear();
@@ -465,11 +506,13 @@ public final class ZombotanyTraitLayer extends Group {
 
     private static final class TraitVisual {
         private final ZombotanyTrait trait;
+        private final Group root;
         private final PlantIdleVisual actor;
         private int damageStage = -1;
 
-        private TraitVisual(ZombotanyTrait trait, PlantIdleVisual actor) {
+        private TraitVisual(ZombotanyTrait trait, Group root, PlantIdleVisual actor) {
             this.trait = trait;
+            this.root = root;
             this.actor = actor;
         }
     }
