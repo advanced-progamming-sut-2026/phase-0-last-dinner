@@ -35,7 +35,7 @@ public class LawnMower {
         do {
             killedInPass = false;
             for (Zombie zombie : board.getZombiesInLane(new Position(0, this.row))) {
-                if (zombie == null || zombie.getPosition() == null || zombie.isDead()) {
+                if (zombie == null || zombie.getPosition() == null || zombie.isDead() || zombie.isAirborne()) {
                     continue;
                 }
                 if (zombie.getDefinition() != null

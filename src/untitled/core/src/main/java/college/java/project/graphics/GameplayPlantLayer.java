@@ -200,6 +200,22 @@ public final class GameplayPlantLayer extends Group {
         // model by half a second.
         actor.setStateTime(startTime);
         rendered.temporaryAnimationRemaining = Math.max(0.08f, duration - startTime);
+        if (normalize(plant.getName()).equals("rotobaga")) {
+            Vector2 launch = getProjectileLaunchPoint(projectile);
+            if (launch != null) {
+                spawnPamEffect(
+                        "ROTORUTABAGA_MUZZLE_BURST",
+                        "animation",
+                        launch.x,
+                        launch.y,
+                        Math.min(getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT,
+                                getHeight() / GameplayBoardInteractionLayer.ROW_COUNT) * 0.54f,
+                        rendered.lastRow,
+                        0f,
+                        false
+                );
+            }
+        }
         return true;
     }
 
@@ -699,6 +715,7 @@ public final class GameplayPlantLayer extends Group {
             return false;
         }
         showPlantFoodGlow(rendered);
+        playAuthenticPlantFoodEffect(rendered, plant);
         if (!(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
             rendered.body.clearActions();
             rendered.body.setOrigin(
@@ -755,9 +772,11 @@ public final class GameplayPlantLayer extends Group {
             if (newlyCreated) {
                 rendered = createRenderedPlant(plant.getName());
 
-                if (rendered == null)
+                if (rendered == null) {
                     continue;
-
+                }
+                rendered.firstSeenTick = this.worldDataSource.getCurrentTick();
+                rendered.meleeVisualElapsed = 0f;
                 this.actors.put(plant, rendered);
                 this.renderHost.addActor(rendered.root);
             }
@@ -796,6 +815,7 @@ public final class GameplayPlantLayer extends Group {
             advanceMineArming(rendered, plant, delta);
             updateDamageFlash(rendered, plant, delta);
             updateDamageStage(rendered, plant);
+            syncSpecialPlantVisuals(rendered, plant, delta);
             layoutRenderedPlant(rendered, plant.getName());
             updateTransformation(rendered, plant);
             updateCover(rendered, plant);
@@ -821,7 +841,13 @@ public final class GameplayPlantLayer extends Group {
 
             int key = cellKey(rendered.lastColumn, rendered.lastRow);
             boolean suppressed = this.suppressedRemovalCells.remove(key);
-
+            if (!suppressed && finishLiveExplosiveBody(plant, rendered)) {
+                continue;
+            }
+            if (!suppressed && playAuthenticRemovalVisual(plant, rendered)) {
+                rendered.root.remove();
+                continue;
+            }
             if (!suppressed && shouldPlayExplosion(plant)) {
                 playExplosion(rendered);
                 rendered.root.remove();
@@ -832,6 +858,361 @@ public final class GameplayPlantLayer extends Group {
                 continue;
 
             rendered.root.remove();
+        }
+    }
+
+
+    private void syncSpecialPlantVisuals(RenderedPlant rendered, Plant plant, float delta) {
+        if (rendered == null || plant == null || plant.getPosition() == null) {
+            return;
+        }
+        String name = normalize(plant.getName());
+        syncExplosiveDetonationVisual(rendered, plant, name, delta);
+        if (name.equals("kiwibeast")) {
+            syncKiwibeastStage(rendered, plant);
+        }
+        if (plant.isDisabled() || plant.isDead()) {
+            return;
+        }
+        if (name.equals("phat beet") || name.equals("kiwibeast")) {
+            syncPulseMeleeVisual(rendered, plant, delta, name.equals("kiwibeast"));
+        }
+        if (name.equals("phat beet")) {
+            rendered.idlePulseElapsed += delta;
+            if (rendered.idlePulseElapsed >= 1.30f) {
+                rendered.idlePulseElapsed = 0f;
+                spawnPamAtPlant(rendered, "PHATBEETS_IDLE_PULSE", "animation", 1.05f, 0f, false);
+            }
+        }
+    }
+
+    private void syncExplosiveDetonationVisual(
+            RenderedPlant rendered,
+            Plant plant,
+            String normalizedName,
+            float delta
+    ) {
+        if (!(plant.getBehavior() instanceof ExplosiveBehavior explosive)
+                || !explosive.isDetonationStarted()) {
+            return;
+        }
+
+        if (!rendered.detonationVisualStarted) {
+            rendered.detonationVisualStarted = true;
+            rendered.detonationVisualElapsed = 0f;
+            rendered.detonationVisualDuration = Math.max(0.1f, explosive.getDetonationDelayTicks() / 10f);
+
+            if (rendered.body instanceof PamAnimationActor && rendered.animation != null) {
+                String clip = normalizedName.equals("doom-shroom")
+                        ? rendered.animation.findClip(
+                                "stage3_explode_short", "stage3_explode", "stage2_explode", "stage1_explode"
+                        )
+                        : rendered.animation.getAttackClip();
+                if (clip != null) {
+                    PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                    actor.setAnimation(rendered.animation.getPath(), clip);
+                    actor.setLooping(false);
+                    rendered.detonationVisualDuration = rendered.animation.getClipDuration(
+                            clip, rendered.detonationVisualDuration
+                    );
+                    // idle ghabl az release damage restore nemishe
+                    rendered.temporaryAnimationRemaining = Math.max(
+                            rendered.temporaryAnimationRemaining, rendered.detonationVisualDuration
+                    );
+                } else {
+                    playFallbackMotion(rendered, AnimationKind.ATTACK);
+                }
+            } else {
+                playFallbackMotion(rendered, AnimationKind.ATTACK);
+            }
+        }
+
+        rendered.detonationVisualElapsed += Math.max(0f, delta);
+    }
+
+    private void syncKiwibeastStage(RenderedPlant rendered, Plant plant) {
+        long ageTicks = rendered.firstSeenTick < 0L
+                ? 0L
+                : Math.max(0L, this.worldDataSource.getCurrentTick() - rendered.firstSeenTick);
+        int stage = ageTicks >= 720L ? 3 : ageTicks >= 240L ? 2 : 1;
+        if (stage == rendered.kiwiStage) {
+            return;
+        }
+        int previous = rendered.kiwiStage;
+        rendered.kiwiStage = stage;
+        if (!(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
+            return;
+        }
+        PamAnimationActor actor = (PamAnimationActor) rendered.body;
+        String growth = previous == 1 && stage == 2
+                ? rendered.animation.findClip("growth_stage1")
+                : previous == 2 && stage == 3
+                ? rendered.animation.findClip("growth_stage2")
+                : null;
+        if (growth != null) {
+            actor.setAnimation(rendered.animation.getPath(), growth);
+            actor.setLooping(false);
+            rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(growth, 0.75f);
+            return;
+        }
+        String idle = kiwibeastIdleClip(rendered.animation, stage);
+        if (idle != null && rendered.temporaryAnimationRemaining <= 0f
+                && rendered.plantFoodRemaining <= 0f) {
+            actor.setAnimation(rendered.animation.getPath(), idle);
+            actor.setLooping(true);
+        }
+    }
+
+    private String kiwibeastIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        if (animation == null) {
+            return null;
+        }
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation.findClip(
+                "idle_stage" + safe + "_1",
+                "idle_stage" + safe + "_",
+                "idle_stage" + safe,
+                "stage" + safe + "_idle",
+                "idle"
+        );
+    }
+
+    private String kiwibeastAttackClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        if (animation == null) {
+            return null;
+        }
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation.findClip("attack_stage" + safe, "stage" + safe + "_attack", "attack");
+    }
+
+    private void syncPulseMeleeVisual(
+            RenderedPlant rendered,
+            Plant plant,
+            float delta,
+            boolean kiwibeast
+    ) {
+        rendered.meleeVisualElapsed += delta;
+        float interval = (float) Math.max(0.12d, plant.getActionIntervalSeconds());
+        if (rendered.meleeVisualElapsed < interval) {
+            return;
+        }
+        rendered.meleeVisualElapsed %= interval;
+        int radius = kiwibeast ? Math.max(1, rendered.kiwiStage) : 1;
+        if (!hasHostileZombieInRadius(plant, radius)) {
+            return;
+        }
+        if (rendered.body instanceof PamAnimationActor && rendered.animation != null
+                && rendered.plantFoodRemaining <= 0f) {
+            String attack = kiwibeast
+                    ? kiwibeastAttackClip(rendered.animation, rendered.kiwiStage)
+                    : rendered.animation.getAttackClip();
+            if (attack != null) {
+                PamAnimationActor actor = (PamAnimationActor) rendered.body;
+                actor.setAnimation(rendered.animation.getPath(), attack);
+                actor.setLooping(false);
+                rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(
+                        attack, ATTACK_ANIMATION_SECONDS
+                );
+            }
+        }
+        String pulse = kiwibeast ? "KIWIBEAST_ATTACK_PULSE" : "PHATBEETS_ATTACK_PULSE";
+        String tileHit = kiwibeast ? "KIWIBEAST_TILE_HIT" : "PHATBEETS_TILE_HIT";
+        spawnPamAtPlant(rendered, pulse, "animation", 1.45f + radius * 0.18f, 0f, false);
+        spawnMeleeTileHits(plant, radius, tileHit);
+    }
+
+    private boolean hasHostileZombieInRadius(Plant plant, int radius) {
+        if (plant == null || plant.getPosition() == null) {
+            return false;
+        }
+        int px = plant.getPosition().getX();
+        int py = plant.getPosition().getY();
+        for (model.zombie.Zombie zombie : this.worldDataSource.getZombiesOnBoard()) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized() || zombie.getPosition() == null) {
+                continue;
+            }
+            int dx = Math.abs(zombie.getPosition().getX() - px);
+            int dy = Math.abs(zombie.getPosition().getY() - py);
+            if (dx <= radius && dy <= radius) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void spawnMeleeTileHits(Plant plant, int radius, String animationName) {
+        if (plant == null || plant.getPosition() == null) {
+            return;
+        }
+        float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        for (model.zombie.Zombie zombie : this.worldDataSource.getZombiesOnBoard()) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized() || zombie.getPosition() == null) {
+                continue;
+            }
+            int dx = Math.abs(zombie.getPosition().getX() - plant.getPosition().getX());
+            int dy = Math.abs(zombie.getPosition().getY() - plant.getPosition().getY());
+            if (dx > radius || dy > radius) {
+                continue;
+            }
+            float x = (float) ((zombie.getExactX() + 0.5d) * cellWidth);
+            float y = (GameplayBoardInteractionLayer.ROW_COUNT - 0.5f - zombie.getPosition().getY()) * cellHeight;
+            spawnPamEffect(animationName, "animation", x, y, Math.min(cellWidth, cellHeight) * 0.62f,
+                    zombie.getPosition().getY(), 0f, false);
+        }
+    }
+
+    private void playAuthenticPlantFoodEffect(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null) {
+            return;
+        }
+        String name = normalize(plant.getName());
+        if (name.equals("phat beet")) {
+            spawnPamAtPlant(rendered, "PHATBEETS_PF_PULSE", "animation", 1.80f, 0f, false);
+        } else if (name.equals("kiwibeast")) {
+            spawnPamAtPlant(rendered, "KIWIBEAST_PF_PULSE", "animation", 2.00f, 0f, false);
+        } else if (name.equals("sun bean")) {
+            spawnPamAtPlant(rendered, "SUNBEAN_PLANTFOOD_EFFECT_OVERLAY1", "animation", 1.28f, 0f, false);
+            spawnPamAtPlant(rendered, "SUNBEAN_PLANTFOOD_EFFECT_OVERLAY2", "animation", 1.38f, 0f, false);
+        }
+    }
+
+    private boolean finishLiveExplosiveBody(Plant plant, RenderedPlant rendered) {
+        if (plant == null || rendered == null || !rendered.detonationVisualStarted
+                || !normalize(plant.getName()).equals("doom-shroom")) {
+            return false;
+        }
+        // damage va crater vasate clip release mishan va nime dovom clip edame peyda mikone
+        fireExplosionVisualEvent();
+        float remaining = Math.max(0.08f, rendered.detonationVisualDuration - rendered.detonationVisualElapsed);
+        rendered.root.addAction(Actions.sequence(
+                Actions.delay(remaining),
+                Actions.removeActor()
+        ));
+        return true;
+    }
+
+    private boolean playAuthenticRemovalVisual(Plant plant, RenderedPlant rendered) {
+        if (plant == null || rendered == null) {
+            return false;
+        }
+        String name = normalize(plant.getName());
+        if (name.equals("potato mine")) {
+            spawnPamAtPlant(rendered, "POTATOMINE_EXPLOSION", "animation", 1.85f, 0f, false);
+            fireExplosionVisualEvent();
+            return true;
+        }
+        if (name.equals("primal potato mine")) {
+            spawnPamAtPlant(rendered, "PRIMAL_POTATOMINE_EXPLOSION", "animation", 2.15f, 0f, false);
+            fireExplosionVisualEvent();
+            return true;
+        }
+        if (name.equals("cherry bomb")) {
+            spawnPamAtPlant(rendered, "CHERRYBOMB_EXPLOSION_REAR", "explosion", 2.15f, 0f, false);
+            spawnPamAtPlant(rendered, "CHERRYBOMB_EXPLOSION_TOP", "explosion", 2.15f, 0.01f, false);
+            fireExplosionVisualEvent();
+            return true;
+        }
+        if (name.equals("jalapeno")) {
+            spawnJalapenoLaneFire(rendered.lastRow);
+            fireExplosionVisualEvent();
+            return true;
+        }
+        if (name.equals("doom-shroom")) {
+            String clip = rendered.animation == null ? "stage1_explode"
+                    : rendered.animation.findClip("stage3_explode_short", "stage3_explode", "stage2_explode", "stage1_explode");
+            if (spawnPamAtPlant(rendered, "DOOMSHROOM", clip, 2.25f, 0f, false)) {
+                fireExplosionVisualEvent();
+                return true;
+            }
+        }
+        if (name.equals("grapeshot")) {
+            spawnPamAtPlant(rendered, "ESCAPEROOT_EXPLOSION_GRAPESHOT", "animation", 1.95f, 0f, false);
+            fireExplosionVisualEvent();
+            return true;
+        }
+        if (name.equals("hot potato")) {
+            spawnPamAtPlant(rendered, "HOTPOTATO_STEAMFX", "animation", 1.15f, 0f, false);
+            spawnPamAtPlant(rendered, "HOTPOTATO_ICEBLOCK_STEAMFX", "animation", 1.18f, 0.02f, false);
+            spawnPamAtPlant(rendered, "HOTPOTATO_ICEBLOCK_PUDDLE", "animation", 1.10f, 0.03f, false);
+            return true;
+        }
+        if (name.equals("grave buster")) {
+            spawnPamAtPlant(rendered, "GRAVEBUSTER_DIRT", "gravebuster_dirt_fade", 1.25f, 0f, false);
+            return true;
+        }
+        if (name.equals("explode-o-nut") && plant.getHealth() <= 0) {
+            spawnPamAtPlant(rendered, "EXPLODEONUT_BLINK", "animation", 1.12f, 0f, false);
+            playExplosion(rendered);
+            return true;
+        }
+        return false;
+    }
+
+    private void spawnJalapenoLaneFire(int row) {
+        if (row < 0) {
+            return;
+        }
+        float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float y = (GameplayBoardInteractionLayer.ROW_COUNT - 0.5f - row) * cellHeight;
+        for (int column = 0; column < GameplayBoardInteractionLayer.COLUMN_COUNT; column++) {
+            float x = (column + 0.5f) * cellWidth;
+            spawnPamEffect("JALAPENO_FIRE", "idle", x, y, Math.min(cellWidth, cellHeight) * 1.18f,
+                    row, column * 0.018f, false);
+        }
+    }
+
+    private boolean spawnPamAtPlant(
+            RenderedPlant rendered,
+            String animationName,
+            String clip,
+            float sizeFactor,
+            float delay,
+            boolean looping
+    ) {
+        if (rendered == null) {
+            return false;
+        }
+        float centerX = rendered.root.getX() + rendered.root.getWidth() * 0.5f;
+        float centerY = rendered.root.getY() + rendered.root.getHeight() * 0.48f;
+        float size = Math.min(rendered.root.getWidth(), rendered.root.getHeight()) * sizeFactor;
+        return spawnPamEffect(animationName, clip, centerX, centerY, size, rendered.lastRow, delay, looping);
+    }
+
+    private boolean spawnPamEffect(
+            String animationName,
+            String clip,
+            float centerX,
+            float centerY,
+            float visibleSize,
+            int row,
+            float delay,
+            boolean looping
+    ) {
+        GameplayPamEffectSupport.Effect effect = GameplayPamEffectSupport.create(
+                this.assets, this.animationCatalog, animationName, looping, clip
+        );
+        if (effect == null) {
+            return false;
+        }
+        GameplayPamEffectSupport.centerVisibleBounds(effect, centerX, centerY, visibleSize);
+        GameplayBoardDepthOrder.mark(effect.actor, Math.max(0, row), GameplayBoardDepthOrder.PROJECTILE + 3);
+        this.renderHost.addActor(effect.actor);
+        float duration = effect.duration(0.42f);
+        if (!looping) {
+            effect.actor.addAction(Actions.sequence(
+                    Actions.delay(Math.max(0f, delay)),
+                    Actions.delay(Math.max(0.08f, duration)),
+                    Actions.removeActor()
+            ));
+        }
+        return true;
+    }
+
+    private void fireExplosionVisualEvent() {
+        if (this.explosionListener != null) {
+            this.explosionListener.run();
         }
     }
 
@@ -1211,7 +1592,7 @@ public final class GameplayPlantLayer extends Group {
         float width = rendered.root.getWidth();
         float height = rendered.root.getHeight();
         if (rendered.body instanceof PamAnimationActor && rendered.animation != null) {
-            layoutPamBody(rendered, width);
+            layoutPamBody(rendered, plantName, width);
         } else {
             layoutStaticBody(rendered, plantName, width, height);
         }
@@ -1532,9 +1913,14 @@ public final class GameplayPlantLayer extends Group {
         if (rendered == null || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
             return;
         }
-        String clip = rendered.mineArmRemaining > 0f
-                ? rendered.animation.getUnarmedClip()
-                : rendered.animation.getPreviewClip();
+        String clip;
+        if (rendered.mineArmRemaining > 0f) {
+            clip = rendered.animation.getUnarmedClip();
+        } else if (rendered.kiwiStage > 0) {
+            clip = kiwibeastIdleClip(rendered.animation, rendered.kiwiStage);
+        } else {
+            clip = rendered.animation.getPreviewClip();
+        }
         if (clip == null) {
             return;
         }
@@ -1637,16 +2023,28 @@ public final class GameplayPlantLayer extends Group {
         ));
     }
 
-    private void layoutPamBody(RenderedPlant rendered, float rootWidth) {
+    private void layoutPamBody(RenderedPlant rendered, String plantName, float rootWidth) {
         PamAnimationCatalog.AnimationInfo animation = rendered.animation;
         float actorWidth = GameplayPamScale.actorWidth(animation.getCanvasWidth());
         float actorHeight = GameplayPamScale.actorHeight(animation.getCanvasHeight());
+        float horizontalCorrection = plantPamHorizontalCorrection(plantName, rootWidth);
         rendered.body.setBounds(
-                rootWidth / 2f + rendered.pamCenterOffsetX - actorWidth / 2f,
+                rootWidth / 2f + rendered.pamCenterOffsetX + horizontalCorrection - actorWidth / 2f,
                 rendered.pamGroundOffset - actorHeight / 2f,
                 actorWidth,
                 actorHeight
         );
+    }
+
+    private float plantPamHorizontalCorrection(String plantName, float rootWidth) {
+        String name = normalize(plantName);
+        if (name.contains("wasabi")) {
+            return -rootWidth * 0.28f;
+        }
+        if (name.contains("sun bean")) {
+            return rootWidth * 0.22f;
+        }
+        return 0f;
     }
 
     private float plantCenterOffset(PamAnimationCatalog.AnimationInfo animation) {
@@ -1951,8 +2349,15 @@ public final class GameplayPlantLayer extends Group {
         private int pendingBowlingReloadMask;
         private int damageStage = -1;
         private int lastHealth = -1;
+        private boolean detonationVisualStarted;
+        private float detonationVisualElapsed;
+        private float detonationVisualDuration;
         private int lastColumn = -1;
         private int lastRow = -1;
+        private long firstSeenTick = -1L;
+        private float meleeVisualElapsed;
+        private float idlePulseElapsed;
+        private int kiwiStage;
 
         private RenderedPlant(
                 Group root,
