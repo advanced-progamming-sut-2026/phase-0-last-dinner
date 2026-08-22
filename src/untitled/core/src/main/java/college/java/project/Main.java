@@ -29,6 +29,19 @@ import pvz.skin.PvzSkin;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
 import view.GreenhouseScreen;
+import college.java.project.graphics.minigame.BeghouledScreen;
+import college.java.project.graphics.minigame.IZombieScreen;
+import college.java.project.graphics.minigame.VasebreakerScreen;
+import college.java.project.graphics.minigame.WallnutBowlingScreen;
+import college.java.project.graphics.minigame.ZombotanyCoordinator;
+import model.minigame.MiniGame;
+import model.minigame.MiniGameType;
+import model.minigame.StageProgressMiniGame;
+import model.minigame.beghouledminigame.BeghouledMiniGame;
+import model.minigame.izombieminigame.IZombieMiniGame;
+import model.minigame.vasebreakerminigame.VasebreakerMiniGame;
+import model.minigame.wallnutbowlingminigame.WallnutBowlingMiniGame;
+import model.minigame.zombotanyminigame.ZombotanyMiniGame;
 
 @Getter
 public final class Main extends Game {
@@ -269,16 +282,104 @@ public final class Main extends Game {
         changeScreen(new GreenhouseScreen(this.applicationController, this::showGameMenuScreen));
     }
     public void showTravelLogScreen() {
-        changeScreen(new view.TravelLogScreen(
-            this.applicationController,
-            new view.TravelLogScreen.Navigator() {
-                @Override
-                public void onBack() {
-                    showGameMenuScreen();
-                }
-            },
-            null
-        ));
+        changeScreen(
+            new view.TravelLogScreen(
+                this.applicationController,
+                new view.TravelLogScreen.Navigator() {
+                    @Override
+                    public void onBack() {
+                        showGameMenuScreen();
+                    }
+                },
+                this::openMiniGame
+            )
+        );
+    }
+
+    private boolean openMiniGame(MiniGameType type, int stageNumber) {
+        if (type == null || stageNumber < 1 || stageNumber > 3)
+            return false;
+
+        User user = this.applicationController.getCurrentUser();
+
+        if (user == null)
+            return false;
+
+        user.initializeMissingFields();
+
+        if (user.getTravelLog() == null)
+            return false;
+
+        MiniGame miniGame = user.getTravelLog().findMiniGame(type);
+
+        if (!(miniGame instanceof StageProgressMiniGame))
+            return false;
+
+        StageProgressMiniGame stageGame = (StageProgressMiniGame) miniGame;
+
+        if (stageNumber > stageGame.getHighestUnlockedStage())
+            return false;
+
+        Runnable onBack = this::showTravelLogScreen;
+
+        switch (type) {
+            case VASEBREAKER:
+                if (!(miniGame instanceof VasebreakerMiniGame))
+                    return false;
+                changeScreen(new VasebreakerScreen(this, (VasebreakerMiniGame) miniGame, stageNumber, onBack));
+                return true;
+
+            case WALLNUT_BOWLING:
+                if (!(miniGame instanceof WallnutBowlingMiniGame))
+                    return false;
+                changeScreen(new WallnutBowlingScreen(this, (WallnutBowlingMiniGame) miniGame, stageNumber, onBack));
+                return true;
+
+            case I_ZOMBIE:
+                if (!(miniGame instanceof IZombieMiniGame))
+                    return false;
+                changeScreen(
+                    new IZombieScreen(this, (IZombieMiniGame) miniGame, stageNumber, onBack));
+                return true;
+
+            case BEGHOULED:
+                if (!(miniGame instanceof BeghouledMiniGame))
+                    return false;
+                changeScreen(
+                    new BeghouledScreen(this, (BeghouledMiniGame) miniGame, stageNumber, onBack));
+                return true;
+
+            case ZOMBOTANY:
+                if (!(miniGame instanceof ZombotanyMiniGame))
+                    return false;
+                ZombotanyCoordinator.open(this, (ZombotanyMiniGame) miniGame, stageNumber, onBack);
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
+    public void recordMiniGameOutcome(MiniGame miniGame) {
+        if (miniGame == null)
+            return;
+
+        User user = this.applicationController.getCurrentUser();
+
+        if (user == null)
+            return;
+
+        user.initializeMissingFields();
+
+        if (miniGame instanceof StageProgressMiniGame) {
+            StageProgressMiniGame stageGame = (StageProgressMiniGame) miniGame;
+            user.recordMiniGameStageProgress(miniGame.getType(), stageGame.getHighestUnlockedStage());
+        }
+
+        if (miniGame.isAllStagesCompleted() && miniGame.isWinConditionMet() && user.recordMiniGameCompletion(miniGame.getType()))
+            user.addNews("Minigame completed: " + miniGame.getType().name());
+
+        this.applicationController.save();
     }
 
     private void transferStoredPlantFood(User user, PlantZombieGame game) {

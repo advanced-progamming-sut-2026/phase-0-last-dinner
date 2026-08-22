@@ -1,8 +1,10 @@
 package model.minigame.izombieminigame;
 
+import lombok.Getter;
 import model.mechanism.Position;
 import model.zombie.ZombieDefinition;
 
+@Getter
 public class IZombieActionResult {
 
     private final IZombieActionStatus status;
@@ -137,35 +139,13 @@ public class IZombieActionResult {
     }
 
     public boolean isTerminal() {
-        return status == IZombieActionStatus.GAME_WON
-                || status == IZombieActionStatus.GAME_LOST;
+        return status == IZombieActionStatus.STAGE_WON
+            || status == IZombieActionStatus.GAME_WON
+            || status == IZombieActionStatus.GAME_LOST;
     }
 
     public boolean hasPlacementInformation() {
         return zombieDefinition != null && position != null;
     }
 
-    public IZombieActionStatus getStatus() {
-        return status;
-    }
-
-    public String getMessage() {
-        return message;
-    }
-
-    public ZombieDefinition getZombieDefinition() {
-        return zombieDefinition;
-    }
-
-    public Position getPosition() {
-        return position;
-    }
-
-    public int getSunSpent() {
-        return sunSpent;
-    }
-
-    public int getRemainingSun() {
-        return remainingSun;
-    }
 }

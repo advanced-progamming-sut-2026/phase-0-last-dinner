@@ -54,4 +54,12 @@ public interface PlantPickDataSource {
 
     default void save() {
     }
+
+    default boolean supportsUpgrades() {
+        return true;
+    }
+
+    default boolean supportsBoosts() {
+        return true;
+    }
 }

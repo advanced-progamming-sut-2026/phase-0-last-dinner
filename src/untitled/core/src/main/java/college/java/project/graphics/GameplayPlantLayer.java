@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import com.badlogic.gdx.math.Interpolation;
 
 /** Renders planted plants, stacking and required cover/freeze state on board. */
 public final class GameplayPlantLayer extends Group {
@@ -96,6 +97,8 @@ public final class GameplayPlantLayer extends Group {
     private final Set<Integer> pendingPlantFoodCells = new HashSet<>();
     private Runnable explosionListener;
 
+    private boolean animateNextBoardTransition;
+
     public GameplayPlantLayer(GameplaySeedBankDataSource dataSource) {
         this(dataSource, new GameplayWorldDataSource() { });
     }
@@ -137,6 +140,10 @@ public final class GameplayPlantLayer extends Group {
         } catch (RuntimeException ignored) {
             // optional effect art can fall back without blocking gameplay
         }
+    }
+
+    public void animateNextBoardTransition() {
+        this.animateNextBoardTransition = true;
     }
 
     @Override
@@ -734,35 +741,55 @@ public final class GameplayPlantLayer extends Group {
 
     private void syncPlants(float delta) {
         List<Plant> plants = new ArrayList<>(this.seedDataSource.getPlantsOnBoard());
+        boolean animateTransition = this.animateNextBoardTransition;
+
         removeMissing(plants);
+
         for (Plant plant : plants) {
-            if (plant == null || plant.getPosition() == null) {
+            if (plant == null || plant.getPosition() == null)
                 continue;
-            }
+
             RenderedPlant rendered = this.actors.get(plant);
-            if (rendered == null) {
+            boolean newlyCreated = rendered == null;
+
+            if (newlyCreated) {
                 rendered = createRenderedPlant(plant.getName());
-                if (rendered == null) {
+
+                if (rendered == null)
                     continue;
-                }
+
                 this.actors.put(plant, rendered);
                 this.renderHost.addActor(rendered.root);
             }
-            positionPlantActor(rendered.root, plant.getPosition());
-            rendered.lastColumn = plant.getPosition().getX();
-            rendered.lastRow = plant.getPosition().getY();
+
+            Position position = plant.getPosition();
+            boolean positionChanged = rendered.lastColumn != position.getX() || rendered.lastRow != position.getY();
+
+            if (newlyCreated) {
+                positionPlantActor(rendered.root, position);
+
+                if (animateTransition)
+                    animatePlantFromTop(rendered.root);
+            } else if (positionChanged) {
+                if (animateTransition)
+                    animatePlantMovement(rendered.root, position);
+                else
+                    positionPlantActor(rendered.root, position);
+            }
+
+            rendered.lastColumn = position.getX();
+            rendered.lastRow = position.getY();
+
             int cellKey = cellKey(rendered.lastColumn, rendered.lastRow);
-            if (this.pendingIntroCells.remove(cellKey)) {
+
+            if (this.pendingIntroCells.remove(cellKey))
                 playIntro(plant);
-            }
-            if (this.pendingPlantFoodCells.remove(cellKey)) {
+
+            if (this.pendingPlantFoodCells.remove(cellKey))
                 playPlantFoodAt(rendered.lastColumn, rendered.lastRow);
-            }
-            GameplayBoardDepthOrder.mark(
-                    rendered.root,
-                    plant.getPosition().getY(),
-                    depthPriority(plant.getName())
-            );
+
+            GameplayBoardDepthOrder.mark(rendered.root, position.getY(), depthPriority(plant.getName()));
+
             advancePlantFoodAnimation(rendered, delta);
             advanceTemporaryAnimation(rendered, delta);
             advanceBowlingRecharge(rendered, delta);
@@ -773,31 +800,37 @@ public final class GameplayPlantLayer extends Group {
             updateTransformation(rendered, plant);
             updateCover(rendered, plant);
         }
+
+        this.animateNextBoardTransition = false;
         applyBoardDepthOrder(plants);
     }
 
     private void removeMissing(List<Plant> plants) {
-        List<Plant> removed = new ArrayList<>();
+        List<Plant> removedPlants = new ArrayList<>();
+
         for (Plant plant : this.actors.keySet()) {
-            if (!containsIdentity(plants, plant)) {
-                removed.add(plant);
-            }
+            if (!containsIdentity(plants, plant))
+                removedPlants.add(plant);
         }
-        for (Plant plant : removed) {
+
+        for (Plant plant : removedPlants) {
             RenderedPlant rendered = this.actors.remove(plant);
-            if (rendered == null) {
+
+            if (rendered == null)
                 continue;
-            }
+
             int key = cellKey(rendered.lastColumn, rendered.lastRow);
             boolean suppressed = this.suppressedRemovalCells.remove(key);
+
             if (!suppressed && shouldPlayExplosion(plant)) {
                 playExplosion(rendered);
                 rendered.root.remove();
                 continue;
             }
-            if (!suppressed && playTriggeredRemovalAnimation(plant, rendered)) {
+
+            if (!suppressed && playTriggeredRemovalAnimation(plant, rendered))
                 continue;
-            }
+
             rendered.root.remove();
         }
     }
@@ -1119,6 +1152,44 @@ public final class GameplayPlantLayer extends Group {
             // missing optional status art never prevents the base plant from rendering
         }
         return null;
+    }
+
+    private void animatePlantMovement(Actor actor, Position position) {
+        float startX = actor.getX();
+        float startY = actor.getY();
+
+        positionPlantActor(actor, position);
+
+        float targetX = actor.getX();
+        float targetY = actor.getY();
+        float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+
+        float horizontalCells = Math.abs(targetX - startX) / cellWidth;
+        float verticalCells = Math.abs(targetY - startY) / cellHeight;
+        float duration = Math.min(0.42f, 0.16f + Math.max(horizontalCells, verticalCells) * 0.07f);
+
+        actor.clearActions();
+        actor.setPosition(startX, startY);
+        actor.addAction(Actions.moveTo(targetX, targetY, duration, Interpolation.smooth));
+    }
+
+    private void animatePlantFromTop(Actor actor) {
+        float targetX = actor.getX();
+        float targetY = actor.getY();
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float startY = getHeight() + cellHeight * 0.25f;
+        float travelledCells = Math.max(1f, (startY - targetY) / cellHeight);
+        float duration = Math.min(0.68f, 0.22f + travelledCells * 0.055f);
+
+        actor.clearActions();
+        actor.setPosition(targetX, startY);
+        actor.getColor().a = 0f;
+
+        actor.addAction(Actions.parallel(
+            Actions.moveTo(targetX, targetY, duration, Interpolation.smooth),
+            Actions.fadeIn(Math.min(0.22f, duration))
+        ));
     }
 
     private void positionPlantActor(Actor actor, Position position) {

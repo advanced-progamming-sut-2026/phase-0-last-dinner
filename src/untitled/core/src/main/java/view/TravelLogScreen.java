@@ -33,6 +33,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import model.minigame.StageProgressMiniGame;
 
 public class TravelLogScreen implements Screen {
 
@@ -274,33 +275,76 @@ public class TravelLogScreen implements Screen {
         Label nameLabel = new Label(this.displayMiniGameName(miniGame.getType()), skin, "medium");
         nameLabel.setColor(Color.BLACK);
 
-        String state = miniGame.isAllStagesCompleted()
-            ? "Completed"
-            : miniGame.isStarted() ? "In progress" : "Not started";
+        int highestUnlockedStage = this.highestUnlockedStage(miniGame);
+
+        String state;
+        if (miniGame.isAllStagesCompleted())
+            state = "Completed";
+        else if (miniGame.isStarted())
+            state = "In progress";
+        else
+            state = "Unlocked stages: " + highestUnlockedStage + "/3";
+
         Label stateLabel = new Label(state, skin, "secondary");
         stateLabel.setColor(Color.BLACK);
 
-        TextButton playButton = new TextButton("Play", skin, "green");
-        playButton.addListener(new ClickListener() {
-            @Override
-            public void clicked(InputEvent event, float x, float y) {
-                playMiniGame(miniGame);
-            }
-        });
+        Table stageButtons = new Table();
 
-        card.add(nameLabel).left().padRight(16);
-        card.add(stateLabel).left().expandX();
-        card.add(playButton).width(110).height(36).right();
+        for (int stageNumber = 1; stageNumber <= 3; stageNumber++) {
+            final int selectedStage = stageNumber;
+            boolean unlocked = stageNumber <= highestUnlockedStage;
+
+            String buttonText = unlocked ? "Stage " + stageNumber : "Stage " + stageNumber + " Locked";
+
+            TextButton stageButton = new TextButton(buttonText, skin, unlocked ? "green" : "brown");
+
+            stageButton.setDisabled(!unlocked);
+
+            stageButton.addListener(new ClickListener() {
+                @Override
+                public void clicked(InputEvent event, float x, float y) {
+                    if (!stageButton.isDisabled())
+                        playMiniGame(miniGame, selectedStage);
+                }
+            });
+
+            stageButtons.add(stageButton).width(170).height(38).padRight(stageNumber < 3 ? 6 : 0);
+        }
+
+        card.add(nameLabel).left();
+        card.add(stateLabel).right().expandX().row();
+
+        card.add(stageButtons).left().colspan(2).padTop(10);
 
         return card;
     }
 
-    private void playMiniGame(MiniGame miniGame) {
+    private void playMiniGame(MiniGame miniGame, int stageNumber) {
+        if (miniGame == null || stageNumber < 1 || stageNumber > 3)
+            return;
+
+        int highestUnlockedStage = this.highestUnlockedStage(miniGame);
+
+        if (stageNumber > highestUnlockedStage) {
+            this.statusLabel.setText("Stage " + stageNumber + " is locked.");
+            return;
+        }
+
         MiniGameType type = miniGame.getType();
-        boolean opened = this.miniGameLauncher != null && this.miniGameLauncher.open(type);
-        this.statusLabel.setText(opened
-            ? this.displayMiniGameName(type) + " opened."
-            : this.displayMiniGameName(type) + " isn't wired up yet - coming soon.");
+
+        boolean opened = this.miniGameLauncher != null && this.miniGameLauncher.open(type, stageNumber);
+
+        this.statusLabel.setText(opened ? this.displayMiniGameName(type) + " stage " + stageNumber + " opened."
+                : this.displayMiniGameName(type) + " stage " + stageNumber + " isn't wired up yet.");
+    }
+
+    private int highestUnlockedStage(MiniGame miniGame) {
+        if (miniGame instanceof StageProgressMiniGame) {
+            StageProgressMiniGame stageGame = (StageProgressMiniGame) miniGame;
+            return Math.max(1, Math.min(3, stageGame.getHighestUnlockedStage()));
+        }
+
+        return 1;
     }
 
     private String displayPageName(PageName pageName) {

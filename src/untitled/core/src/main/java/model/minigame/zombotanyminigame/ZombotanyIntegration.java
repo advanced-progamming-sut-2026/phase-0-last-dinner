@@ -2,6 +2,7 @@ package model.minigame.zombotanyminigame;
 
 import model.mechanism.Board;
 import model.mechanism.Position;
+import model.mechanism.Wave;
 import model.plant.PlantDefinition;
 import model.zombie.Zombie;
 import model.zombie.ZombieDefinition;
@@ -52,4 +53,8 @@ public interface ZombotanyIntegration {
     ZombotanyTrait getTrait(Zombie zombie);
 
     Board getBoard();
+
+    long getRemainingCooldownTicks(String plantName);
+
+    Wave getCurrentWave();
 }
