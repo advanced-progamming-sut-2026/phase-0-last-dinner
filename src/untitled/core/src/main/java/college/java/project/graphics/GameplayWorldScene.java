@@ -13,12 +13,6 @@ import model.plant.PlantTag;
 import model.plant.PlantUpgradeSpecialEffect;
 
 import java.util.Locale;
-
-/**
- * Reusable graphical core for gameplay. It keeps Phase 1 state authoritative
- * while supplying the mandatory Phase 2 HUD, pause, mission and result shell.
- */
-
 @Getter
 public final class GameplayWorldScene extends Group {
     private static final float EXPLOSION_SHAKE = 10f;
@@ -35,6 +29,7 @@ public final class GameplayWorldScene extends Group {
     private final GameplayZombieLayer zombieLayer;
     private final GameplayProjectileLayer projectileLayer;
     private final GameplaySunLayer sunLayer;
+    private final GameplayGridOverlayLayer gridOverlayLayer;
     private final GameplaySeedBank seedBank;
     private final GameplayConveyorBelt conveyorBelt;
     private final GameplayBoardInteractionLayer interactionLayer;
@@ -135,9 +130,6 @@ public final class GameplayWorldScene extends Group {
         addActor(this.interactionLayer);
 
         this.sunLayer = new GameplaySunLayer(worldDataSource, this.assets);
-        // Aim collected suns at the visual center of the full-size original
-        // sun icon.  These offsets match the 70x71 768p sprite after the
-        // gameplay-background scale is applied.
         this.sunLayer.setCollectionTarget(
                 this.seedBank.getX() + 49f - GameplayWorldLayout.LAWN_X,
                 this.seedBank.getY() + this.seedBank.getHeight() - 50f - GameplayWorldLayout.LAWN_Y
@@ -149,6 +141,10 @@ public final class GameplayWorldScene extends Group {
         });
         setLawnBounds(this.sunLayer);
         addActor(this.sunLayer);
+
+        this.gridOverlayLayer = new GameplayGridOverlayLayer();
+        setLawnBounds(this.gridOverlayLayer);
+        addActor(this.gridOverlayLayer);
 
         this.interactionHud = new GameplayInteractionHud(
                 seedDataSource,
@@ -264,6 +260,7 @@ public final class GameplayWorldScene extends Group {
 
     public void dispose() {
         this.assets.dispose();
+        this.gridOverlayLayer.dispose();
     }
 
     private boolean isWorldFrozen() {
@@ -458,12 +455,6 @@ public final class GameplayWorldScene extends Group {
         this.seedBank.setVisible(!conveyor);
         this.conveyorBelt.setVisible(conveyor);
     }
-
-    /**
-     * Keeps the gameplay seed bank in HUD/screen space rather than registering
-     * it to the lawn rectangle. Ratios are evaluated against the fixed virtual
-     * stage, so FitViewport resizing preserves the same PvZ2-like left/top anchor.
-     */
     private void layoutSeedBankAtScreenEdge() {
         float leftMargin = getWidth() * 0.0022f;
         float bottomMargin = getHeight() * 0.010f;
