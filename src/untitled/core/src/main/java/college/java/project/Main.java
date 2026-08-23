@@ -212,6 +212,10 @@ public final class Main extends Game {
             @Override
             public void openNewsMenu() {
             }
+            @Override
+            public void openMeowPoint() {
+                showMeowPointFlow();
+            }
 
             @Override
             public void openProfileMenu() {
@@ -227,6 +231,51 @@ public final class Main extends Game {
 
     public void showProfileMenuScreen() {
         changeScreen(new view.ProfileMenuScreen(this.applicationController, this::showMainMenuScreen));
+    }
+    public void showMeowPointFlow() {
+        User user = this.applicationController.getCurrentUser();
+        if (user == null) {
+            return;
+        }
+        this.applicationController.execute("menu meow-point");
+        this.applicationController.execute("start game");
+        if (this.applicationController.getCurrentMenu() != model.Menu.MenuType.PLANT_PICK_MENU) {
+            showMainMenuScreen();
+            return;
+        }
+        this.applicationController.execute("show available plants");
+        controller.PlantPickController plantPickController = this.applicationController.getPlantPickController();
+        if (plantPickController == null) {
+            showMainMenuScreen();
+            return;
+        }
+        CollectionController collectionController = new CollectionController(
+            user, this.plantDefinitions, this.zombieDefinitions
+        );
+        college.java.project.graphics.ControllerPlantPickDataSource dataSource =
+            new college.java.project.graphics.ControllerPlantPickDataSource(
+                plantPickController, collectionController, user, this.applicationController
+            );
+        college.java.project.graphics.PlantPickScreen plantPickScreen =
+            new college.java.project.graphics.PlantPickScreen(dataSource);
+        plantPickScreen.setOnClose(() -> {
+            this.applicationController.execute("menu exit");
+            showMainMenuScreen();
+        });
+        plantPickScreen.setOnStart(() -> changeScreen(
+            new view.MeowPointRulesScreen(() -> startMeowPointGame(plantPickScreen))
+        ));
+        changeScreen(plantPickScreen);
+    }
+
+    private void startMeowPointGame(college.java.project.graphics.PlantPickScreen plantPickScreen) {
+        this.applicationController.execute("start game");
+        if (this.applicationController.getCurrentGame() == null) {
+            return;
+        }
+        this.applicationController.save();
+        changeScreen(new college.java.project.graphics.GameplayScreen(
+            this, this.applicationController.getCurrentGame()));
     }
 
     public void showSettingsMenuScreen() {

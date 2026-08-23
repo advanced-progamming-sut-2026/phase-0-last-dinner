@@ -39,12 +39,15 @@ public class MainMenuScreen implements Screen {
 
         void openProfileMenu();
 
+        void openMeowPoint();
+
         void onLoggedOut();
     }
 
     private static final String PROFILE_ICON_PATH = "Assets/Exports/profile.png";
     private static final String SETTINGS_ICON_PATH = "Assets/Exports/settings.png";
     private static final String NEWS_ICON_PATH = "Assets/Exports/news.png";
+    private static final String MEOW_POINT_ICON_PATH = "Assets/Exports/QuestIcons_LOTD.png";
     private static final String BACKGROUND_PATH =
         "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/mainmenu_background.png";
     private static final String LOGO_PATH =
@@ -84,12 +87,20 @@ public class MainMenuScreen implements Screen {
 
         ImageButton profileButton = this.createIconButton(PROFILE_ICON_PATH, ICON_HEIGHT);
         ImageButton settingsButton = this.createIconButton(SETTINGS_ICON_PATH, ICON_HEIGHT);
+        ImageButton meowPointButton = this.createIconButton(MEOW_POINT_ICON_PATH, ICON_HEIGHT);
         this.attachCommand(profileButton, "menu enter profile", this.navigator::openProfileMenu);
         this.attachCommand(settingsButton, "menu enter settings", this.navigator::openSettingsMenu);
+        meowPointButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                navigator.openMeowPoint();
+            }
+        });
 
         Table topLeftGroup = new Table();
         topLeftGroup.add(profileButton).padRight(12);
-        topLeftGroup.add(settingsButton);
+        topLeftGroup.add(settingsButton).padRight(12);
+        topLeftGroup.add(meowPointButton);
 
         TextButton logoutButton = new TextButton("Logout", skin, "brown");
         logoutButton.getLabel().setFontScale(0.8f);
