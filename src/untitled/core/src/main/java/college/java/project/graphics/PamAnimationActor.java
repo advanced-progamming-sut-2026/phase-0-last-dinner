@@ -72,6 +72,7 @@ public final class PamAnimationActor extends Actor {
         Matrix4 previousTransform = new Matrix4(batch.getTransformMatrix());
         Matrix4 scaledTransform = new Matrix4(previousTransform)
                 .translate(centerX, centerY, 0f)
+                .rotate(0f, 0f, 1f, this.getRotation())
                 .scale(
                         baseScale * this.getScaleX(),
                         baseScale * this.getScaleY(),

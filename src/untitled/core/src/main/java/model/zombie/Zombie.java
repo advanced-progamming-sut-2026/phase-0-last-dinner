@@ -39,6 +39,15 @@ public class Zombie implements Tickable {
     private Wave wave;
     // exact x harekate kasri ro negah midare va position tile ro round mikone
     private double exactX;
+    // z ertefa az zamin ast. Baraye Imp-e partab-shode model ham flight-e vaghei ra negah midarad.
+    private double exactZ;
+    private boolean airborne;
+    private double flightStartX;
+    private double flightTargetX;
+    private double flightStartZ;
+    private double flightApexZ;
+    private long flightTotalTicks;
+    private long flightTicksRemaining;
     private int poisonDamagePerTick;
     @Setter
     private Plant poisonSourcePlant;
@@ -73,6 +82,11 @@ public class Zombie implements Tickable {
         }
 
         this.tickConditions();
+
+        if (this.airborne) {
+            this.tickFlight();
+            return;
+        }
 
         if (this.terrainFrozen || this.hasCondition(ZombieCondition.FROZEN)
                 || this.hasCondition(ZombieCondition.STUNNED)
@@ -131,6 +145,7 @@ public class Zombie implements Tickable {
     private boolean isMovementBlocked() {
         return this.dead
                 || this.position == null
+                || this.airborne
                 || this.attacking
                 || this.terrainFrozen
                 || this.hasCondition(ZombieCondition.FROZEN)
@@ -140,6 +155,9 @@ public class Zombie implements Tickable {
     }
 
     public void attack(Plant plant) {
+        if (this.airborne) {
+            return;
+        }
         if (this.behavior != null && this.behavior.canAttackPlant(this, plant, this.board)) {
             this.behavior.attack(this, plant, this.board);
         }
@@ -373,6 +391,9 @@ public class Zombie implements Tickable {
 
         if (position != null) {
             this.exactX = position.getX();
+            if (!this.airborne) {
+                this.exactZ = 0d;
+            }
         }
     }
 
@@ -389,6 +410,79 @@ public class Zombie implements Tickable {
 
     public void setCurrentSpeed(double currentSpeed) {
         this.currentSpeed = Math.max(0, currentSpeed);
+    }
+
+    public void startFlight(
+            double startX,
+            double startZ,
+            double targetX,
+            double apexZ,
+            long durationTicks
+    ) {
+        if (this.dead || this.position == null || durationTicks <= 0) {
+            return;
+        }
+        this.flightStartX = startX;
+        this.flightTargetX = targetX;
+        this.flightStartZ = Math.max(0d, startZ);
+        this.flightApexZ = Math.max(this.flightStartZ, apexZ);
+        this.flightTotalTicks = durationTicks;
+        this.flightTicksRemaining = durationTicks;
+        this.exactX = startX;
+        this.exactZ = this.flightStartZ;
+        this.airborne = true;
+        this.attacking = false;
+        this.syncFlightTile();
+    }
+
+    private void tickFlight() {
+        if (!this.airborne || this.flightTotalTicks <= 0) {
+            return;
+        }
+
+        long elapsedTicks = this.flightTotalTicks - this.flightTicksRemaining + 1;
+        double progress = Math.max(0d, Math.min(1d, elapsedTicks / (double) this.flightTotalTicks));
+        this.exactX = this.flightStartX + (this.flightTargetX - this.flightStartX) * progress;
+        this.exactZ = this.flightHeightAt(progress);
+        this.syncFlightTile();
+
+        if (this.flightTicksRemaining > 0) {
+            this.flightTicksRemaining--;
+        }
+        if (this.flightTicksRemaining <= 0) {
+            this.exactX = this.flightTargetX;
+            this.exactZ = 0d;
+            this.airborne = false;
+            this.flightTotalTicks = 0;
+            this.flightTicksRemaining = 0;
+            this.syncFlightTile();
+        }
+    }
+
+    private double flightHeightAt(double progress) {
+        if (progress <= 0.5d) {
+            double up = progress / 0.5d;
+            double eased = 1d - (1d - up) * (1d - up);
+            return this.flightStartZ + (this.flightApexZ - this.flightStartZ) * eased;
+        }
+        double down = (progress - 0.5d) / 0.5d;
+        return this.flightApexZ * (1d - down * down);
+    }
+
+    private void syncFlightTile() {
+        if (this.position == null) {
+            return;
+        }
+        int column = Math.max(0, Math.min(8, (int) Math.round(this.exactX)));
+        Position destination = new Position(column, this.position.getY());
+        if (destination.equals(this.position)) {
+            return;
+        }
+        if (this.board != null) {
+            this.board.moveZombie(this, destination);
+        } else {
+            this.position = destination;
+        }
     }
 
     public void setAttacking(boolean attacking) {

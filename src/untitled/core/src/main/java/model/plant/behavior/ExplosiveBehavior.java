@@ -38,6 +38,10 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
     private long terrainRemovalDelayTicks;
     private long terrainRemovalElapsedTicks;
     private boolean terrainRemovalStarted;
+    // detonation delay wind up explosion ast va arm delay faghat mine ro armed mikone
+    private long detonationDelayTicks;
+    private long detonationElapsedTicks;
+    private boolean detonationStarted;
 
     public ExplosiveBehavior(
             String damageExpression,
@@ -64,6 +68,15 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
 
             if (this.terrainRemovalElapsedTicks >= this.terrainRemovalDelayTicks) {
                 this.finishTerrainRemoval(plant, board, TerrainType.GRAVE);
+            }
+            return;
+        }
+
+        // damage bad az wind up animation apply mishe
+        if (this.detonationStarted) {
+            this.detonationElapsedTicks++;
+            if (this.detonationElapsedTicks >= this.detonationDelayTicks) {
+                this.detonateNow(plant, board);
             }
             return;
         }
@@ -110,7 +123,22 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
             return;
         }
 
+        if (this.detonationDelayTicks > 0) {
+            this.detonationStarted = true;
+            this.detonationElapsedTicks = 0;
+            return;
+        }
+
+        this.detonateNow(plant, board);
+    }
+
+    private void detonateNow(Plant plant, Board board) {
+        if (plant == null || board == null || this.consumed || board.getCombatSystem() == null) {
+            return;
+        }
+
         this.consumed = true;
+        this.detonationStarted = false;
         List<Zombie> zombies = this.getAffectedZombies(plant, board);
         this.damageZombies(plant, board, zombies);
         this.applyTerrainEffect(plant, board);
@@ -197,6 +225,23 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         this.terrainRemovalDelayTicks = Math.max(0, delayTicks);
     }
 
+    public ExplosiveBehavior setDetonationDelayTicks(long delayTicks) {
+        this.detonationDelayTicks = Math.max(0, delayTicks);
+        return this;
+    }
+
+    public boolean isDetonationStarted() {
+        return this.detonationStarted;
+    }
+
+    public long getDetonationDelayTicks() {
+        return this.detonationDelayTicks;
+    }
+
+    public long getDetonationElapsedTicks() {
+        return this.detonationElapsedTicks;
+    }
+
     @Override
     public PlantBehavior copy() {
         ExplosiveBehavior copy = new ExplosiveBehavior(
@@ -222,6 +267,9 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         copy.terrainRemovalDelayTicks = this.terrainRemovalDelayTicks;
         copy.terrainRemovalElapsedTicks = this.terrainRemovalElapsedTicks;
         copy.terrainRemovalStarted = this.terrainRemovalStarted;
+        copy.detonationDelayTicks = this.detonationDelayTicks;
+        copy.detonationElapsedTicks = this.detonationElapsedTicks;
+        copy.detonationStarted = this.detonationStarted;
         return copy;
     }
 

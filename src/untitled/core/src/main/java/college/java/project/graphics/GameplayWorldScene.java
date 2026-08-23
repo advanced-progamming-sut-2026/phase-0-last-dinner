@@ -175,7 +175,7 @@ public final class GameplayWorldScene extends Group {
         this.alertLayer.setBounds(0f, 0f, getWidth(), getHeight());
         addActor(this.alertLayer);
 
-        this.chapterEventLayer = new GameplayChapterEventLayer(seedDataSource, worldDataSource);
+        this.chapterEventLayer = new GameplayChapterEventLayer(seedDataSource, worldDataSource, this.assets);
         setLawnBounds(this.chapterEventLayer);
         addActor(this.chapterEventLayer);
 

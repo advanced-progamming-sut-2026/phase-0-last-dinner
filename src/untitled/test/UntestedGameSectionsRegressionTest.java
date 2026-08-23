@@ -178,6 +178,12 @@ public class UntestedGameSectionsRegressionTest {
             assertTrue(game.plant("Cherry Bomb", new Position(column, 0)));
         }
 
+        for (int tick = 0; tick < 7; tick++) {
+            for (Plant plant : new java.util.ArrayList<>(game.getBoard().getAllPlants())) {
+                plant.onTick();
+            }
+        }
+
         assertTrue(level.isLoseConditionMet());
     }
 

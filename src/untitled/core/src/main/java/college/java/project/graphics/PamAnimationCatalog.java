@@ -414,6 +414,44 @@ public final class PamAnimationCatalog {
             return candidate;
         }
 
+        public List<String> getPlantFoodSequence() {
+            List<String> sequence = new ArrayList<>();
+            String main = this.findExactIgnoreCase("plantfood");
+            String start = this.findExactIgnoreCase("plantfood_start");
+            String loop = this.findExactIgnoreCase("plantfood_loop");
+            String end = this.findExactIgnoreCase("plantfood_end");
+            if (start != null || loop != null || end != null) {
+                addIfPresent(sequence, start == null ? main : start);
+                addIfPresent(sequence, loop);
+                addIfPresent(sequence, end);
+                if (!sequence.isEmpty()) {
+                    return sequence;
+                }
+            }
+
+            String on = this.findExactIgnoreCase("plantfood_on");
+            String idle = this.findClip("plantfood_idle", "idle_plantfood");
+            String off = this.findExactIgnoreCase("plantfood_off");
+            if (on != null || main != null || idle != null || off != null) {
+                addIfPresent(sequence, on);
+                addIfPresent(sequence, main);
+                addIfPresent(sequence, idle);
+                addIfPresent(sequence, off);
+                if (!sequence.isEmpty()) {
+                    return sequence;
+                }
+            }
+
+            addIfPresent(sequence, getPlantFoodClip());
+            return sequence;
+        }
+
+        private static void addIfPresent(List<String> clips, String clip) {
+            if (clip != null && !clip.isBlank() && !clips.contains(clip)) {
+                clips.add(clip);
+            }
+        }
+
         private String findIdleVariant() {
             String stageOne = this.findExactIgnoreCase("idle_stage1");
             if (stageOne != null) {

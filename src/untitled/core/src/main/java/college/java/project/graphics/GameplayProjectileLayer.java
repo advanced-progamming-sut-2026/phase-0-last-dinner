@@ -2,22 +2,27 @@ package college.java.project.graphics;
 
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.actions.Actions;
 import com.badlogic.gdx.scenes.scene2d.ui.Image;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
+import model.Plant;
+import model.plant.DamageExpressionParser;
 import model.plant.Projectile;
+import model.plant.ProjectileType;
 import pvz.libpvz.textures.TextureBank;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.function.ToDoubleFunction;
 
 /** Renders direct and lobbed projectiles using live Phase 1 projectile coordinates. */
 public final class GameplayProjectileLayer extends Group {
@@ -32,11 +37,12 @@ public final class GameplayProjectileLayer extends Group {
 
     private final GameplayWorldDataSource dataSource;
     private final GameAssetManager assets;
+    private final PamAnimationCatalog effectCatalog;
     private Group renderHost;
     private boolean ownsAssets;
     private Consumer<Projectile> spawnListener;
     private Consumer<Projectile> impactListener;
-    private ToDoubleFunction<Projectile> releaseDelayProvider;
+    private ProjectileReleaseDelayProvider releaseDelayProvider;
     private Function<Projectile, Vector2> launchPointProvider;
     private final Map<Projectile, RenderedProjectile> actors = new IdentityHashMap<>();
 
@@ -54,6 +60,7 @@ public final class GameplayProjectileLayer extends Group {
         }
         this.dataSource = dataSource;
         this.assets = assets;
+        this.effectCatalog = new PamAnimationCatalog();
         this.renderHost = this;
         setTouchable(Touchable.disabled);
     }
@@ -77,7 +84,7 @@ public final class GameplayProjectileLayer extends Group {
         this.impactListener = impactListener;
     }
 
-    public void setReleaseDelayProvider(ToDoubleFunction<Projectile> releaseDelayProvider) {
+    public void setReleaseDelayProvider(ProjectileReleaseDelayProvider releaseDelayProvider) {
         this.releaseDelayProvider = releaseDelayProvider;
     }
 
@@ -99,7 +106,10 @@ public final class GameplayProjectileLayer extends Group {
     private void syncProjectiles(float delta) {
         List<Projectile> projectiles = new ArrayList<>(this.dataSource.getProjectiles());
         projectiles.removeIf(projectile -> projectile == null || projectile.isExpired());
-        removeMissing(projectiles);
+        removeMissing(projectiles, delta);
+        Map<Plant, Map<VolleyKey, Integer>> newVolleySizes = countNewVolleyProjectiles(projectiles);
+        Map<Plant, Map<VolleyKey, Integer>> newVolleyOrdinals = new IdentityHashMap<>();
+        Map<Plant, Boolean> attackNotified = new IdentityHashMap<>();
         for (Projectile projectile : projectiles) {
             RenderedProjectile rendered = this.actors.get(projectile);
             if (rendered == null) {
@@ -107,9 +117,12 @@ public final class GameplayProjectileLayer extends Group {
                 if (rendered == null) {
                     continue;
                 }
+                assignVolleyVisualSlot(rendered, projectile, newVolleyOrdinals, newVolleySizes);
                 this.actors.put(projectile, rendered);
-                this.renderHost.addActor(rendered.image);
-                if (this.spawnListener != null) {
+                this.renderHost.addActor(rendered.root);
+                Plant source = projectile.getSourcePlant();
+                if (this.spawnListener != null && source != null
+                        && attackNotified.put(source, Boolean.TRUE) == null) {
                     this.spawnListener.accept(projectile);
                 }
                 if (this.launchPointProvider != null) {
@@ -123,25 +136,149 @@ public final class GameplayProjectileLayer extends Group {
                 if (this.releaseDelayProvider != null) {
                     rendered.releaseDelay = Math.max(
                             0f,
-                            (float) this.releaseDelayProvider.applyAsDouble(projectile)
+                            (float) this.releaseDelayProvider.getReleaseDelay(
+                                    projectile,
+                                    rendered.volleyIndex,
+                                    rendered.volleySize
+                            )
                     );
                 }
-                rendered.image.setVisible(rendered.releaseDelay <= 0f);
+                rendered.root.setVisible(rendered.releaseDelay <= 0f);
             }
             rendered.age += delta;
+            advancePamProjectile(rendered);
             updateProjectileActor(rendered, projectile);
             GameplayBoardDepthOrder.mark(
-                    rendered.image,
+                    rendered.root,
                     (int) Math.round(projectile.getExactY()),
                     GameplayBoardDepthOrder.PROJECTILE
             );
         }
     }
 
-    private void removeMissing(List<Projectile> projectiles) {
+    private void assignVolleyVisualSlot(
+            RenderedProjectile rendered,
+            Projectile projectile,
+            Map<Plant, Map<VolleyKey, Integer>> newVolleyOrdinals,
+            Map<Plant, Map<VolleyKey, Integer>> newVolleySizes
+    ) {
+        if (rendered == null || projectile == null || projectile.getSourcePlant() == null) {
+            return;
+        }
+        VolleyKey key = volleyKey(projectile);
+        int batchSize = newVolleySizes
+                .getOrDefault(projectile.getSourcePlant(), Map.of())
+                .getOrDefault(key, 0);
+        int burstSize = Math.max(visualBurstSize(projectile), batchSize);
+        if (burstSize <= 1) {
+            return;
+        }
+        Plant source = projectile.getSourcePlant();
+        Map<VolleyKey, Integer> counts = newVolleyOrdinals.computeIfAbsent(
+                source, ignored -> new java.util.HashMap<>()
+        );
+        int ordinal = counts.getOrDefault(key, 0) % burstSize;
+        counts.put(key, ordinal + 1);
+        rendered.volleySize = burstSize;
+        rendered.volleyIndex = ordinal;
+    }
+
+    private Map<Plant, Map<VolleyKey, Integer>> countNewVolleyProjectiles(List<Projectile> projectiles) {
+        Map<Plant, Map<VolleyKey, Integer>> sizes = new IdentityHashMap<>();
+        for (Projectile projectile : projectiles) {
+            if (projectile == null || this.actors.containsKey(projectile)
+                    || projectile.getSourcePlant() == null) {
+                continue;
+            }
+            VolleyKey key = volleyKey(projectile);
+            Map<VolleyKey, Integer> counts = sizes.computeIfAbsent(
+                    projectile.getSourcePlant(), ignored -> new java.util.HashMap<>()
+            );
+            counts.put(key, counts.getOrDefault(key, 0) + 1);
+        }
+        return sizes;
+    }
+
+    private VolleyKey volleyKey(Projectile projectile) {
+        return new VolleyKey(
+                (int) Math.round(projectile.getExactY()),
+                Integer.compare(projectile.getHorizontalDirection(), 0),
+                Integer.compare(projectile.getVerticalDirection(), 0)
+        );
+    }
+
+    private int visualBurstSize(Projectile projectile) {
+        if (projectile == null || projectile.getSourcePlant() == null) {
+            return 1;
+        }
+        int reflected = reflectedBurstSize(projectile);
+        if (reflected > 1) {
+            return reflected;
+        }
+        String name = projectile.getSourcePlant().getName() == null
+                ? ""
+                : projectile.getSourcePlant().getName().toLowerCase(Locale.ROOT);
+        if (name.contains("mega gatling") && projectile.getHorizontalDirection() > 0) {
+            return 4;
+        }
+        if (name.equals("repeater") && projectile.getHorizontalDirection() > 0) {
+            return 2;
+        }
+        if (name.contains("split pea") && projectile.getHorizontalDirection() < 0) {
+            return 2;
+        }
+        return 1;
+    }
+
+    private int reflectedBurstSize(Projectile projectile) {
+        Plant source = projectile == null ? null : projectile.getSourcePlant();
+        Object behavior = source == null ? null : source.getBehavior();
+        if (behavior == null) {
+            return 1;
+        }
+        String pattern = String.valueOf(readFieldValue(behavior, "shooterPattern")).toUpperCase(Locale.ROOT);
+        if (pattern.contains("THREE_LANE") || pattern.contains("FOUR_DIAGONAL")
+                || pattern.contains("STAR_FIVE") || pattern.contains("STACKED_FORWARD")
+                || pattern.contains("BOUNCING")) {
+            return 1;
+        }
+        String fieldName = projectile.getHorizontalDirection() < 0
+                ? "backwardShotCount"
+                : "forwardShotCount";
+        Object value = readFieldValue(behavior, fieldName);
+        return value instanceof Number ? Math.max(1, ((Number) value).intValue()) : 1;
+    }
+
+    private Object readFieldValue(Object target, String fieldName) {
+        Class<?> type = target == null ? null : target.getClass();
+        while (type != null) {
+            try {
+                Field field = type.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field.get(target);
+            } catch (ReflectiveOperationException ignored) {
+                type = type.getSuperclass();
+            }
+        }
+        return null;
+    }
+
+    private void removeMissing(List<Projectile> projectiles, float delta) {
         List<Projectile> removed = new ArrayList<>();
         for (Projectile projectile : this.actors.keySet()) {
             if (!containsIdentity(projectiles, projectile)) {
+                RenderedProjectile rendered = this.actors.get(projectile);
+                if (rendered != null && rendered.age < rendered.releaseDelay + 0.20f) {
+                    rendered.age += delta;
+                    advancePamProjectile(rendered);
+                    updateProjectileActor(rendered, projectile);
+                    GameplayBoardDepthOrder.mark(
+                            rendered.root,
+                            (int) Math.round(projectile.getExactY()),
+                            GameplayBoardDepthOrder.PROJECTILE
+                    );
+                    continue;
+                }
                 removed.add(projectile);
             }
         }
@@ -152,7 +289,7 @@ public final class GameplayProjectileLayer extends Group {
                 if (this.impactListener != null) {
                     this.impactListener.accept(projectile);
                 }
-                rendered.image.remove();
+                rendered.root.remove();
             }
         }
     }
@@ -168,22 +305,82 @@ public final class GameplayProjectileLayer extends Group {
 
     private RenderedProjectile createProjectileActor(Projectile projectile) {
         GameplayProjectileVisualCatalog.Visual visual = GameplayProjectileVisualCatalog.forProjectile(projectile);
-        try {
-            TextureBank bank = this.assets.getTextureBank();
-            TextureRegion region = regionOrFallback(bank, visual.getResourceId());
-            if (region == null) {
+        Group root = new Group();
+        root.setTouchable(Touchable.disabled);
+        root.setBounds(0f, 0f, getWidth(), getHeight());
+
+        GameplayPamEffectSupport.Effect pam = null;
+        GameplayPamEffectSupport.Effect overlayPam = null;
+        Actor primary = null;
+        int regionWidth = 1;
+        int regionHeight = 1;
+
+        if (visual.usesPam()) {
+            pam = GameplayPamEffectSupport.create(
+                    this.assets,
+                    this.effectCatalog,
+                    visual.getPamAnimationName(),
+                    visual.isPamStartLoops(),
+                    visual.getPamStartClip()
+            );
+            if (pam != null) {
+                primary = pam.actor;
+                root.addActor(primary);
+                if (visual.getOverlayPamAnimationName() != null) {
+                    overlayPam = GameplayPamEffectSupport.create(
+                            this.assets,
+                            this.effectCatalog,
+                            visual.getOverlayPamAnimationName(),
+                            true,
+                            visual.getOverlayPamClip()
+                    );
+                    if (overlayPam != null) {
+                        root.addActor(overlayPam.actor);
+                    }
+                }
+            }
+        }
+
+        if (primary == null) {
+            try {
+                TextureBank bank = this.assets.getTextureBank();
+                TextureRegion region = regionOrFallback(bank, visual.getResourceId());
+                if (region == null) {
+                    return null;
+                }
+                Image image = new Image(new TextureRegionDrawable(region));
+                image.setScaling(Scaling.fit);
+                image.setTouchable(Touchable.disabled);
+                image.setColor(visual.getTint());
+                image.setScale(0.62f);
+                image.addAction(Actions.scaleTo(1f, 1f, 0.08f));
+                primary = image;
+                regionWidth = region.getRegionWidth();
+                regionHeight = region.getRegionHeight();
+                root.addActor(primary);
+            } catch (RuntimeException ignored) {
                 return null;
             }
-            Image image = new Image(new TextureRegionDrawable(region));
-            image.setScaling(Scaling.fit);
-            image.setTouchable(Touchable.disabled);
-            image.setColor(visual.getTint());
-            image.setScale(0.62f);
-            image.addAction(Actions.scaleTo(1f, 1f, 0.08f));
-            return new RenderedProjectile(image, visual, region.getRegionWidth(), region.getRegionHeight());
-        } catch (RuntimeException ignored) {
-            return null;
         }
+
+        primary.setColor(visual.getTint());
+        if (overlayPam != null) {
+            overlayPam.actor.setColor(visual.getTint());
+        }
+        RenderedProjectile rendered = new RenderedProjectile(
+                root,
+                primary,
+                visual,
+                regionWidth,
+                regionHeight,
+                pam,
+                overlayPam
+        );
+        rendered.lastType = projectile == null ? null : projectile.getType();
+        if (pam != null && !visual.isPamStartLoops()) {
+            rendered.pamStartDuration = pam.duration(0.2f);
+        }
+        return rendered;
     }
 
     private TextureRegion regionOrFallback(TextureBank bank, String resourceId) {
@@ -200,10 +397,89 @@ public final class GameplayProjectileLayer extends Group {
         return null;
     }
 
-    private void spawnImpact(RenderedProjectile rendered) {
-        if (rendered == null || rendered.image.getWidth() <= 0f || rendered.image.getHeight() <= 0f) {
+    private void advancePamProjectile(RenderedProjectile rendered) {
+        if (rendered == null || rendered.pam == null || rendered.pamLoopStarted
+                || rendered.visual.getPamLoopClip() == null
+                || rendered.visual.isPamStartLoops()
+                || rendered.age < rendered.pamStartDuration) {
             return;
         }
+        String loop = rendered.visual.getPamLoopClip();
+        if (loop.equalsIgnoreCase(rendered.visual.getPamStartClip())) {
+            rendered.pam.actor.setLooping(true);
+        } else {
+            rendered.pam.actor.setAnimation(rendered.pam.animation.getPath(), loop);
+            rendered.pam.actor.setLooping(true);
+        }
+        rendered.pamLoopStarted = true;
+    }
+
+    private void spawnImpact(RenderedProjectile rendered) {
+        if (rendered == null || !rendered.hasVisualPosition) {
+            return;
+        }
+        if (rendered.visual.usesImpactPam()) {
+            if (spawnPamImpact(rendered)) {
+                return;
+            }
+        }
+        spawnStaticImpact(rendered);
+    }
+
+    private boolean spawnPamImpact(RenderedProjectile rendered) {
+        GameplayPamEffectSupport.Effect impact = GameplayPamEffectSupport.create(
+                this.assets,
+                this.effectCatalog,
+                rendered.visual.getImpactPamAnimationName(),
+                false,
+                rendered.visual.getImpactPamClip()
+        );
+        if (impact == null) {
+            return false;
+        }
+        float size = Math.min(getWidth(), getHeight()) * 0.15f
+                * rendered.visual.getImpactSizeFactor();
+        GameplayPamEffectSupport.centerVisibleBounds(
+                impact,
+                rendered.lastCenterX,
+                rendered.lastCenterY,
+                size
+        );
+        impact.actor.setColor(rendered.visual.getTint());
+        GameplayBoardDepthOrder.mark(
+                impact.actor,
+                rendered.lastRow,
+                GameplayBoardDepthOrder.PROJECTILE + 1
+        );
+        this.renderHost.addActor(impact.actor);
+
+        float firstDuration = impact.duration(0.28f);
+        String followup = rendered.visual.getImpactPamFollowupClip();
+        if (followup == null || followup.isBlank()) {
+            impact.actor.addAction(Actions.sequence(
+                    Actions.delay(Math.max(0.06f, firstDuration)),
+                    Actions.removeActor()
+            ));
+            return true;
+        }
+
+        String nextClip = impact.animation.findClip(followup);
+        float secondDuration = impact.animation.getClipDuration(nextClip, 0.28f);
+        impact.actor.addAction(Actions.sequence(
+                Actions.delay(Math.max(0.06f, firstDuration)),
+                Actions.run(() -> {
+                    if (nextClip != null) {
+                        impact.actor.setAnimation(impact.animation.getPath(), nextClip);
+                        impact.actor.setLooping(false);
+                    }
+                }),
+                Actions.delay(Math.max(0.06f, secondDuration)),
+                Actions.removeActor()
+        ));
+        return true;
+    }
+
+    private void spawnStaticImpact(RenderedProjectile rendered) {
         try {
             TextureBank bank = this.assets.getTextureBank();
             TextureRegion region = bank == null ? null : bank.region(rendered.visual.getImpactResourceId());
@@ -214,8 +490,6 @@ public final class GameplayProjectileLayer extends Group {
             impact.setScaling(Scaling.fit);
             impact.setTouchable(Touchable.disabled);
             impact.setColor(rendered.visual.getTint());
-            float centerX = rendered.image.getX() + rendered.image.getWidth() / 2f;
-            float centerY = rendered.image.getY() + rendered.image.getHeight() / 2f;
             float size = Math.min(getWidth(), getHeight()) * 0.15f
                     * rendered.visual.getImpactSizeFactor();
             float aspect = region.getRegionHeight() <= 0
@@ -223,7 +497,12 @@ public final class GameplayProjectileLayer extends Group {
                     : region.getRegionWidth() / (float) region.getRegionHeight();
             float width = aspect >= 1f ? size : size * aspect;
             float height = aspect >= 1f ? size / aspect : size;
-            impact.setBounds(centerX - width / 2f, centerY - height / 2f, width, height);
+            impact.setBounds(
+                    rendered.lastCenterX - width / 2f,
+                    rendered.lastCenterY - height / 2f,
+                    width,
+                    height
+            );
             impact.setScale(0.72f);
             impact.setOrigin(width / 2f, height / 2f);
             impact.addAction(Actions.sequence(
@@ -242,10 +521,10 @@ public final class GameplayProjectileLayer extends Group {
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
         float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
         if (rendered.age < rendered.releaseDelay) {
-            rendered.image.setVisible(false);
+            rendered.root.setVisible(false);
             return;
         }
-        rendered.image.setVisible(true);
+        rendered.root.setVisible(true);
 
         float modelCenterX = (float) ((projectile.getExactX() + 0.5d) * cellWidth);
         float modelCenterY = (
@@ -284,14 +563,113 @@ public final class GameplayProjectileLayer extends Group {
             centerY = lerp(rendered.launchY, targetY, smooth);
         }
 
+        float burstOffset = volleyVisualOffset(rendered, projectile, cellWidth);
+        centerX += burstOffset;
+
         float targetSize = Math.min(cellWidth, cellHeight) * rendered.visual.getSizeFactor();
-        float aspect = rendered.regionHeight <= 0
-                ? 1f
-                : rendered.regionWidth / (float) rendered.regionHeight;
-        float width = aspect >= 1f ? targetSize : targetSize * aspect;
-        float height = aspect >= 1f ? targetSize / aspect : targetSize;
-        rendered.image.setBounds(centerX - width / 2f, centerY - height / 2f, width, height);
-        rendered.image.setColor(rendered.visual.getTint());
+        if (rendered.pam != null) {
+            GameplayPamEffectSupport.centerVisibleBounds(rendered.pam, centerX, centerY, targetSize);
+            rendered.pam.actor.setColor(rendered.visual.getTint());
+            if (rendered.overlayPam != null) {
+                GameplayPamEffectSupport.centerVisibleBounds(
+                        rendered.overlayPam,
+                        centerX,
+                        centerY,
+                        targetSize * rendered.visual.getOverlaySizeMultiplier()
+                );
+                rendered.overlayPam.actor.setColor(rendered.visual.getTint());
+            }
+        } else {
+            float aspect = rendered.regionHeight <= 0
+                    ? 1f
+                    : rendered.regionWidth / (float) rendered.regionHeight;
+            float width = aspect >= 1f ? targetSize : targetSize * aspect;
+            float height = aspect >= 1f ? targetSize / aspect : targetSize;
+            rendered.primary.setBounds(centerX - width / 2f, centerY - height / 2f, width, height);
+            rendered.primary.setColor(rendered.visual.getTint());
+        }
+
+        if (rendered.visual.shouldRotateToDirection()) {
+            float sceneDx = projectile.getHorizontalDirection();
+            float sceneDy = -projectile.getVerticalDirection();
+            float degrees = (float) Math.toDegrees(Math.atan2(sceneDy, sceneDx));
+            setActorRotation(rendered.primary, degrees);
+            if (rendered.overlayPam != null) {
+                setActorRotation(rendered.overlayPam.actor, degrees);
+            }
+        }
+
+        rendered.lastCenterX = centerX;
+        rendered.lastCenterY = centerY;
+        rendered.lastRow = (int) Math.round(projectile.getExactY());
+        rendered.hasVisualPosition = true;
+        maybeSpawnTorchwoodTransform(rendered, projectile, centerX, centerY, cellHeight);
+    }
+
+    private float volleyVisualOffset(
+            RenderedProjectile rendered,
+            Projectile projectile,
+            float cellWidth
+    ) {
+        if (rendered == null || projectile == null || rendered.volleySize <= 1) {
+            return 0f;
+        }
+        float centeredIndex = rendered.volleyIndex - (rendered.volleySize - 1) * 0.5f;
+        String name = projectile.getSourcePlant() == null || projectile.getSourcePlant().getName() == null
+                ? ""
+                : projectile.getSourcePlant().getName().toLowerCase(Locale.ROOT);
+        float spacingFactor = name.contains("mega gatling") ? 0.062f : 0.10f;
+        float direction = projectile.getHorizontalDirection() < 0 ? -1f : 1f;
+        return centeredIndex * spacingFactor * cellWidth * direction;
+    }
+
+    private void maybeSpawnTorchwoodTransform(
+            RenderedProjectile rendered,
+            Projectile projectile,
+            float centerX,
+            float centerY,
+            float cellHeight
+    ) {
+        ProjectileType current = projectile == null ? null : projectile.getType();
+        ProjectileType previous = rendered.lastType;
+        rendered.lastType = current;
+        if (current != ProjectileType.FIRE || previous == ProjectileType.FIRE
+                || projectile == null || projectile.getSourcePlant() == null) {
+            return;
+        }
+        String source = projectile.getSourcePlant().getName() == null
+                ? ""
+                : projectile.getSourcePlant().getName().toLowerCase(Locale.ROOT);
+        if (source.contains("fire peashooter")) {
+            return;
+        }
+        int damage = DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
+        String clip = damage >= 60 ? "hit_power" : "hit_normal";
+        GameplayPamEffectSupport.Effect effect = GameplayPamEffectSupport.create(
+                this.assets,
+                this.effectCatalog,
+                "TORCHWOOD_HIT_EFFECTS",
+                false,
+                clip
+        );
+        if (effect == null) {
+            return;
+        }
+        GameplayPamEffectSupport.centerVisibleBounds(effect, centerX, centerY, cellHeight * 0.55f);
+        GameplayBoardDepthOrder.mark(effect.actor, rendered.lastRow, GameplayBoardDepthOrder.PROJECTILE + 1);
+        this.renderHost.addActor(effect.actor);
+        effect.actor.addAction(Actions.sequence(
+                Actions.delay(Math.max(0.08f, effect.duration(0.24f))),
+                Actions.removeActor()
+        ));
+    }
+
+    private void setActorRotation(Actor actor, float degrees) {
+        if (actor == null) {
+            return;
+        }
+        actor.setOrigin(actor.getWidth() * 0.5f, actor.getHeight() * 0.5f);
+        actor.setRotation(degrees);
     }
 
     private float projectileVisualAnchorShift(Projectile projectile, float cellHeight) {
@@ -338,26 +716,52 @@ public final class GameplayProjectileLayer extends Group {
     }
 
     private static final class RenderedProjectile {
-        private final Image image;
+        private final Group root;
+        private final Actor primary;
         private final GameplayProjectileVisualCatalog.Visual visual;
         private final int regionWidth;
         private final int regionHeight;
+        private final GameplayPamEffectSupport.Effect pam;
+        private final GameplayPamEffectSupport.Effect overlayPam;
         private float age;
         private float releaseDelay;
         private float launchX;
         private float launchY;
         private boolean hasLaunchPoint;
+        private float pamStartDuration;
+        private boolean pamLoopStarted;
+        private float lastCenterX;
+        private float lastCenterY;
+        private int lastRow;
+        private boolean hasVisualPosition;
+        private ProjectileType lastType;
+        private int volleyIndex;
+        private int volleySize = 1;
 
         private RenderedProjectile(
-                Image image,
+                Group root,
+                Actor primary,
                 GameplayProjectileVisualCatalog.Visual visual,
                 int regionWidth,
-                int regionHeight
+                int regionHeight,
+                GameplayPamEffectSupport.Effect pam,
+                GameplayPamEffectSupport.Effect overlayPam
         ) {
-            this.image = image;
+            this.root = root;
+            this.primary = primary;
             this.visual = visual;
             this.regionWidth = regionWidth;
             this.regionHeight = regionHeight;
+            this.pam = pam;
+            this.overlayPam = overlayPam;
         }
+    }
+
+    @FunctionalInterface
+    public interface ProjectileReleaseDelayProvider {
+        double getReleaseDelay(Projectile projectile, int volleyIndex, int volleySize);
+    }
+
+    private record VolleyKey(int lane, int horizontalDirection, int verticalDirection) {
     }
 }

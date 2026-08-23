@@ -446,7 +446,8 @@ public class CombatSystem implements Tickable {
         return behavior == null || behavior.canBeHitBy(zombie, projectile);
     }
     private boolean canPhysicallyCollide(Projectile projectile, Zombie zombie) {
-        return projectile != null && zombie != null && !zombie.isDead() && projectile.canHit(zombie);
+        return projectile != null && zombie != null && !zombie.isDead()
+                && !zombie.isAirborne() && projectile.canHit(zombie);
     }
     private void tryAwardPlantFood(Projectile projectile, Zombie zombie) {
         if (projectile.getPlantFoodChancePercent() <= 0 || zombie == null || !zombie.isDead()
@@ -499,7 +500,8 @@ public class CombatSystem implements Tickable {
         }
     }
     private boolean canTakePlantDamage(Zombie zombie, int damage) {
-        return zombie != null && damage > 0 && !zombie.isDead() && !zombie.isHypnotized();
+        return zombie != null && damage > 0 && !zombie.isDead()
+                && !zombie.isHypnotized() && !zombie.isAirborne();
     }
     private boolean isSubmerged(Zombie zombie) {
         return zombie != null && zombie.hasCondition(ZombieCondition.SUBMERGED);

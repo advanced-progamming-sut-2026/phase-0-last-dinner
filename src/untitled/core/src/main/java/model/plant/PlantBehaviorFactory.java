@@ -260,6 +260,13 @@ class PlantBehaviorFactory {
 
         if (name.contains("doom-shroom")) {
             behavior.setCreatesCrater(true);
+            // doom-shroom damage dar miyane clip explode release mishe
+            behavior.setDetonationDelayTicks(this.secondsToTicks(1.0));
+        } else if (name.contains("grapeshot")) {
+            behavior.setDetonationDelayTicks(this.secondsToTicks(1.6667));
+        } else if (name.contains("cherry bomb") || name.contains("jalapeno")
+                || name.contains("potato mine")) {
+            behavior.setDetonationDelayTicks(this.secondsToTicks(0.6667));
         }
 
         if (name.contains("jalapeno")) {
