@@ -115,7 +115,6 @@ public class GreenhouseScreen implements Screen {
 
         root.top();
         root.add(this.statusLabel).top().padTop(6f).row();
-
         this.potLayer = new Table();
         this.potLayer.setFillParent(true);
         this.stage.addActor(this.potLayer);

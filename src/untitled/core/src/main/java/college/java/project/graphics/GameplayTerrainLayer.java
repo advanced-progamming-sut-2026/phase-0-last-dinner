@@ -28,6 +28,8 @@ import java.util.Set;
 
 /** Draws chapter-aware board terrain, graves and current Big Wave Beach shoreline. */
 public final class GameplayTerrainLayer extends Group {
+    private static final int COLUMN_COUNT = 9;
+    private static final int ROW_COUNT = 5;
     private static final Color WATER = new Color(0.08f, 0.59f, 0.84f, 0.25f);
     private static final Color LOW_BEACH = new Color(0.18f, 0.70f, 0.89f, 0.10f);
     private static final Color FROZEN = new Color(0.63f, 0.91f, 1f, 0.42f);
@@ -38,6 +40,9 @@ public final class GameplayTerrainLayer extends Group {
     private static final float DAMAGE_FLASH_SECONDS = 0.12f;
     private static final String BEACH_WATER_SQUARE =
             "IMAGE_BACKGROUNDS_WATER_SQUARE_WATER_SQUARE_190X210";
+    private static final String BEACH_WATER_PAM = "WATER_SQUARE";
+    private static final String BEACH_WATER_UNDERLAYER_PAM = "WATER_UNDERLAYER";
+    private static final String BEACH_TIDE_LINE_PAM = "WATER_TIDE_LINE";
     private static final String BEACH_TIDE_LINE =
             "IMAGE_BACKGROUNDS_WATER_TIDE_LINE_WATER_TIDE_LINE_161X397";
     private static final String BEACH_WATER_SIGN = "IMAGE_BACKGROUNDS_BEACH_WATERSIGN";
@@ -68,6 +73,7 @@ public final class GameplayTerrainLayer extends Group {
 
     private final GameplayWorldDataSource dataSource;
     private final GameAssetManager assets;
+    private final PamAnimationCatalog pamCatalog = new PamAnimationCatalog();
     private boolean ownsAssets;
     private String terrainSignature = "";
     private final Map<Integer, Integer> terrainHealth = new HashMap<>();
@@ -170,7 +176,7 @@ public final class GameplayTerrainLayer extends Group {
     }
 
     private int cellKey(Position position) {
-        return position.getY() * GameplayBoardInteractionLayer.COLUMN_COUNT + position.getX();
+        return position.getY() * COLUMN_COUNT + position.getX();
     }
 
     private List<Tile> sortedTiles() {
@@ -200,7 +206,7 @@ public final class GameplayTerrainLayer extends Group {
             return waterImage();
         }
         if (type == TerrainType.LOW_BEACH) {
-            return overlay(LOW_BEACH);
+            return lowBeachImage();
         }
         if (type == TerrainType.FROZEN) {
             return overlay(FROZEN);
@@ -221,6 +227,10 @@ public final class GameplayTerrainLayer extends Group {
     }
 
     private Actor waterImage() {
+        Actor animated = createPamTerrainActor(BEACH_WATER_PAM, 0.42f);
+        if (animated != null) {
+            return animated;
+        }
         Drawable drawable = resourceDrawable(BEACH_WATER_SQUARE);
         if (drawable == null) {
             return overlay(WATER);
@@ -229,6 +239,33 @@ public final class GameplayTerrainLayer extends Group {
         image.setScaling(Scaling.stretch);
         image.setColor(1f, 1f, 1f, 0.36f);
         return image;
+    }
+
+    private Actor lowBeachImage() {
+        Group group = new Group();
+        Image base = overlay(LOW_BEACH);
+        group.addActor(base);
+        Actor underlayer = createPamTerrainActor(BEACH_WATER_UNDERLAYER_PAM, 0.26f);
+        if (underlayer != null) {
+            underlayer.setBounds(0f, 0f, 1f, 1f);
+            group.addActor(underlayer);
+        }
+        return group;
+    }
+
+    private Actor createPamTerrainActor(String animationName, float alpha) {
+        GameplayPamEffectSupport.Effect effect = GameplayPamEffectSupport.create(
+                this.assets,
+                this.pamCatalog,
+                animationName,
+                true,
+                "Water", "idle", "loop", "animation"
+        );
+        if (effect == null) {
+            return null;
+        }
+        effect.actor.setColor(1f, 1f, 1f, alpha);
+        return effect.actor;
     }
 
     private Image graveImage(Tile tile) {
@@ -334,10 +371,10 @@ public final class GameplayTerrainLayer extends Group {
     }
 
     private void position(Actor actor, Position position, TerrainType type) {
-        float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
-        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float cellWidth = getWidth() / COLUMN_COUNT;
+        float cellHeight = getHeight() / ROW_COUNT;
         float x = position.getX() * cellWidth;
-        float y = (GameplayBoardInteractionLayer.ROW_COUNT - 1 - position.getY()) * cellHeight;
+        float y = (ROW_COUNT - 1 - position.getY()) * cellHeight;
         if (type == TerrainType.GRAVE) {
             actor.setBounds(x + cellWidth * 0.12f, y, cellWidth * 0.76f, cellHeight * 1.15f);
             return;
@@ -380,23 +417,32 @@ public final class GameplayTerrainLayer extends Group {
         if (waterColumn == Integer.MAX_VALUE) {
             return;
         }
-        float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
-        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float cellWidth = getWidth() / COLUMN_COUNT;
+        float cellHeight = getHeight() / ROW_COUNT;
         float boundary = waterColumn * cellWidth;
-        Drawable tideDrawable = beachTideDrawable();
-        if (tideDrawable != null) {
+        Actor animatedTide = createPamTerrainActor(BEACH_TIDE_LINE_PAM, 0.92f);
+        if (animatedTide != null) {
             float lineHeight = getHeight();
-            float lineWidth = lineHeight * 161f / 397f * 0.30f;
-            Image tide = new Image(tideDrawable);
-            tide.setScaling(Scaling.stretch);
-            tide.setBounds(boundary - lineWidth * 0.34f, 0f, lineWidth, lineHeight);
-            tide.setColor(1f, 1f, 1f, 0.82f);
-            tide.setTouchable(Touchable.disabled);
-            addActor(tide);
+            float lineWidth = lineHeight * 161f / 397f;
+            animatedTide.setBounds(boundary - lineWidth * 0.50f, 0f, lineWidth, lineHeight);
+            animatedTide.setTouchable(Touchable.disabled);
+            addActor(animatedTide);
         } else {
-            Image foam = overlay(new Color(1f, 1f, 1f, 0.42f));
-            foam.setBounds(boundary - 3f, 0f, 6f, getHeight());
-            addActor(foam);
+            Drawable tideDrawable = beachTideDrawable();
+            if (tideDrawable != null) {
+                float lineHeight = getHeight();
+                float lineWidth = lineHeight * 161f / 397f * 0.30f;
+                Image tide = new Image(tideDrawable);
+                tide.setScaling(Scaling.stretch);
+                tide.setBounds(boundary - lineWidth * 0.34f, 0f, lineWidth, lineHeight);
+                tide.setColor(1f, 1f, 1f, 0.82f);
+                tide.setTouchable(Touchable.disabled);
+                addActor(tide);
+            } else {
+                Image foam = overlay(new Color(1f, 1f, 1f, 0.42f));
+                foam.setBounds(boundary - 3f, 0f, 6f, getHeight());
+                addActor(foam);
+            }
         }
         Drawable signDrawable = resourceDrawable(BEACH_WATER_SIGN);
         if (signDrawable != null) {

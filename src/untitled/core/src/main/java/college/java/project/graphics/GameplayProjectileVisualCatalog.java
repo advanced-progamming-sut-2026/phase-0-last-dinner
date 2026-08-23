@@ -8,6 +8,7 @@ import model.plant.ProjectileType;
 
 import java.util.Locale;
 
+/** Maps live Phase 1 projectiles to the closest authored PvZ2 visual available in the asset pack. */
 final class GameplayProjectileVisualCatalog {
     private static final String PEA = "IMAGE_PROJECTILEPEA";
     private static final String FIRE = "IMAGE_EFFECTS_T_FIRE_PEA_T_FIRE_PEA_43X43";
@@ -92,96 +93,110 @@ final class GameplayProjectileVisualCatalog {
     static Visual forProjectile(Projectile projectile) {
         String sourceName = sourceName(projectile);
         if (sourceName.contains("winter melon")) {
-            return new Visual(WINTER_MELON, WINTER_MELON_IMPACT, Color.WHITE, 0.42f, 0.82f);
+            return Visual.staticVisual(WINTER_MELON, WINTER_MELON_IMPACT, 0.42f, 0.82f);
         }
         if (sourceName.contains("melon-pult")) {
-            return new Visual(MELON, MELON_IMPACT, Color.WHITE, 0.42f, 0.76f);
+            return Visual.staticVisual(MELON, MELON_IMPACT, 0.42f, 0.76f);
         }
         if (sourceName.contains("pepper-pult")) {
-            return new Visual(PEPPER, PEPPER_IMPACT, Color.WHITE, 0.38f, 0.76f);
+            return Visual.staticVisual(PEPPER, PEPPER_IMPACT, 0.38f, 0.76f);
         }
         if (sourceName.contains("cabbage-pult")) {
-            return new Visual(CABBAGE, CABBAGE_IMPACT, Color.WHITE, 0.37f, 0.50f);
+            return Visual.staticVisual(CABBAGE, CABBAGE_IMPACT, 0.37f, 0.50f);
         }
         if (sourceName.contains("kernel")) {
             if (projectile != null && projectile.getStunChancePercent() >= 100) {
-                return new Visual(BUTTER, BUTTER_IMPACT, Color.WHITE, 0.32f, 0.58f);
+                return Visual.staticVisual(BUTTER, BUTTER_IMPACT, 0.32f, 0.58f);
             }
-            return new Visual(KERNEL, KERNEL_IMPACT, Color.WHITE, 0.29f, 0.42f);
+            return Visual.staticVisual(KERNEL, KERNEL_IMPACT, 0.29f, 0.42f);
         }
         if (sourceName.contains("citron")) {
-            return new Visual(CITRON, CITRON_IMPACT, Color.WHITE, 0.36f, 0.66f);
+            return Visual.staticVisual(CITRON, CITRON_IMPACT, 0.36f, 0.66f);
         }
         if (sourceName.contains("bowling bulb")) {
             return bowlingBulbVisual(projectile);
         }
         if (sourceName.contains("starfruit")) {
-            return new Visual(STARFRUIT, STARFRUIT_IMPACT, Color.WHITE, 0.29f, 0.56f);
+            return Visual.staticVisual(STARFRUIT, STARFRUIT_IMPACT, 0.29f, 0.56f);
         }
         if (sourceName.contains("rotobaga")) {
-            return new Visual(ROTO, ROTO_IMPACT, Color.WHITE, 0.27f, 0.50f);
+            return Visual.staticVisual(ROTO, ROTO_IMPACT, 0.27f, 0.50f)
+                    .withPam("ROTORUTABAGA_PROJECTILE1", "animation", "animation", true)
+                    .withOverlayPam("ROTORUTABAGA_PROJECTILE2", "animation", 0.62f)
+                    .withImpactPam("ROTORUTABAGA_PROJECTILE_HIT", "animation", null)
+                    .rotateToDirection();
         }
         if (sourceName.contains("puff-shroom")) {
-            return new Visual(PUFF, FUME_IMPACT, Color.WHITE, 0.21f, 0.40f);
+            return Visual.staticVisual(PUFF, FUME_IMPACT, 0.21f, 0.40f);
         }
         if (sourceName.contains("sea-shroom")) {
-            return new Visual(SEA_SHROOM, FUME_IMPACT, Color.WHITE, 0.23f, 0.42f);
+            return Visual.staticVisual(SEA_SHROOM, FUME_IMPACT, 0.23f, 0.42f);
         }
         if (sourceName.contains("goo peashooter")) {
-            return new Visual(GOO, PEA_IMPACT, Color.WHITE, 0.27f, 0.50f);
+            int tier = sourceTier(projectile);
+            return Visual.staticVisual(GOO, PEA_IMPACT, 0.27f, 0.50f)
+                    .withPam("GOOPEASHOOTER_PROJECTILES", "projectile_t" + tier,
+                            "projectile_t" + tier, true)
+                    .withImpactPam("GOOPEASHOOTER_PROJECTILES", "hit_t" + tier, null);
         }
         if (sourceName.contains("grapeshot")) {
-            return new Visual(GRAPE, GRAPE_IMPACT, Color.WHITE, 0.24f, 0.54f);
+            return Visual.staticVisual(GRAPE, GRAPE_IMPACT, 0.24f, 0.54f);
+        }
+        if (sourceName.contains("mega gatling")) {
+            boolean giant = isGiantPea(projectile, sourceName);
+            return Visual.staticVisual(giant ? GIANT_PEA : PEA, giant ? GIANT_PEA_IMPACT : PEA_IMPACT,
+                            giant ? 0.48f : 0.25f, giant ? 0.78f : 0.52f)
+                    .withPam("MEGAGATLING_PROJECTILE", giant ? "animation3" : "animation",
+                            giant ? "animation3" : "animation", true);
+        }
+        if (sourceName.contains("pea pod") && isGiantPea(projectile, sourceName)) {
+            return Visual.staticVisual(GIANT_PEA, GIANT_PEA_IMPACT, 0.47f, 0.78f)
+                    .withPam("PEAPOD_PLANTFOOD_GIANTPEA", "animation", "animation", true);
         }
         if (isGiantPea(projectile, sourceName)) {
-            return new Visual(GIANT_PEA, GIANT_PEA_IMPACT, Color.WHITE, 0.43f, 0.76f);
+            return Visual.staticVisual(GIANT_PEA, GIANT_PEA_IMPACT, 0.43f, 0.76f);
         }
         if (sourceName.contains("caulipower")) {
-            return new Visual(CAULIPOWER, CAULIPOWER_IMPACT, Color.WHITE, 0.31f, 0.46f);
+            return Visual.staticVisual(CAULIPOWER, CAULIPOWER_IMPACT, 0.31f, 0.46f);
         }
         if (sourceName.contains("electric blueberry")) {
-            return new Visual(
-                    ELECTRIC_BLUEBERRY,
-                    ELECTRIC_BLUEBERRY_IMPACT,
-                    Color.WHITE,
-                    0.34f,
-                    0.72f
-            );
+            return Visual.staticVisual(ELECTRIC_BLUEBERRY, ELECTRIC_BLUEBERRY_IMPACT, 0.34f, 0.72f)
+                    .withPam("ELECTRICBLUEBERRY_CLOUD_PROJECTILE", "start", "idle", false)
+                    .withImpactPam("ELECTRICBLUEBERRY_CLOUD_PROJECTILE", "attack", "death");
         }
         if (sourceName.contains("fume-shroom")) {
-            return new Visual(FUME, FUME_IMPACT, Color.WHITE, 0.38f, 0.52f);
+            return Visual.staticVisual(FUME, FUME_IMPACT, 0.38f, 0.52f);
         }
         if (sourceName.contains("cactus")) {
-            return new Visual(CACTUS, CACTUS_IMPACT, Color.WHITE, 0.31f, 0.52f);
+            return Visual.staticVisual(CACTUS, CACTUS_IMPACT, 0.31f, 0.52f);
         }
         ProjectileType type = projectile == null ? ProjectileType.NORMAL : projectile.getType();
         if (type == ProjectileType.FIRE || sourceName.contains("fire peashooter")) {
-            return new Visual(FIRE, FIRE_IMPACT, Color.WHITE, 0.30f, 0.62f);
+            return Visual.staticVisual(FIRE, FIRE_IMPACT, 0.30f, 0.62f);
         }
         if (type == ProjectileType.ICE || sourceName.contains("snow pea")) {
-            return new Visual(SNOW_PEA, PEA_IMPACT, Color.WHITE, 0.27f, 0.50f);
+            return Visual.staticVisual(SNOW_PEA, PEA_IMPACT, 0.27f, 0.50f)
+                    .withImpactPam("SPLAT_SNOW_PEA", "animation", null);
         }
         if (type == ProjectileType.POISON) {
-            return new Visual(
-                    PEA,
-                    PEA_IMPACT,
-                    new Color(0.55f, 1f, 0.44f, 1f),
-                    0.24f,
-                    0.50f
-            );
+            return Visual.staticVisual(PEA, PEA_IMPACT, 0.24f, 0.50f)
+                    .withTint(new Color(0.55f, 1f, 0.44f, 1f));
         }
         if (type == ProjectileType.PIERCING) {
-            return new Visual(CACTUS, CACTUS_IMPACT, Color.WHITE, 0.31f, 0.52f);
+            return Visual.staticVisual(CACTUS, CACTUS_IMPACT, 0.31f, 0.52f);
         }
-        return new Visual(
+        return Visual.staticVisual(
                 PEA,
                 PEA_IMPACT,
-                Color.WHITE,
                 projectile != null && projectile.isLobbed() ? 0.34f : 0.24f,
                 0.50f
         );
     }
 
+    private static int sourceTier(Projectile projectile) {
+        Plant source = projectile == null ? null : projectile.getSourcePlant();
+        return source == null ? 1 : Math.max(1, Math.min(3, source.getLevel()));
+    }
 
     private static boolean isGiantPea(Projectile projectile, String sourceName) {
         if (projectile == null || sourceName == null) {
@@ -201,12 +216,12 @@ final class GameplayProjectileVisualCatalog {
                 ? 0
                 : DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
         if (damage >= 160) {
-            return new Visual(BULB_THREE, PEA_IMPACT, Color.WHITE, 0.39f, 0.58f);
+            return Visual.staticVisual(BULB_THREE, PEA_IMPACT, 0.39f, 0.58f);
         }
         if (damage >= 100) {
-            return new Visual(BULB_TWO, PEA_IMPACT, Color.WHITE, 0.35f, 0.54f);
+            return Visual.staticVisual(BULB_TWO, PEA_IMPACT, 0.35f, 0.54f);
         }
-        return new Visual(BULB_ONE, PEA_IMPACT, Color.WHITE, 0.31f, 0.50f);
+        return Visual.staticVisual(BULB_ONE, PEA_IMPACT, 0.31f, 0.50f);
     }
 
     private static String sourceName(Projectile projectile) {
@@ -223,9 +238,20 @@ final class GameplayProjectileVisualCatalog {
     static final class Visual {
         private final String resourceId;
         private final String impactResourceId;
-        private final Color tint;
+        private Color tint;
         private final float sizeFactor;
         private final float impactSizeFactor;
+        private String pamAnimationName;
+        private String pamStartClip;
+        private String pamLoopClip;
+        private boolean pamStartLoops;
+        private String overlayPamAnimationName;
+        private String overlayPamClip;
+        private float overlaySizeMultiplier = 1f;
+        private String impactPamAnimationName;
+        private String impactPamClip;
+        private String impactPamFollowupClip;
+        private boolean rotateToDirection;
 
         private Visual(
                 String resourceId,
@@ -241,24 +267,59 @@ final class GameplayProjectileVisualCatalog {
             this.impactSizeFactor = impactSizeFactor;
         }
 
-        String getResourceId() {
-            return this.resourceId;
+        static Visual staticVisual(String resourceId, String impactResourceId, float size, float impactSize) {
+            return new Visual(resourceId, impactResourceId, Color.WHITE, size, impactSize);
         }
 
-        String getImpactResourceId() {
-            return this.impactResourceId;
+        Visual withTint(Color tint) {
+            this.tint = tint == null ? Color.WHITE : tint;
+            return this;
         }
 
-        Color getTint() {
-            return this.tint;
+        Visual withPam(String animation, String startClip, String loopClip, boolean startLoops) {
+            this.pamAnimationName = animation;
+            this.pamStartClip = startClip;
+            this.pamLoopClip = loopClip;
+            this.pamStartLoops = startLoops;
+            return this;
         }
 
-        float getSizeFactor() {
-            return this.sizeFactor;
+        Visual withOverlayPam(String animation, String clip, float sizeMultiplier) {
+            this.overlayPamAnimationName = animation;
+            this.overlayPamClip = clip;
+            this.overlaySizeMultiplier = Math.max(0.1f, sizeMultiplier);
+            return this;
         }
 
-        float getImpactSizeFactor() {
-            return this.impactSizeFactor;
+        Visual withImpactPam(String animation, String clip, String followupClip) {
+            this.impactPamAnimationName = animation;
+            this.impactPamClip = clip;
+            this.impactPamFollowupClip = followupClip;
+            return this;
         }
+
+        Visual rotateToDirection() {
+            this.rotateToDirection = true;
+            return this;
+        }
+
+        String getResourceId() { return this.resourceId; }
+        String getImpactResourceId() { return this.impactResourceId; }
+        Color getTint() { return this.tint; }
+        float getSizeFactor() { return this.sizeFactor; }
+        float getImpactSizeFactor() { return this.impactSizeFactor; }
+        String getPamAnimationName() { return this.pamAnimationName; }
+        String getPamStartClip() { return this.pamStartClip; }
+        String getPamLoopClip() { return this.pamLoopClip; }
+        boolean isPamStartLoops() { return this.pamStartLoops; }
+        String getOverlayPamAnimationName() { return this.overlayPamAnimationName; }
+        String getOverlayPamClip() { return this.overlayPamClip; }
+        float getOverlaySizeMultiplier() { return this.overlaySizeMultiplier; }
+        String getImpactPamAnimationName() { return this.impactPamAnimationName; }
+        String getImpactPamClip() { return this.impactPamClip; }
+        String getImpactPamFollowupClip() { return this.impactPamFollowupClip; }
+        boolean shouldRotateToDirection() { return this.rotateToDirection; }
+        boolean usesPam() { return this.pamAnimationName != null; }
+        boolean usesImpactPam() { return this.impactPamAnimationName != null; }
     }
 }

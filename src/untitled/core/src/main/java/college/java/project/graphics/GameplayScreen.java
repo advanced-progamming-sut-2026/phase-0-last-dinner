@@ -4,7 +4,14 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Stage;
+import com.badlogic.gdx.scenes.scene2d.actions.Actions;
+import com.badlogic.gdx.scenes.scene2d.ui.Label;
+import com.badlogic.gdx.scenes.scene2d.ui.Table;
+import com.badlogic.gdx.scenes.scene2d.ui.TextButton;
+import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
+import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import college.java.project.Main;
@@ -17,7 +24,9 @@ import model.User.User;
 import model.chapters.ChapterType;
 import model.level.Level;
 import model.level.LevelType;
+import model.level.MeowPointLevel;
 import model.mechanism.PlantZombieGame;
+import pvz.skin.PvzSkin;
 import view.GameSettings;
 
 import java.util.ArrayList;
@@ -40,6 +49,7 @@ public final class GameplayScreen implements Screen {
     private final Set<String> boostedPlantNames;
     private float tickRemainder;
     private boolean disposed;
+    private int lastKnownMeowPoint;
 
     public GameplayScreen(Main application, PlantZombieGame game) {
         if (application == null || game == null) {
@@ -162,6 +172,44 @@ public final class GameplayScreen implements Screen {
         }
         this.tickRemainder -= ticks;
         this.midGameController.onAdvanceTimeRequested(ticks);
+        this.checkMeowPointAchievement();
+    }
+
+    private void checkMeowPointAchievement() {
+        if (!(this.game.getActiveLevel() instanceof MeowPointLevel)) {
+            return;
+        }
+        MeowPointLevel meowLevel = (MeowPointLevel) this.game.getActiveLevel();
+        int currentPoint = meowLevel.getPoint();
+        int delta = currentPoint - this.lastKnownMeowPoint;
+        this.lastKnownMeowPoint = currentPoint;
+        if (delta > 0) {
+            showMeowPointToast(delta);
+        }
+    }
+
+    private void showMeowPointToast(int delta) {
+        Label label = new Label("Meow Point +" + delta + "!", PvzSkin.get(), "medium_outline");
+        label.setAlignment(Align.center);
+
+        Table toast = new Table();
+        toast.setBackground(PvzSkin.get().getDrawable("image_ui_if_bundle_reward_multiplier_bg_10"));
+        toast.pad(10f, 20f, 10f, 20f);
+        toast.add(label);
+
+        Table positioner = new Table();
+        positioner.setFillParent(true);
+        positioner.top().right().pad(24f);
+        positioner.add(toast);
+        positioner.getColor().a = 0f;
+
+        this.stage.addActor(positioner);
+        positioner.addAction(Actions.sequence(
+            Actions.fadeIn(0.25f),
+            Actions.delay(1.8f),
+            Actions.fadeOut(0.35f),
+            Actions.removeActor()
+        ));
     }
 
     private void restartLevel() {
@@ -257,19 +305,53 @@ public final class GameplayScreen implements Screen {
         boolean won = !this.worldScene.getOutcomeOverlay().isLoss();
         this.worldScene.getOutcomeOverlay().setVisible(false);
         Runnable revealOutcome = () -> this.worldScene.getOutcomeOverlay().setVisible(true);
+        Runnable proceed = revealOutcome;
+        if (won && this.game.getActiveLevel() instanceof MeowPointLevel) {
+            int finalPoint = ((MeowPointLevel) this.game.getActiveLevel()).getPoint();
+            proceed = () -> showMeowPointScoreDialog(finalPoint, revealOutcome);
+        }
         if (won) {
             boolean shownWinDialog = view.NpcDialogOverlay.show(
                 this.stage,
                 view.LevelNpcDialogs.getWinDialog(this.chapterType, this.levelType),
-                revealOutcome
+                proceed
             );
             if (!shownWinDialog) {
-                revealOutcome.run();
+                proceed.run();
             }
         } else {
-            revealOutcome.run();
+            proceed.run();
         }
         this.application.getApplicationController().finishGraphicalGame(won);
+    }
+
+    private void showMeowPointScoreDialog(int point, Runnable onDismiss) {
+        Table panel = new Table();
+        panel.setBackground(PvzSkin.get().getDrawable("image_ui_dialog_asset_inner_bkgd_10"));
+        panel.pad(40f);
+
+        Label title = new Label("Meow Points Earned", PvzSkin.get(), "big");
+        title.setAlignment(Align.center);
+        Label scoreLabel = new Label(String.valueOf(point), PvzSkin.get(), "big_outline");
+        scoreLabel.setAlignment(Align.center);
+        TextButton continueButton = new TextButton("Continue", PvzSkin.get(), "green");
+
+        panel.add(title).padBottom(16f).row();
+        panel.add(scoreLabel).padBottom(24f).row();
+        panel.add(continueButton).width(220f).height(64f);
+
+        Table overlay = new Table();
+        overlay.setFillParent(true);
+        overlay.add(panel);
+
+        continueButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                overlay.remove();
+                onDismiss.run();
+            }
+        });
+        this.stage.addActor(overlay);
     }
 
     private void returnToAdventureSelection(ApplicationController controller) {

@@ -137,8 +137,8 @@ public class GameMenuScreen implements Screen {
 
         WalletPill coinPill = this.createWalletPill(COIN_PILL_PATH, gold, COIN_BOX_START, COIN_BOX_END, skin);
         WalletPill diamondPill = this.createWalletPill(DIAMOND_PILL_PATH, diamonds, DIAMOND_BOX_START, DIAMOND_BOX_END, skin);
-        this.attachCheatButton(coinPill, COIN_BOX_END, "coin", 10);
-        this.attachCheatButton(diamondPill, DIAMOND_BOX_END, "diamond", 1);
+        this.attachCheatButton(coinPill, COIN_BOX_END, "coin", 1000);
+        this.attachCheatButton(diamondPill, DIAMOND_BOX_END, "diamond", 5);
 
         Table walletGroup = new Table();
         walletGroup.add(coinPill.root).padBottom(8).row();

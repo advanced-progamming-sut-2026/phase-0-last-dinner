@@ -50,6 +50,11 @@ public class SunStealerBehavior implements ZombieBehavior {
         this.stolenSun += system.stealGroundSun(this.stealAmount, Integer.MAX_VALUE);
     }
 
+    /** Returns the amount of ground sun currently held by this zombie for read-only visual sync. */
+    public int getStolenSun() {
+        return this.stolenSun;
+    }
+
     @Override
     public void onDeath(Zombie zombie, Board board) {
         SunSystem system = this.sunSystem;

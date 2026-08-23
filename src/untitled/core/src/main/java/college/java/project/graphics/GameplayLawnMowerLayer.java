@@ -23,6 +23,9 @@ import java.util.Collections;
 /** Draws one mower at the left edge of each unused lane. */
 public final class GameplayLawnMowerLayer extends Group {
     private static final String EGYPT_MOWER_PATH = "768/INITIAL/MOWERS/MOWER_EGYPT/MOWER_EGYPT.PAM";
+    private static final String ICE_MOWER_PATH = "768/FULL/MOWERS/MOWER_ICEAGE/MOWER_ICEAGE.PAM";
+    private static final String BEACH_MOWER_PATH = "768/FULL/MOWERS/MOWER_BEACH/MOWER_BEACH.PAM";
+    private static final String DARK_MOWER_PATH = "768/FULL/MOWERS/MOWER_DARK/MOWER_DARK.PAM";
     private static final String EGYPT_MOWER = "IMAGE_MOWERS_MOWER_EGYPT_MOWER_EGYPT_96X63";
     private static final String ICE_MOWER = "IMAGE_MOWERS_MOWER_ICEAGE_MOWER_ICEAGE_99X85";
     private static final String BEACH_MOWER = "IMAGE_MOWERS_MOWER_BEACH_MOWER_BEACH_166X175";
@@ -122,38 +125,57 @@ public final class GameplayLawnMowerLayer extends Group {
     private void animateActivation(LawnMower mower, Actor actor) {
         this.activating.add(mower);
         actor.clearActions();
-        actor.setColor(1f, 0.94f, 0.66f, 1f);
+        actor.setColor(1f, 1f, 1f, 1f);
+
+        if (actor instanceof PamAnimationActor pamActor) {
+            float transitionSeconds = transitionDuration(this.dataSource.getChapterType());
+            pamActor.setAnimation(pamActor.getPamPath(), "transition");
+            pamActor.setLooping(false);
+            actor.addAction(Actions.sequence(
+                    Actions.delay(transitionSeconds),
+                    Actions.run(() -> {
+                        pamActor.setAnimation(pamActor.getPamPath(), "attack");
+                        pamActor.setLooping(true);
+                    }),
+                    Actions.moveBy(activationTravelDistance(), 0f, 0.42f),
+                    Actions.run(() -> finishActivation(mower, actor))
+            ));
+            return;
+        }
+
+        actor.setColor(1f, 1f, 1f, 1f);
         actor.addAction(Actions.sequence(
-                Actions.parallel(
-                        Actions.moveBy(getWidth() + actor.getWidth() * 1.6f, 0f, 0.42f),
-                        Actions.fadeOut(0.42f)
-                ),
-                Actions.run(() -> {
-                    this.activating.remove(mower);
-                    this.actors.remove(mower);
-                    actor.remove();
-                })
+                Actions.moveBy(activationTravelDistance(), 0f, 0.42f),
+                Actions.run(() -> finishActivation(mower, actor))
         ));
+    }
+
+
+    private float activationTravelDistance() {
+        float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
+        float legacyVisualSize = cellHeight * 0.92f;
+        return getWidth() + legacyVisualSize * 1.6f;
+    }
+
+    private void finishActivation(LawnMower mower, Actor actor) {
+        this.activating.remove(mower);
+        this.actors.remove(mower);
+        actor.remove();
     }
 
     private Actor createMowerActor() {
         ChapterType chapterType = this.dataSource.getChapterType();
-        if (chapterType == ChapterType.ANCIENT_EGYPT) {
-            Actor egyptPam = createEgyptPamFallback();
-            if (egyptPam != null) {
-                return egyptPam;
-            }
-            return createStaticMower(EGYPT_MOWER);
+        Actor chapterPam = createPamMower(mowerPamPath(chapterType));
+        if (chapterPam != null) {
+            return chapterPam;
         }
 
-        // Prefer the exact chapter artwork. Previously Ice Caves and Medieval
-        // fell through to Egypt's PAM before their own mower atlas was tried.
         Actor chapterMower = createStaticMower(mowerResource(chapterType));
         if (chapterMower != null) {
             return chapterMower;
         }
 
-        Actor egyptPam = createEgyptPamFallback();
+        Actor egyptPam = createPamMower(EGYPT_MOWER_PATH);
         if (egyptPam != null) {
             return egyptPam;
         }
@@ -175,25 +197,54 @@ public final class GameplayLawnMowerLayer extends Group {
         }
     }
 
-    private Actor createEgyptPamFallback() {
-        FileHandle pamFile = Gdx.files.internal("IMAGES/" + EGYPT_MOWER_PATH);
+    private Actor createPamMower(String pamPath) {
+        if (pamPath == null) {
+            return null;
+        }
+        FileHandle pamFile = Gdx.files.internal("IMAGES/" + pamPath);
         if (!pamFile.exists() || !PamTextureAvailability.allTexturesAvailable(
                 this.assets.getTextureBank(),
                 pamFile
         )) {
             return null;
         }
-        this.assets.getPamPlayer().loadSync(EGYPT_MOWER_PATH);
+        this.assets.getPamPlayer().loadSync(pamPath);
         PamAnimationActor actor = new PamAnimationActor(
                 this.assets.getPamPlayer(),
-                EGYPT_MOWER_PATH,
+                pamPath,
                 "idle",
-                150f,
-                150f
+                390f,
+                390f
         );
         actor.setTouchable(Touchable.disabled);
         actor.act(0.35f);
         return actor;
+    }
+
+    private String mowerPamPath(ChapterType chapterType) {
+        if (chapterType == ChapterType.ICE_CAVES) {
+            return ICE_MOWER_PATH;
+        }
+        if (chapterType == ChapterType.BIG_WAVE_BEACH) {
+            return BEACH_MOWER_PATH;
+        }
+        if (chapterType == ChapterType.MEDIEVAL) {
+            return DARK_MOWER_PATH;
+        }
+        return EGYPT_MOWER_PATH;
+    }
+
+    private float transitionDuration(ChapterType chapterType) {
+        if (chapterType == ChapterType.ICE_CAVES) {
+            return 0.4f;
+        }
+        if (chapterType == ChapterType.BIG_WAVE_BEACH) {
+            return 0.3333f;
+        }
+        if (chapterType == ChapterType.MEDIEVAL) {
+            return 0.3667f;
+        }
+        return 0.2667f;
     }
 
     private String mowerResource(ChapterType chapterType) {
@@ -212,11 +263,28 @@ public final class GameplayLawnMowerLayer extends Group {
     private void position(Actor actor, int row) {
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
         float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
-        float size = cellHeight * 0.92f;
         float tileBottom = (
                 GameplayBoardInteractionLayer.ROW_COUNT - 1 - row
         ) * cellHeight;
         float centerY = tileBottom + cellHeight / 2f;
+
+        if (actor instanceof PamAnimationActor pamActor) {
+            // Mower PAMs use a 390x390 authoring canvas. Render that canvas at
+            // the same 768p -> 1080p scale as the chapter background instead
+            // of shrinking the whole PAM into a single tile-sized square.
+            float width = pamActor.getCanvasWidth() * GameplayWorldLayout.BACKGROUND_SCALE;
+            float height = pamActor.getCanvasHeight() * GameplayWorldLayout.BACKGROUND_SCALE;
+            float centerX = -cellWidth * 0.47f;
+            actor.setBounds(
+                    centerX - width / 2f,
+                    centerY - height / 2f,
+                    width,
+                    height
+            );
+            return;
+        }
+
+        float size = cellHeight * 0.92f;
         actor.setBounds(
                 -cellWidth * 1.02f,
                 centerY - size / 2f,
