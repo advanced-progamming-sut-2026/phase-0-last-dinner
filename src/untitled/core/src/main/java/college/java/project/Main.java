@@ -1,6 +1,7 @@
 package college.java.project;
 
 import college.java.project.graphics.AdventureLevelSelectionScreen;
+import college.java.project.graphics.minigame.multiplayer.IZombieMatchmakingScreen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -25,6 +26,7 @@ import model.zombie.ZombieFactory;
 
 import java.io.IOException;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import network.izombie.client.IZombieClientController;
 import pvz.skin.PvzSkin;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -58,6 +60,7 @@ public final class Main extends Game {
     private CollectionMenuCoordinator collectionMenuCoordinator;
     private Screen collectionReturnScreen;
     private AdventureLevelSelectionScreen adventureLevelSelectionScreen;
+    private volatile IZombieClientController iZombieMultiplayerController;
 
     private Skin skin;
 
@@ -82,6 +85,17 @@ public final class Main extends Game {
 
     public static Main loadApplication() {
         return new Main();
+    }
+
+    public void connectIZombieMultiplayer(IZombieClientController controller) {
+        if (controller == null)
+            throw new IllegalArgumentException("I, Zombie multiplayer controller is required.");
+
+        this.iZombieMultiplayerController = controller;
+    }
+
+    public void disconnectIZombieMultiplayer() {
+        this.iZombieMultiplayerController = null;
     }
 
     @Override
@@ -226,7 +240,27 @@ public final class Main extends Game {
             public void onLoggedOut() {
                 showLoginScreen();
             }
+
+            @Override
+            public boolean openMultiplayer() {
+                return openIZombieMultiplayer();
+            }
         }));
+    }
+
+    private boolean openIZombieMultiplayer() {
+        User currentUser = this.applicationController.getCurrentUser();
+
+        if (currentUser == null)
+            return false;
+
+        IZombieClientController controller = this.iZombieMultiplayerController;
+
+        if (controller == null)
+            return false;
+
+        changeScreen(new IZombieMatchmakingScreen(this, controller, this::showMainMenuScreen));
+        return true;
     }
 
     public void showProfileMenuScreen() {
