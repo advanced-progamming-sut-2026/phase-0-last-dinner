@@ -1,0 +1,15 @@
+package network.izombie.protocol;
+
+public enum IZombieServerEventType {
+    ERROR,
+    INVITATION_RECEIVED,
+    INVITATION_DECLINED,
+    QUEUE_JOINED,
+    QUEUE_LEFT,
+    MATCH_STARTED,
+    MATCH_SNAPSHOT,
+    ACTION_REJECTED,
+    REACTION_RECEIVED,
+    MATCH_FINISHED,
+    OPPONENT_LEFT
+}

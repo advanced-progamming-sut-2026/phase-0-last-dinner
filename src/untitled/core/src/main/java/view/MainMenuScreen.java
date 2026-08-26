@@ -33,6 +33,8 @@ public class MainMenuScreen implements Screen {
     public interface Navigator {
         void openGameMenu();
 
+        boolean openMultiplayer();
+
         void openSettingsMenu();
 
         void openNewsMenu();
@@ -122,11 +124,26 @@ public class MainMenuScreen implements Screen {
         Image logo = this.createImageAspect(LOGO_PATH, LOGO_WIDTH);
 
         this.statusLabel = new Label(unreadNewsCount > 0 ? "You have unread news!" : "", skin, "secondary");
-        TextButton playButton = this.menuButton("Play", skin, "green", "menu enter game", this.navigator::openGameMenu);
+
+        TextButton playButton = this.menuButton("Play", skin, "green", "menu enter game",
+            this.navigator::openGameMenu);
+
+        TextButton multiplayerButton = new TextButton("Multiplayer", skin, "purple");
+
+        multiplayerButton.addListener(new ClickListener() {
+            @Override
+            public void clicked(InputEvent event, float x, float y) {
+                boolean opened = navigator.openMultiplayer();
+
+                if (!opened)
+                    statusLabel.setText("Multiplayer is not connected to the server yet.");
+            }
+        });
 
         Table centerGroup = new Table();
-        centerGroup.add(playButton).width(260).height(70).padTop(48).padBottom(16).row();
-        centerGroup.add(this.statusLabel).padTop(8);
+        centerGroup.add(playButton).width(280).height(70).padTop(32).padBottom(12).row();
+        centerGroup.add(multiplayerButton).width(280).height(70).padBottom(12).row();
+        centerGroup.add(this.statusLabel).padTop(4);
 
         root.top().left();
         root.add(topLeftGroup).top().left();
