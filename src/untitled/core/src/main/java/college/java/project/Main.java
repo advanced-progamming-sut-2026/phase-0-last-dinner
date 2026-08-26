@@ -13,7 +13,8 @@ import lombok.Getter;
 import model.GameMenuRelated.TravelLog;
 import model.Greenhouse.GreenhouseBoostService;
 import model.User.User;
-import model.User.UserRepository;
+import model.User.NetworkAccountService;
+import network.client.GameClient;
 import model.mechanism.PlantZombieGame;
 import model.minigame.MiniGameFactory;
 import model.plant.CsvPlantDefinitionRepository;
@@ -73,8 +74,12 @@ public final class Main extends Game {
             this.plantUpgradeService = new PlantUpgradeService();
             this.collectionController = new CollectionController(this.plantDefinitions, this.plantUpgradeService);
 
-            this.applicationController = new ApplicationController(new UserRepository(), this.plantDefinitions,
-                this.zombieDefinitions);
+            String serverHost = System.getProperty("pvz.server.host", "127.0.0.1");
+            int serverPort = Integer.getInteger("pvz.server.port", 8082);
+            NetworkAccountService accountService = new NetworkAccountService(
+                    new GameClient(serverHost, serverPort));
+            this.applicationController = new ApplicationController(
+                    accountService, this.plantDefinitions, this.zombieDefinitions);
         } catch (IOException e) {
             throw new IllegalStateException("Could not load bundled plant and zombie definitions", e);
         }

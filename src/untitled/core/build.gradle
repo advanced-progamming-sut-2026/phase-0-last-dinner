@@ -13,6 +13,7 @@ sourceSets {
 }
 
 dependencies {
+  api project(':client')
   api "com.badlogicgames.gdx:gdx:$gdxVersion"
   api "com.badlogicgames.gdx:gdx-freetype:$gdxVersion"
   api 'com.google.code.gson:gson:2.14.0'

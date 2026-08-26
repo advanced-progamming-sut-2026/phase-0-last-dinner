@@ -15,23 +15,47 @@ public class LeaderboardEntry {
     private final int completedNonDailyQuests;
     private final int meowPoints;
 
-    public LeaderboardEntry(int rank, User user) {
+    public LeaderboardEntry(
+            int rank,
+            String username,
+            String nickname,
+            String lastChapter,
+            int lastLevel,
+            int completedMinigames,
+            int completedDailyQuests,
+            int completedNonDailyQuests,
+            int meowPoints
+    ) {
         this.rank = rank;
-        this.username = user.getUsername();
-        this.nickname = user.getNickname();
-        this.lastChapter = user.getLastCompletedChapterType() != null
+        this.username = username;
+        this.nickname = nickname;
+        this.lastChapter = lastChapter;
+        this.lastLevel = Math.max(0, lastLevel);
+        this.completedMinigames = Math.max(0, completedMinigames);
+        this.completedDailyQuests = Math.max(0, completedDailyQuests);
+        this.completedNonDailyQuests = Math.max(0, completedNonDailyQuests);
+        this.meowPoints = Math.max(0, meowPoints);
+    }
+
+    public LeaderboardEntry(int rank, User user) {
+        this(
+                rank,
+                user.getUsername(),
+                user.getNickname(),
+                user.getLastCompletedChapterType() != null
                 ? user.getLastCompletedChapterType().name()
                 : user.getChapter() == null || user.getChapter().getChapter() == null
                         ? "NOT_STARTED"
-                        : user.getChapter().getChapter().name();
-        this.lastLevel = user.getLastCompletedLevel() > 0
+                        : user.getChapter().getChapter().name(),
+                user.getLastCompletedLevel() > 0
                 ? user.getLastCompletedLevel()
                 : user.getChapter() == null
                         ? 0
-                        : Math.max(0, user.getLevel() - 1);
-        this.completedMinigames = Math.max(0, user.getCompletedMinigames());
-        this.completedDailyQuests = Math.max(0, user.getCompletedDailyQuests());
-        this.completedNonDailyQuests = Math.max(0, user.getCompletedNonDailyQuests());
-        this.meowPoints = user.getMaxObtainedMeowPoints();
+                        : Math.max(0, user.getLevel() - 1),
+                user.getCompletedMinigames(),
+                user.getCompletedDailyQuests(),
+                user.getCompletedNonDailyQuests(),
+                user.getMaxObtainedMeowPoints()
+        );
     }
 }

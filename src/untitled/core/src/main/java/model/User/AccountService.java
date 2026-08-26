@@ -1,10 +1,12 @@
 package model.User;
 import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 // marhale haye sabt nam login va avaz kardane ramz ro anjam mide
-public class AccountService {
+public class AccountService implements AutoCloseable {
     private static final String SPECIAL_CHARACTERS = "?><,\"';:\\/|[]}{+=()*&^%$#!";
     private static final List<String> SECURITY_QUESTIONS = Collections.unmodifiableList(Arrays.asList(
             "What was the name of your first pet?",
@@ -18,6 +20,9 @@ public class AccountService {
     private User pendingPasswordReset;
     // neshun mide javabe soal ghablan check shode
     private boolean passwordResetAnswerVerified;
+    protected AccountService() {
+        this.repository = null;
+    }
     public AccountService(UserRepository repository) {
         if (repository == null) {
             throw new IllegalArgumentException("User repository is required");
@@ -155,6 +160,32 @@ public class AccountService {
     }
     public List<User> getUsers() {
         return this.repository.getUsers();
+    }
+    public List<LeaderboardEntry> getLeaderboard(
+            LeaderboardSortField sortField,
+            boolean ascending
+    ) {
+        List<User> rankedUsers = new ArrayList<>();
+        for (User user : this.getUsers()) {
+            if (user != null) {
+                rankedUsers.add(user);
+            }
+        }
+        Comparator<User> comparator = this.leaderboardComparator(sortField);
+        if (!ascending) {
+            comparator = comparator.reversed();
+        }
+        comparator = comparator.thenComparing(
+                User::getUsername,
+                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)
+        );
+        rankedUsers.sort(comparator);
+
+        List<LeaderboardEntry> entries = new ArrayList<>();
+        for (int i = 0; i < rankedUsers.size(); i++) {
+            entries.add(new LeaderboardEntry(i + 1, rankedUsers.get(i)));
+        }
+        return entries;
     }
     public AccountResult changeUsername(User user, String username) {
         if (user == null) {
@@ -321,12 +352,52 @@ public class AccountService {
     public void save() {
         this.repository.save();
     }
+    @Override
+    public void close() {
+        this.save();
+    }
     private void saveProfileChange(User user) {
         if (user.isStayLoggedIn()) {
             this.repository.remember(user);
         } else {
             this.repository.save();
         }
+    }
+    private Comparator<User> leaderboardComparator(LeaderboardSortField sortField) {
+        LeaderboardSortField selected = sortField == null
+                ? LeaderboardSortField.MEOW_POINTS
+                : sortField;
+        return switch (selected) {
+            case USERNAME -> Comparator.comparing(
+                    User::getUsername,
+                    Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
+            case PROGRESS -> Comparator.comparingInt(this::progressChapterIndex)
+                    .thenComparingInt(this::progressLevel);
+            case MINIGAMES -> Comparator.comparingInt(User::getCompletedMinigames);
+            case DAILY_QUESTS -> Comparator.comparingInt(User::getCompletedDailyQuests);
+            case NON_DAILY_QUESTS -> Comparator.comparingInt(User::getCompletedNonDailyQuests);
+            case MEOW_POINTS -> Comparator.comparingInt(User::getMaxObtainedMeowPoints);
+        };
+    }
+    private int progressChapterIndex(User user) {
+        if (user == null) {
+            return -1;
+        }
+        if (user.getLastCompletedChapterType() != null) {
+            return user.getLastCompletedChapterType().ordinal();
+        }
+        return user.getChapter() == null || user.getChapter().getChapter() == null
+                ? -1
+                : user.getChapter().getChapter().ordinal();
+    }
+    private int progressLevel(User user) {
+        if (user == null) {
+            return 0;
+        }
+        if (user.getLastCompletedLevel() > 0) {
+            return user.getLastCompletedLevel();
+        }
+        return user.getChapter() == null ? 0 : Math.max(0, user.getLevel() - 1);
     }
     private boolean isValidUsername(String username) {
         return username != null && username.matches("[A-Za-z0-9-]+");

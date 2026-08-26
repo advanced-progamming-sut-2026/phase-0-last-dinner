@@ -1,0 +1,17 @@
+plugins {
+  id 'application'
+  id 'eclipse'
+}
+
+[compileJava, compileTestJava]*.options*.encoding = 'UTF-8'
+eclipse.project.name = appName + '-server'
+java.sourceCompatibility = 21
+java.targetCompatibility = 21
+application.mainClass = 'network.server.ServerLauncher'
+
+dependencies {
+  implementation project(':shared')
+  testImplementation project(':client')
+  testImplementation project(':core')
+  testImplementation 'junit:junit:4.13.2'
+}
