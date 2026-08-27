@@ -1,6 +1,7 @@
 package college.java.project;
 
 import college.java.project.graphics.AdventureLevelSelectionScreen;
+import college.java.project.graphics.minigame.multiplayer.IZombieMatchmakingScreen;
 import com.badlogic.gdx.Game;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Screen;
@@ -13,7 +14,8 @@ import lombok.Getter;
 import model.GameMenuRelated.TravelLog;
 import model.Greenhouse.GreenhouseBoostService;
 import model.User.User;
-import model.User.UserRepository;
+import model.User.NetworkAccountService;
+import network.client.GameClient;
 import model.mechanism.PlantZombieGame;
 import model.minigame.MiniGameFactory;
 import model.plant.CsvPlantDefinitionRepository;
@@ -25,6 +27,7 @@ import model.zombie.ZombieFactory;
 
 import java.io.IOException;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
+import network.izombie.client.IZombieClientController;
 import pvz.skin.PvzSkin;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -58,6 +61,7 @@ public final class Main extends Game {
     private CollectionMenuCoordinator collectionMenuCoordinator;
     private Screen collectionReturnScreen;
     private AdventureLevelSelectionScreen adventureLevelSelectionScreen;
+    private volatile IZombieClientController iZombieMultiplayerController;
 
     private Skin skin;
 
@@ -73,8 +77,12 @@ public final class Main extends Game {
             this.plantUpgradeService = new PlantUpgradeService();
             this.collectionController = new CollectionController(this.plantDefinitions, this.plantUpgradeService);
 
-            this.applicationController = new ApplicationController(new UserRepository(), this.plantDefinitions,
-                this.zombieDefinitions);
+            String serverHost = System.getProperty("pvz.server.host", "127.0.0.1");
+            int serverPort = Integer.getInteger("pvz.server.port", 8082);
+            NetworkAccountService accountService = new NetworkAccountService(
+                    new GameClient(serverHost, serverPort));
+            this.applicationController = new ApplicationController(
+                    accountService, this.plantDefinitions, this.zombieDefinitions);
         } catch (IOException e) {
             throw new IllegalStateException("Could not load bundled plant and zombie definitions", e);
         }
@@ -82,6 +90,17 @@ public final class Main extends Game {
 
     public static Main loadApplication() {
         return new Main();
+    }
+
+    public void connectIZombieMultiplayer(IZombieClientController controller) {
+        if (controller == null)
+            throw new IllegalArgumentException("I, Zombie multiplayer controller is required.");
+
+        this.iZombieMultiplayerController = controller;
+    }
+
+    public void disconnectIZombieMultiplayer() {
+        this.iZombieMultiplayerController = null;
     }
 
     @Override
@@ -226,7 +245,27 @@ public final class Main extends Game {
             public void onLoggedOut() {
                 showLoginScreen();
             }
+
+            @Override
+            public boolean openMultiplayer() {
+                return openIZombieMultiplayer();
+            }
         }));
+    }
+
+    private boolean openIZombieMultiplayer() {
+        User currentUser = this.applicationController.getCurrentUser();
+
+        if (currentUser == null)
+            return false;
+
+        IZombieClientController controller = this.iZombieMultiplayerController;
+
+        if (controller == null)
+            return false;
+
+        changeScreen(new IZombieMatchmakingScreen(this, controller, this::showMainMenuScreen));
+        return true;
     }
 
     public void showProfileMenuScreen() {

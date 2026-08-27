@@ -119,10 +119,18 @@ public class ApplicationController implements CommandHandler {
 
     public ApplicationController(UserRepository repository, PlantDefinitionRepository plantDefinitions,
                                  ZombieDefinitionRepository zombieDefinitions) {
+        this(new AccountService(repository), plantDefinitions, zombieDefinitions);
+    }
+
+    public ApplicationController(AccountService accountService, PlantDefinitionRepository plantDefinitions,
+                                 ZombieDefinitionRepository zombieDefinitions) {
+        if (accountService == null) {
+            throw new IllegalArgumentException("Account service is required");
+        }
         this.menuContext = new GameMenuContext();
         this.commandParser = new ApplicationCommandParser();
         this.commandRouter = new ApplicationCommandRouter();
-        this.accountService = new AccountService(repository);
+        this.accountService = accountService;
         this.signupController = new SignupController(this.accountService, this.menuContext);
         this.loginController = new LoginController(this.accountService, this.menuContext);
         this.accountCommandHandler = new ApplicationAccountCommandHandler(
@@ -130,9 +138,9 @@ public class ApplicationController implements CommandHandler {
         this.mainController = new MainController(this.accountService, this.menuContext);
         this.chapterController = new ChapterController(this.loginController);
         this.gameController = new GameController(
-            this.loginController,
-            repository,
-            this.chapterController
+                this.loginController,
+                this.accountService,
+                this.chapterController
         );
         this.gameView = new GameView();
         this.gameView.setObserver(this.gameController);
@@ -162,7 +170,7 @@ public class ApplicationController implements CommandHandler {
     }
 
     public void close() {
-        this.accountService.save();
+        this.accountService.close();
     }
     public AccountResult registerUser(String username, String password, String passwordConfirm, String nickname,
                                       String email, String gender, int securityQuestionNumber, String securityAnswer,
@@ -255,6 +263,7 @@ public class ApplicationController implements CommandHandler {
     }
 
     private String login(List<String> tokens) {
+        this.loginController.cancelPendingPasswordRecovery();
         String username = this.valueAfter(tokens, "-u", 1);
         String password = this.valueAfter(tokens, "-p", 1);
 

@@ -1,8 +1,8 @@
 package controller;
 
 import model.Menu.MenuType;
+import model.User.AccountService;
 import model.User.User;
-import model.User.UserRepository;
 import model.chapters.ChapterType;
 import view.GameViewObserver;
 
@@ -11,19 +11,19 @@ public class GameController implements GameViewObserver {
     private final LoginController loginController;
     private final ChapterController chapterController;
 
-    private final UserRepository userRepository;
+    private final AccountService accountService;
 
     public GameController(
             LoginController loginController,
-            UserRepository userRepository,
+            AccountService accountService,
             ChapterController chapterController
     ) {
-        if (loginController == null || userRepository == null || chapterController == null) {
-            throw new IllegalArgumentException("loginController, userRepository and chapterController are required");
+        if (loginController == null || accountService == null || chapterController == null) {
+            throw new IllegalArgumentException("loginController, accountService and chapterController are required");
         }
 
         this.loginController = loginController;
-        this.userRepository = userRepository;
+        this.accountService = accountService;
         this.chapterController = chapterController;
     }
 
@@ -64,7 +64,7 @@ public class GameController implements GameViewObserver {
             return;
         }
 
-        this.userRepository.save();
+        this.accountService.save();
     }
 
     private int safeAdd(int currentValue, int amount) {

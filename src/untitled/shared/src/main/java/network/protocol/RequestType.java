@@ -1,0 +1,16 @@
+package network.protocol;
+
+public enum RequestType {
+    PING,
+    REGISTER,
+    LOGIN,
+    RESUME_SESSION,
+    LOGOUT,
+    BEGIN_PASSWORD_RESET,
+    VERIFY_PASSWORD_RESET,
+    COMPLETE_PASSWORD_RESET,
+    GET_PROFILE,
+    UPDATE_PROFILE,
+    SYNC_ACCOUNT,
+    GET_LEADERBOARD
+}
