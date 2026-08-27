@@ -8,12 +8,7 @@ import model.chapters.Chapter;
 import model.chapters.ChapterMedieval;
 import model.chapters.ChapterIceCaves;
 import model.chapters.ChapterType;
-import model.level.Level;
-import model.level.ConveyorBeltLevel;
-import model.level.DeadlineLevel;
-import model.level.LoveYourPlantsLevel;
-import model.level.MeowPointLevel;
-import model.level.NightOpsLevel;
+import model.level.*;
 import model.minigame.beghouledminigame.BeghouledMiniGame;
 import model.minigame.beghouledminigame.PlantZombieBeghouledIntegration;
 import model.minigame.izombieminigame.IZombieMiniGame;
@@ -301,7 +296,7 @@ public class PlantZombieGame {
         this.levelFinalized = false;
         if (this.activeChapter instanceof ChapterIceCaves) {
             ((ChapterIceCaves) this.activeChapter).setFrozenZombieStartEnabled(
-                    level instanceof DeadlineLevel
+                    level instanceof NormalLevel
             );
         }
         level.setBoard(this.board);

@@ -129,24 +129,24 @@ public final class Main extends Game {
             this.collectionMenuCoordinator.dispose();
         }
         this.collectionController = new CollectionController(
-                user,
-                this.plantDefinitions,
-                this.zombieDefinitions
+            user,
+            this.plantDefinitions,
+            this.zombieDefinitions
         );
         this.collectionMenuCoordinator = new CollectionMenuCoordinator(
-                this,
-                new ControllerPlantCollectionDataSource(
-                        this.collectionController,
-                        this.applicationController.getGameController(),
-                        false,
-                        this.applicationController::save
-                ),
-                new ControllerZombieCollectionDataSource(
-                        this.collectionController,
-                        this.applicationController.getGameController(),
-                        false,
-                        this.applicationController::save
-                )
+            this,
+            new ControllerPlantCollectionDataSource(
+                this.collectionController,
+                this.applicationController.getGameController(),
+                false,
+                this.applicationController::save
+            ),
+            new ControllerZombieCollectionDataSource(
+                this.collectionController,
+                this.applicationController.getGameController(),
+                false,
+                this.applicationController::save
+            )
         );
         this.collectionMenuCoordinator.setOnClose(this::closeCollection);
         this.collectionMenuCoordinator.showPlants();
@@ -328,7 +328,20 @@ public final class Main extends Game {
         changeScreen(new view.LeaderBoardMenuScreen(this.applicationController, onBack::run));
     }
     public void showGreenhouseScreen() {
-        changeScreen(new GreenhouseScreen(this.applicationController, this::showGameMenuScreen));
+        changeScreen(new GreenhouseScreen(this.applicationController, new GreenhouseScreen.Navigator() {
+            @Override
+            public void onBack() {
+                showGameMenuScreen();
+            }
+
+            @Override
+            public void openShop() {
+                showShopScreen();
+            }
+        }));
+    }
+    public void showShopScreen() {
+        changeScreen(new view.ShopScreen(this.applicationController, this::showGreenhouseScreen));
     }
     public void showTravelLogScreen() {
         changeScreen(
@@ -482,8 +495,8 @@ public final class Main extends Game {
         CollectionMenuCoordinator coordinator = this.collectionMenuCoordinator;
         this.collectionMenuCoordinator = null;
         this.collectionController = new CollectionController(
-                this.plantDefinitions,
-                this.plantUpgradeService
+            this.plantDefinitions,
+            this.plantUpgradeService
         );
         Screen returnScreen = this.collectionReturnScreen;
         this.collectionReturnScreen = null;

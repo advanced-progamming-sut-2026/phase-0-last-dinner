@@ -47,6 +47,7 @@ import view.collection.CollectionView;
 import view.collection.CollectionCommands;
 import view.greenhouse.GreenhouseCommands;
 import view.greenhouse.GreenhouseView;
+import view.shop.ShopView;
 import view.travellog.TravelLogCommands;
 import view.travellog.TravelLogView;
 
@@ -80,6 +81,9 @@ public class ApplicationController implements CommandHandler {
     private TravelLogView travelLogView;
     private TravelLogController travelLogController;
     private User travelLogViewUser;
+    private ShopView shopView;
+    private ShopController shopController;
+    private User shopViewUser;
     // اینا هم برا کالکشن
     private final PlantDefinitionRepository plantDefinitions;
     private final ZombieDefinitionRepository zombieDefinitions;
@@ -126,9 +130,9 @@ public class ApplicationController implements CommandHandler {
         this.mainController = new MainController(this.accountService, this.menuContext);
         this.chapterController = new ChapterController(this.loginController);
         this.gameController = new GameController(
-                this.loginController,
-                repository,
-                this.chapterController
+            this.loginController,
+            repository,
+            this.chapterController
         );
         this.gameView = new GameView();
         this.gameView.setObserver(this.gameController);
@@ -390,6 +394,24 @@ public class ApplicationController implements CommandHandler {
 
     boolean isShopCommand(String input) {
         return ApplicationCommandMatchers.isShopCommand(input);
+    }
+
+    public ShopController getOrCreateShopController() {
+        if (this.currentUser == null) {
+            return null;
+        }
+        this.ensureShopConnected();
+        return this.shopController;
+    }
+
+    private void ensureShopConnected() {
+        if (this.shopController != null && this.shopViewUser == this.currentUser) {
+            return;
+        }
+        this.currentUser.initializeMissingFields();
+        this.shopView = new ShopView();
+        this.shopController = new ShopController(this.shopView, this.currentUser, this.currentUser.getPlantUpgradeService());
+        this.shopViewUser = this.currentUser;
     }
 
     public void save() {
@@ -655,6 +677,9 @@ public class ApplicationController implements CommandHandler {
         this.travelLogView = null;
         this.travelLogViewUser = null;
         this.travelLogController = null;
+        this.shopView = null;
+        this.shopController = null;
+        this.shopViewUser = null;
         this.collectionView = null;
         this.collectionViewUser = null;
         this.newsView = null;

@@ -45,6 +45,8 @@ public class GreenhouseScreen implements Screen {
 
     public interface Navigator {
         void onBack();
+
+        void openShop();
     }
 
     private static final String BACKGROUND_PATH = "Assets/Exports/greenhouse.png";
@@ -139,7 +141,7 @@ public class GreenhouseScreen implements Screen {
         shopButton.addListener(new ChangeListener() {
             @Override
             public void changed(ChangeEvent event, Actor actor) {
-                statusLabel.setText("Shop is coming soon.");
+                navigator.openShop();
             }
         });
         shopButton.setPosition(HUD_MARGIN, VIRTUAL_HEIGHT - HUD_MARGIN - SHOP_ICON_SIZE);
