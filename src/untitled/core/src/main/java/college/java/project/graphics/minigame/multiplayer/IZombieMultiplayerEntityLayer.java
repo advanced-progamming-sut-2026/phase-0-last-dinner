@@ -92,6 +92,7 @@ public final class IZombieMultiplayerEntityLayer extends Group {
         List<IZombieEntitySnapshot> snapshots = data.getEntities();
 
         Set<Long> seenEntityIds = new HashSet<>();
+        Set<Long> attackingPlantIds = new HashSet<>();
 
         for (IZombieEntitySnapshot snapshot : snapshots) {
             if (snapshot == null || snapshot.kind() == null) {
@@ -122,15 +123,50 @@ public final class IZombieMultiplayerEntityLayer extends Group {
 
                 actors.put(entityId, actor);
                 addActor(actor);
+
+                if (snapshot.kind() == IZombieEntityKind.PROJECTILE) {
+
+                    Long sourcePlantId = getSourcePlantId(snapshot);
+                    if (sourcePlantId != null)
+                        attackingPlantIds.add(sourcePlantId);
+
+                }
             } else {
                 actor.applySnapshot(snapshot, false);
             }
+        }
+
+        for (Long plantId : attackingPlantIds) {
+            IZombieSnapshotEntityActor plantActor = actors.get(plantId);
+
+            if (plantActor != null)
+                plantActor.playPlantAttack();
         }
 
         removeMissingEntities(seenEntityIds);
 
         terminalEntityIds.retainAll(seenEntityIds);
         failedEntityIds.retainAll(seenEntityIds);
+    }
+
+    private Long getSourcePlantId(IZombieEntitySnapshot snapshot) {
+        if (snapshot == null || snapshot.states() == null)
+            return null;
+
+        String prefix = "SOURCE_PLANT:";
+
+        for (String state : snapshot.states()) {
+            if (state == null || !state.startsWith(prefix))
+                continue;
+
+            try {
+                return Long.parseLong(state.substring(prefix.length()));
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+
+        return null;
     }
 
     private IZombieSnapshotEntityActor createActor(IZombieEntitySnapshot snapshot) {

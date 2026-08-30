@@ -3,6 +3,7 @@ package model.User;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
+import lombok.Getter;
 import network.client.GameClient;
 import network.client.NetworkException;
 import network.protocol.NetworkResponse;
@@ -29,7 +30,8 @@ public final class NetworkAccountService extends AccountService {
     private PendingRegistration pendingRegistration;
     private String pendingPasswordResetUsername;
     private String passwordResetToken;
-    private String authToken;
+    @Getter
+    private volatile String authToken;
     private User currentUser;
 
     public NetworkAccountService(GameClient client) {

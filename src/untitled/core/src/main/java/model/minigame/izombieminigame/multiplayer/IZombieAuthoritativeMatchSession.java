@@ -42,7 +42,7 @@ public class IZombieAuthoritativeMatchSession implements IZombieMatchSession {
         this.plantUsername = requireText(plantUsername, "Plant username");
         this.zombieUsername = requireText(zombieUsername, "Zombie username");
 
-        if (plantUsername.equals(zombieUsername)) {
+        if (plantUsername.equalsIgnoreCase(zombieUsername)) {
             throw new IllegalArgumentException("Both match players cannot have the same username.");
         }
 
@@ -78,13 +78,14 @@ public class IZombieAuthoritativeMatchSession implements IZombieMatchSession {
 
     @Override
     public IZombieRole getRole(String username) {
-        if (plantUsername.equals(username)) {
-            return IZombieRole.PLANTS;
-        }
+        if (username == null)
+            return null;
 
-        if (zombieUsername.equals(username)) {
+        if (plantUsername.equalsIgnoreCase(username))
+            return IZombieRole.PLANTS;
+
+        if (zombieUsername.equalsIgnoreCase(username))
             return IZombieRole.ZOMBIES;
-        }
 
         return null;
     }
@@ -312,13 +313,14 @@ public class IZombieAuthoritativeMatchSession implements IZombieMatchSession {
     }
 
     private String getOpponent(String username) {
-        if (plantUsername.equals(username)) {
-            return zombieUsername;
-        }
+        if (username == null)
+            return null;
 
-        if (zombieUsername.equals(username)) {
+        if (plantUsername.equalsIgnoreCase(username))
+            return zombieUsername;
+
+        if (zombieUsername.equalsIgnoreCase(username))
             return plantUsername;
-        }
 
         return null;
     }

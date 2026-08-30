@@ -4,6 +4,7 @@ import model.Plant;
 import model.mechanism.Board;
 import model.plant.Projectile;
 import model.zombie.Zombie;
+import model.zombie.ZombieArmor;
 import model.zombie.ZombieCondition;
 import network.izombie.protocol.IZombieEntityKind;
 import network.izombie.protocol.IZombieEntitySnapshot;
@@ -31,9 +32,8 @@ public final class IZombieSnapshotBuilder {
     private final Map<Object, Long> entityIds = new IdentityHashMap<>();
     private long nextEntityId = 1;
 
-    public IZombieSnapshotBuilder(String matchId, int stageNumber, String plantUsername,
-                                  String zombieUsername, IZombieMultiplayerIntegration integration,
-                                  IZombieMatchLoadout loadout) {
+    public IZombieSnapshotBuilder(String matchId, int stageNumber, String plantUsername, String zombieUsername,
+                                  IZombieMultiplayerIntegration integration, IZombieMatchLoadout loadout) {
         if (matchId == null || matchId.trim().isEmpty()) {
             throw new IllegalArgumentException("Match identifier is required.");
         }
@@ -133,8 +133,8 @@ public final class IZombieSnapshotBuilder {
             liveEntities.add(projectile);
 
             snapshots.add(new IZombieEntitySnapshot(getEntityId(projectile), IZombieEntityKind.PROJECTILE,
-                getProjectileKey(projectile), projectile.getExactX(), projectile.getExactY(),
-                0, 0, false, projectile.isExpired(), getProjectileStates(projectile)));
+                getProjectileKey(projectile), projectile.getExactX(), projectile.getExactY(), 0,
+                0, false, projectile.isExpired(), getProjectileStates(projectile)));
         }
     }
 
@@ -167,13 +167,36 @@ public final class IZombieSnapshotBuilder {
     private List<String> getZombieStates(Zombie zombie) {
         List<String> states = new ArrayList<>();
 
-        if (zombie.getConditions() == null) {
-            return states;
+        if (zombie.getConditions() != null) {
+            for (ZombieCondition condition : zombie.getConditions()) {
+                if (condition != null) {
+                    states.add(condition.name());
+                }
+            }
         }
 
-        for (ZombieCondition condition : zombie.getConditions()) {
-            if (condition != null) {
-                states.add(condition.name());
+        if (zombie.getArmors() != null) {
+            for (ZombieArmor armor : zombie.getArmors()) {
+                if (armor == null || armor.isDestroyed() || armor.isDropped() || armor.getDefinition() == null ||
+                    armor.getDefinition().getType() == null) {
+                    continue;
+                }
+
+                int maximumHealth = Math.max(1, armor.getDefinition().getBaseHealth());
+
+                float healthRatio = Math.max(0, armor.getCurrentHealth()) / (float) maximumHealth;
+
+                String variant;
+
+                if (healthRatio > 0.66f) {
+                    variant = "NORM";
+                } else if (healthRatio > 0.33f) {
+                    variant = "DAMAGE_01";
+                } else {
+                    variant = "DAMAGE_02";
+                }
+
+                states.add("ARMOR:" + armor.getDefinition().getType().name() + ":" + variant);
             }
         }
 
@@ -183,17 +206,17 @@ public final class IZombieSnapshotBuilder {
     private List<String> getProjectileStates(Projectile projectile) {
         List<String> states = new ArrayList<>();
 
-        if (projectile.isLobbed()) {
+        if (projectile.isLobbed())
             states.add("LOBBED");
-        }
-
-        if (projectile.isPeaBased()) {
+        if (projectile.isPeaBased())
             states.add("PEA_BASED");
-        }
-
-        if (projectile.isHostileToPlants()) {
+        if (projectile.isHostileToPlants())
             states.add("HOSTILE_TO_PLANTS");
-        }
+
+        Plant sourcePlant = projectile.getSourcePlant();
+
+        if (sourcePlant != null)
+            states.add("SOURCE_PLANT:" + getEntityId(sourcePlant));
 
         return states;
     }

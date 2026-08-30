@@ -35,6 +35,8 @@ public class MainMenuScreen implements Screen {
 
         boolean openMultiplayer();
 
+        boolean hasPendingMultiplayerInvitation();
+
         void openSettingsMenu();
 
         void openNewsMenu();
@@ -64,6 +66,8 @@ public class MainMenuScreen implements Screen {
     private final List<Texture> loadedTextures = new ArrayList<>();
     private Stage stage;
     private Label statusLabel;
+
+    private boolean openingMultiplayer;
 
     public MainMenuScreen(ApplicationController controller, Navigator navigator) {
         if (controller == null || navigator == null) {
@@ -255,6 +259,9 @@ public class MainMenuScreen implements Screen {
 
     @Override
     public void render(float delta) {
+        if (!this.openingMultiplayer && this.navigator.hasPendingMultiplayerInvitation())
+            this.openingMultiplayer = this.navigator.openMultiplayer();
+
         ScreenUtils.clear(Color.valueOf("2f4b2f"));
         this.stage.act(delta);
         this.stage.draw();

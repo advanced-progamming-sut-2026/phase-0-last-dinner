@@ -11,7 +11,8 @@ application.mainClass = 'network.server.ServerLauncher'
 
 dependencies {
   implementation project(':shared')
+  implementation project(':core')
+
   testImplementation project(':client')
-  testImplementation project(':core')
   testImplementation 'junit:junit:4.13.2'
 }

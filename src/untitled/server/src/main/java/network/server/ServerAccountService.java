@@ -278,6 +278,15 @@ public final class ServerAccountService {
         return remembered;
     }
 
+    String authenticatedUsername(String token) {
+        ServerUserRecord record = authenticatedUser(token);
+
+        if (record == null)
+            return null;
+
+        return record.username;
+    }
+
     private void applyAuthoritativeFields(ServerUserRecord record) {
         if (record.user == null) {
             record.user = new JsonObject();

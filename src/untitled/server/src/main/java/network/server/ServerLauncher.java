@@ -1,5 +1,9 @@
 package network.server;
 
+import model.minigame.izombieminigame.multiplayer.IZombieAuthoritativeMatchFactory;
+import network.izombie.server.IZombieMultiplayerService;
+import network.izombie.transport.IZombieNetworkServerAdapter;
+
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -21,10 +25,27 @@ public final class ServerLauncher {
         RequestRouter router = RequestRouter.withDefaults();
         ServerUserRepository repository = new ServerUserRepository(storagePath);
         ServerAccountService accountService = new ServerAccountService(repository);
+
+        PollingIZombieServerNetworkPort izombieNetworkPort = new PollingIZombieServerNetworkPort(router, accountService);
+        IZombieNetworkServerAdapter izombieServerAdapter = new IZombieNetworkServerAdapter(izombieNetworkPort);
+        IZombieAuthoritativeMatchFactory izombieMatchFactory = new IZombieAuthoritativeMatchFactory();
+        IZombieMultiplayerService izombieMultiplayerService = new IZombieMultiplayerService(izombieServerAdapter,
+            izombieMatchFactory);
+        izombieServerAdapter.attachService(izombieMultiplayerService);
+
         accountService.registerRoutes(router);
         new ServerLeaderboardService(repository, accountService).registerRoutes(router);
         GameServer server = new GameServer(host, port, router);
         Runtime.getRuntime().addShutdownHook(new Thread(server::close));
+
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    izombieMatchFactory.close();
+                    izombieServerAdapter.close();
+                    izombieNetworkPort.close();
+                },
+                "izombie-server-shutdown"
+            ));
+
         server.start();
         System.out.println("Game server listening on port " + server.getPort());
         server.awaitTermination();
