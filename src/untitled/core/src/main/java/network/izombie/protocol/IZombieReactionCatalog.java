@@ -1,7 +1,5 @@
 package network.izombie.protocol;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,11 +31,9 @@ public final class IZombieReactionCatalog {
 
         addText(reactions, "text_well_played", "WELL PLAYED!");
 
-        addEmoji(reactions, "emoji_laugh", "😀");
-
-        addEmoji(reactions, "emoji_angry", "😠");
-
-        addEmoji(reactions, "emoji_surprised", "😮");
+        addEmoji(reactions, "emoji_laugh", "XD");
+        addEmoji(reactions, "emoji_angry", ":/");
+        addEmoji(reactions, "emoji_surprised", ":D");
 
         return reactions;
     }
