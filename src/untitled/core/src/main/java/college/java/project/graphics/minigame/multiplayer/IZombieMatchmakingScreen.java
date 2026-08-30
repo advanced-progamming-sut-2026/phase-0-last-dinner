@@ -17,7 +17,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.TextField;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
-import com.badlogic.gdx.utils.viewport.FitViewport;
 import college.java.project.Main;
 import college.java.project.graphics.GameplayWorldLayout;
 import network.izombie.client.IZombieClientCommandResult;
@@ -25,6 +24,15 @@ import network.izombie.client.IZombieClientController;
 import network.izombie.client.IZombieClientMatchState;
 import network.izombie.client.IZombieClientPhase;
 import pvz.skin.PvzSkin;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
+import com.badlogic.gdx.utils.Scaling;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.badlogic.gdx.utils.viewport.ExtendViewport;
 
 public final class IZombieMatchmakingScreen implements Screen {
 
@@ -53,6 +61,17 @@ public final class IZombieMatchmakingScreen implements Screen {
     private String lastStatusMessage;
     private boolean disposed;
 
+    private static final String BACKGROUND_PATH =
+        "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/mainmenu_background.png";
+
+    private static final String PANEL_DRAWABLE =
+        "image_ui_mainmenu_mm_settings_tab_10";
+
+    private static final String LOGO_PATH =
+        "Assets/Exports/ATLASIMAGE_ATLAS_UI_MAINMENULOGO_768_00/pvz2_logo_horizontal.png";
+
+    private final List<Texture> loadedTextures = new ArrayList<>();
+
     public IZombieMatchmakingScreen(Main application, IZombieClientController controller, Runnable onBack) {
         if (application == null || controller == null) {
             throw new IllegalArgumentException("Application and I, Zombie client controller are required.");
@@ -64,7 +83,7 @@ public final class IZombieMatchmakingScreen implements Screen {
         this.onBack = onBack;
         this.skin = PvzSkin.get();
 
-        stage = new Stage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
+        stage = new Stage(new ExtendViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
 
         usernameField = new TextField("", skin, "default");
 
@@ -87,16 +106,15 @@ public final class IZombieMatchmakingScreen implements Screen {
     }
 
     private void createMainUi() {
+        stage.addActor(createBackground());
+
         Table root = new Table();
         root.setFillParent(true);
-
-        root.setBackground(skin.newDrawable("white_pixel", new Color(0.05f, 0.12f, 0.07f, 1f)));
+        root.pad(24f);
 
         Table panel = new Table();
-
-        panel.setBackground(skin.newDrawable("white_pixel", new Color(0.16f, 0.12f, 0.08f, 0.97f)));
-
-        panel.pad(44f);
+        panel.setBackground(skin.getDrawable(PANEL_DRAWABLE));
+        panel.pad(35f);
 
         Label title = new Label("I, ZOMBIE MULTIPLAYER", skin, "medium_outline");
 
@@ -194,10 +212,43 @@ public final class IZombieMatchmakingScreen implements Screen {
             }
         });
 
-        root.add(panel).width(860f).height(820f);
+        Texture logoTexture = loadTexture(LOGO_PATH);
+
+        Image logo = new Image(new TextureRegionDrawable(new TextureRegion(logoTexture)));
+
+        logo.setScaling(Scaling.fit);
+
+        root.top().padTop(20f);
+
+        root.add(logo).width(440f).height(135f).padBottom(4f).row();
+
+        root.add(panel).width(860f).height(790f).padBottom(20f);
 
         stage.addActor(root);
         stage.addActor(invitationOverlay);
+    }
+
+    private Image createBackground() {
+        Texture texture = new Texture(Gdx.files.internal(BACKGROUND_PATH));
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+        loadedTextures.add(texture);
+        Image background = new Image(new TextureRegionDrawable(new TextureRegion(texture)));
+
+        background.setScaling(Scaling.fill);
+        background.setFillParent(true);
+        background.setTouchable(Touchable.disabled);
+
+        return background;
+    }
+
+    private Texture loadTexture(String assetPath) {
+        Texture texture = new Texture(Gdx.files.internal(assetPath));
+
+        texture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
+
+        this.loadedTextures.add(texture);
+
+        return texture;
     }
 
     private Group createInvitationOverlay() {
@@ -303,8 +354,8 @@ public final class IZombieMatchmakingScreen implements Screen {
             result = controller.joinRandomQueue(selectedStage);
         }
 
-        showCommandResult(result, state.getPhase() == IZombieClientPhase.SEARCHING_RANDOM_MATCH
-            ? "Leaving random queue..." : "Joining random queue...");
+        showCommandResult(result, state.getPhase() == IZombieClientPhase.SEARCHING_RANDOM_MATCH ?
+            "Leaving random queue..." : "Joining random queue...");
     }
 
     private void respondToInvitation(boolean accepted) {
@@ -364,7 +415,8 @@ public final class IZombieMatchmakingScreen implements Screen {
 
         String challenger = state.getPendingChallengerUsername();
 
-        invitationMessage.setText((challenger == null ? "A player" : challenger) + " invited you to Stage " + state.getPendingInvitationStage() + ".");
+        invitationMessage.setText((challenger == null ? "A player" : challenger) + " invited you to Stage "
+            + state.getPendingInvitationStage() + ".");
 
         invitationOverlay.setVisible(true);
         invitationOverlay.toFront();
@@ -474,7 +526,7 @@ public final class IZombieMatchmakingScreen implements Screen {
 
         refreshClientState();
 
-        ScreenUtils.clear(new Color(0.03f, 0.07f, 0.04f, 1f));
+        ScreenUtils.clear(Color.valueOf("2f4b2f"));
 
         stage.act(safeDelta);
         stage.draw();
@@ -514,5 +566,10 @@ public final class IZombieMatchmakingScreen implements Screen {
 
         disposed = true;
         stage.dispose();
+
+        for (Texture texture : loadedTextures)
+            texture.dispose();
+
+        loadedTextures.clear();
     }
 }

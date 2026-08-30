@@ -4,7 +4,7 @@ import com.badlogic.gdx.math.Rectangle;
 import pvz.libpvz.pam.PamPlayer;
 
 /** View-only gait correction derived from the PAM ground_swatch track. */
-final class GroundSwatchMotion {
+public final class GroundSwatchMotion {
     private static final String GROUND_SWATCH = "ground_swatch";
 
     private final float[] centers;
@@ -15,7 +15,7 @@ final class GroundSwatchMotion {
         this.duration = duration;
     }
 
-    static GroundSwatchMotion create(PamPlayer player, String pamPath, String walkClip) {
+    public static GroundSwatchMotion create(PamPlayer player, String pamPath, String walkClip) {
         Rectangle[] frames = PamPartGeometry.partBoundsByFrame(player, pamPath, walkClip, GROUND_SWATCH);
         if (frames.length < 2) {
             return empty();
@@ -38,7 +38,7 @@ final class GroundSwatchMotion {
         return new GroundSwatchMotion(centers, duration);
     }
 
-    float offsetX(float stateTime) {
+    public float offsetX(float stateTime) {
         if (this.centers.length < 2 || this.duration <= 0f) {
             return 0f;
         }

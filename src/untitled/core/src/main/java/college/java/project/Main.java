@@ -28,6 +28,10 @@ import model.zombie.ZombieFactory;
 import java.io.IOException;
 import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import network.izombie.client.IZombieClientController;
+import network.izombie.client.IZombieClientMatchState;
+import network.izombie.client.IZombieClientPhase;
+import network.izombie.transport.GameClientIZombieNetworkPort;
+import network.izombie.transport.NetworkIZombieClientGateway;
 import pvz.skin.PvzSkin;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
@@ -62,6 +66,8 @@ public final class Main extends Game {
     private Screen collectionReturnScreen;
     private AdventureLevelSelectionScreen adventureLevelSelectionScreen;
     private volatile IZombieClientController iZombieMultiplayerController;
+    private final GameClientIZombieNetworkPort iZombieNetworkPort;
+    private final NetworkIZombieClientGateway iZombieClientGateway;
 
     private Skin skin;
 
@@ -79,10 +85,19 @@ public final class Main extends Game {
 
             String serverHost = System.getProperty("pvz.server.host", "127.0.0.1");
             int serverPort = Integer.getInteger("pvz.server.port", 8082);
-            NetworkAccountService accountService = new NetworkAccountService(
-                    new GameClient(serverHost, serverPort));
-            this.applicationController = new ApplicationController(
-                    accountService, this.plantDefinitions, this.zombieDefinitions);
+
+            GameClient gameClient = new GameClient(serverHost, serverPort);
+            NetworkAccountService accountService = new NetworkAccountService(gameClient);
+
+            this.iZombieNetworkPort = new GameClientIZombieNetworkPort(gameClient, accountService::getAuthToken);
+
+            this.iZombieClientGateway = new NetworkIZombieClientGateway(this.iZombieNetworkPort);
+
+            this.iZombieMultiplayerController = new IZombieClientController(this.iZombieClientGateway,
+                new IZombieClientMatchState());
+
+            this.applicationController = new ApplicationController(accountService, this.plantDefinitions,
+                this.zombieDefinitions);
         } catch (IOException e) {
             throw new IllegalStateException("Could not load bundled plant and zombie definitions", e);
         }
@@ -243,12 +258,20 @@ public final class Main extends Game {
 
             @Override
             public void onLoggedOut() {
+                if (iZombieMultiplayerController != null)
+                    iZombieMultiplayerController.getState().resetToIdle();
                 showLoginScreen();
             }
 
             @Override
             public boolean openMultiplayer() {
                 return openIZombieMultiplayer();
+            }
+
+            @Override
+            public boolean hasPendingMultiplayerInvitation() {
+                IZombieClientController controller = iZombieMultiplayerController;
+                return controller != null && controller.getState().getPhase() == IZombieClientPhase.INVITATION_RECEIVED;
             }
         }));
     }
@@ -496,6 +519,8 @@ public final class Main extends Game {
     @Override
     public void dispose() {
         Screen currentScreen = getScreen();
+        this.iZombieClientGateway.close();
+        this.iZombieNetworkPort.close();
 
         if (this.applicationController != null)
             this.applicationController.close();

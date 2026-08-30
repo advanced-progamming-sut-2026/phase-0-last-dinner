@@ -1,5 +1,6 @@
 package college.java.project.graphics.minigame.multiplayer;
 
+import college.java.project.graphics.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.scenes.scene2d.Actor;
@@ -11,14 +12,6 @@ import com.badlogic.gdx.scenes.scene2d.ui.Skin;
 import com.badlogic.gdx.scenes.scene2d.utils.Drawable;
 import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
-import college.java.project.graphics.GameAssetManager;
-import college.java.project.graphics.GameplayPamScale;
-import college.java.project.graphics.GameplayWorldLayout;
-import college.java.project.graphics.PamAnimationActor;
-import college.java.project.graphics.PamAnimationCatalog;
-import college.java.project.graphics.PlantPacketCatalog;
-import college.java.project.graphics.ZombieAnimationCatalog;
-import college.java.project.graphics.ZombiePacketCatalog;
 import lombok.Getter;
 import network.izombie.protocol.IZombieEntityKind;
 import network.izombie.protocol.IZombieEntitySnapshot;
@@ -51,6 +44,7 @@ public final class IZombieSnapshotEntityActor extends Group {
 
     private final PamAnimationCatalog plantAnimations;
     private final ZombieAnimationCatalog zombieAnimations;
+    private final GroundSwatchMotion zombieGroundMotion;
 
     private final Actor body;
     private final Image shadow;
@@ -74,6 +68,11 @@ public final class IZombieSnapshotEntityActor extends Group {
     private float damageFlashRemaining;
     private boolean removalStarted;
 
+    private static final float PLANT_ATTACK_SECONDS = 0.55f;
+
+    private float plantAttackRemaining;
+    private int plantDamageStage = -1;
+
     public IZombieSnapshotEntityActor(IZombieEntitySnapshot snapshot, GameAssetManager assets,
                                       PamAnimationCatalog plantAnimations, ZombieAnimationCatalog zombieAnimations) {
         if (snapshot == null || snapshot.kind() == null || assets == null ||
@@ -92,6 +91,9 @@ public final class IZombieSnapshotEntityActor extends Group {
         plantAnimation = kind == IZombieEntityKind.PLANT ? plantAnimations.find(definitionKey) : null;
 
         zombieAnimation = kind == IZombieEntityKind.ZOMBIE ? zombieAnimations.find(definitionKey) : null;
+
+        zombieGroundMotion = zombieAnimation == null || zombieAnimation.getWalkClip() == null ? null
+                : GroundSwatchMotion.create(assets.getPamPlayer(), zombieAnimation.getPath(), zombieAnimation.getWalkClip());
 
         setTouchable(Touchable.disabled);
         setTransform(true);
@@ -146,6 +148,8 @@ public final class IZombieSnapshotEntityActor extends Group {
         updateTargetPosition(snapshot.x(), snapshot.y());
 
         updateAnimationClip();
+        updatePlantDamageClip();
+        refreshZombieArmor();
         refreshHealthBar();
 
         if (immediate) {
@@ -160,6 +164,7 @@ public final class IZombieSnapshotEntityActor extends Group {
     @Override
     public void act(float delta) {
         super.act(delta);
+        advancePlantAttack(Math.max(0f, delta));
 
         if (!removalStarted) {
             smoothPosition(Math.max(0f, delta));
@@ -168,6 +173,54 @@ public final class IZombieSnapshotEntityActor extends Group {
         damageFlashRemaining = Math.max(0f, damageFlashRemaining - Math.max(0f, delta));
 
         refreshTint();
+    }
+
+    private void advancePlantAttack(float delta) {
+        if (plantAttackRemaining <= 0f)
+            return;
+
+        plantAttackRemaining = Math.max(0f, plantAttackRemaining - delta);
+
+        if (plantAttackRemaining > 0f)
+            return;
+
+        plantDamageStage = -1;
+        updatePlantDamageClip();
+    }
+
+    private void updatePlantDamageClip() {
+        if (kind != IZombieEntityKind.PLANT || plantAnimation == null || maximumHealth <= 0 || plantAttackRemaining > 0f
+            || !(body instanceof PamAnimationActor actor))
+            return;
+
+        float healthRatio = Math.max(0f, Math.min(1f, health / (float) maximumHealth));
+        int stage;
+
+        if (healthRatio <= 0.18f) {
+            stage = 3;
+        } else if (healthRatio <= 0.36f) {
+            stage = 2;
+        } else if (healthRatio <= 0.68f) {
+            stage = 1;
+        } else {
+            stage = 0;
+        }
+
+        if (stage == plantDamageStage)
+            return;
+
+        String clip = stage == 0 ? plantAnimation.getPreviewClip() : plantAnimation.getDamageClip(stage);
+
+        if (clip == null)
+            return;
+
+        actor.setAnimation(plantAnimation.getPath(), clip);
+        actor.setLooping(true);
+
+        activeClip = clip;
+        plantDamageStage = stage;
+
+        layoutChildren();
     }
 
     public void beginRemoval() {
@@ -208,9 +261,8 @@ public final class IZombieSnapshotEntityActor extends Group {
 
         targetY = tileBottom + cellHeight * anchor;
 
-        if (kind == IZombieEntityKind.PROJECTILE) {
+        if (kind == IZombieEntityKind.PROJECTILE)
             targetY += cellHeight * 0.48f;
-        }
 
         setSize(cellWidth, cellHeight);
         layoutChildren();
@@ -301,6 +353,29 @@ public final class IZombieSnapshotEntityActor extends Group {
         return "IMAGE_PROJECTILEPEA";
     }
 
+    public void playPlantAttack() {
+        if (kind != IZombieEntityKind.PLANT || dead || plantAnimation == null || !(body instanceof PamAnimationActor actor))
+            return;
+
+        String attackClip = plantAnimation.getAttackClip();
+
+        if (attackClip == null)
+            return;
+
+        actor.setAnimation(plantAnimation.getPath(), attackClip);
+        actor.setLooping(false);
+
+        float duration = plantAnimation.getClipDuration(attackClip, PLANT_ATTACK_SECONDS);
+
+        float releaseTime = duration * 0.40f;
+        float startTime = Math.max(0f, releaseTime - 0.12f);
+
+        actor.setStateTime(startTime);
+        plantAttackRemaining = Math.max(0.08f, duration - startTime);
+        activeClip = attackClip;
+        layoutChildren();
+    }
+
     private Image createShadow() {
         if (kind == IZombieEntityKind.PROJECTILE) {
             return null;
@@ -363,10 +438,14 @@ public final class IZombieSnapshotEntityActor extends Group {
             path = plantAnimation.getPath();
             clip = activeClip;
         } else {
-            canvasWidth = zombieAnimation.getCanvasWidth();
-            canvasHeight = zombieAnimation.getCanvasHeight();
-            path = zombieAnimation.getPath();
-            clip = activeClip;
+        canvasWidth = zombieAnimation.getCanvasWidth();
+        canvasHeight = zombieAnimation.getCanvasHeight();
+        path = zombieAnimation.getPath();
+
+        clip = zombieAnimation.getPreviewClip();
+
+        if (clip == null)
+            clip = zombieAnimation.getWalkClip();
         }
 
         float actorWidth = GameplayPamScale.actorWidth(canvasWidth);
@@ -387,31 +466,27 @@ public final class IZombieSnapshotEntityActor extends Group {
         } catch (RuntimeException ignored) {
         }
 
-        body.setBounds(getWidth() / 2f + centreOffset - actorWidth / 2f, groundOffset - actorHeight / 2f, actorWidth,
-            actorHeight);
+        float gaitOffset = 0f;
+
+        if (kind == IZombieEntityKind.ZOMBIE && !attacking && zombieGroundMotion != null &&
+            body instanceof PamAnimationActor actor) {
+            gaitOffset = zombieGroundMotion.offsetX(actor.getStateTime());
+        }
+
+        body.setBounds(getWidth() / 2f + centreOffset + gaitOffset - actorWidth / 2f, groundOffset - actorHeight / 2f,
+            actorWidth, actorHeight);
     }
 
     private void updateAnimationClip() {
-        if (!(body instanceof PamAnimationActor actor)) {
+        if (!(body instanceof PamAnimationActor actor) || kind != IZombieEntityKind.ZOMBIE || zombieAnimation == null)
             return;
-        }
 
-        String wantedClip = activeClip;
+        String wantedClip = attacking ? zombieAnimation.getAttackClip() : zombieAnimation.getWalkClip();
 
-        if (kind == IZombieEntityKind.PLANT && plantAnimation != null) {
-            wantedClip = attacking ? plantAnimation.getAttackClip() : plantAnimation.getPreviewClip();
-        }
-
-        if (kind == IZombieEntityKind.ZOMBIE && zombieAnimation != null) {
-            wantedClip = attacking ? zombieAnimation.getAttackClip() : zombieAnimation.getWalkClip();
-        }
-
-        if (wantedClip == null || wantedClip.equals(activeClip)) {
+        if (wantedClip == null || wantedClip.equals(activeClip))
             return;
-        }
 
-        actor.setAnimation(kind == IZombieEntityKind.PLANT ? plantAnimation.getPath() : zombieAnimation.getPath(), wantedClip);
-
+        actor.setAnimation(zombieAnimation.getPath(), wantedClip);
         actor.setLooping(true);
         activeClip = wantedClip;
         layoutChildren();
@@ -432,6 +507,14 @@ public final class IZombieSnapshotEntityActor extends Group {
 
         actor.setLooping(false);
         activeClip = deathClip;
+    }
+
+    private void refreshZombieArmor() {
+        if (kind != IZombieEntityKind.ZOMBIE || zombieAnimation == null || !(body instanceof PamAnimationActor actor))
+            return;
+
+        actor.setPartsVisibility(ZombieArmorVisibility.forSnapshotStates(assets.getPamPlayer(), zombieAnimation.getPath(),
+                states));
     }
 
     private void refreshHealthBar() {

@@ -12,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.Locale;
 
 public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
 
@@ -83,7 +84,7 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
         removeFromQueue(username);
         removeInvitationsFor(username);
 
-        IZombieMatchSession match = this.matchesByUser.get(username);
+        IZombieMatchSession match = this.matchesByUser.get(userKey(username));
 
         if (match != null) {
             match.handleDisconnect(username);
@@ -140,7 +141,7 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
 
         Invitation invitation = this.invitations.remove(invitationId);
 
-        if (invitation == null || !invitation.recipient().equals(recipient)) {
+        if (invitation == null || !invitation.recipient().equalsIgnoreCase(recipient)) {
             sendError(recipient, message.getRequestId(), "This invitation is no longer available.");
             return;
         }
@@ -217,7 +218,7 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
                 continue;
             }
 
-            if (!entry.username().equals(username) && entry.stageNumber() == stageNumber) {
+            if (!entry.username().equalsIgnoreCase(username) && entry.stageNumber() == stageNumber) {
                 iterator.remove();
                 return entry;
             }
@@ -235,7 +236,7 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
     }
 
     private void routeMatchMessage(String username, IZombieClientMessage message) {
-        IZombieMatchSession match = this.matchesByUser.get(username);
+        IZombieMatchSession match = this.matchesByUser.get(userKey(username));
 
         if (match == null) {
             sendError(username, message.getRequestId(), "You do not have an active IZombie match.");
@@ -266,8 +267,13 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
         IZombieMatchSession match;
 
         try {
-            match = this.matchFactory.create(matchId, plantUsername, zombieUsername, stageNumber, this.transport, this);
+            match = this.matchFactory.create(matchId, plantUsername, zombieUsername, stageNumber, this.transport,
+                this);
         } catch (RuntimeException exception) {
+            System.err.println("Could not create I, Zombie match " + matchId + " for " + plantUsername + " and "
+                    + zombieUsername);
+            exception.printStackTrace(System.err);
+
             notifyMatchCreationFailure(plantUsername, zombieUsername);
             return;
         }
@@ -283,9 +289,8 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
     }
 
     private void registerMatch(IZombieMatchSession match, String plantUsername, String zombieUsername) {
-        this.matchesByUser.put(plantUsername, match);
-
-        this.matchesByUser.put(zombieUsername, match);
+        this.matchesByUser.put(userKey(plantUsername), match);
+        this.matchesByUser.put(userKey(zombieUsername), match);
 
         removeFromQueue(plantUsername);
         removeFromQueue(zombieUsername);
@@ -317,47 +322,58 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
     }
 
     private void notifyMatchCreationFailure(String plantUsername, String zombieUsername) {
-        sendError(plantUsername, null, "The IZombie match could not be created.");
+        removeFromQueue(plantUsername);
+        removeFromQueue(zombieUsername);
 
+        removeInvitationsFor(plantUsername);
+        removeInvitationsFor(zombieUsername);
+
+        sendInformation(plantUsername, IZombieServerEventType.QUEUE_LEFT, null,
+            "Random matchmaking was cancelled.");
+        sendInformation(zombieUsername, IZombieServerEventType.QUEUE_LEFT, null,
+            "Random matchmaking was cancelled.");
+
+        sendError(plantUsername, null, "The IZombie match could not be created.");
         sendError(zombieUsername, null, "The IZombie match could not be created.");
     }
 
     @Override
     public synchronized void onMatchClosed(String matchId, String plantUsername, String zombieUsername) {
         removeMatchFor(matchId, plantUsername);
-
         removeMatchFor(matchId, zombieUsername);
     }
 
     private void removeMatchFor(String matchId, String username) {
-        IZombieMatchSession match = this.matchesByUser.get(username);
+        String key = userKey(username);
 
-        if (match != null && match.getMatchId().equals(matchId)) {
-            this.matchesByUser.remove(username);
-        }
+        IZombieMatchSession match = this.matchesByUser.get(key);
+
+        if (match != null && match.getMatchId().equals(matchId))
+            this.matchesByUser.remove(key);
     }
 
     private void removeInvitationsFor(String username) {
-        this.invitations.values().removeIf(invitation -> invitation.challenger().equals(username)
-            || invitation.recipient().equals(username));
+        this.invitations.values().removeIf(
+            invitation ->
+                invitation.challenger().equalsIgnoreCase(username) || invitation.recipient().equalsIgnoreCase(username)
+        );
     }
 
     private boolean removeFromQueue(String username) {
-        return this.randomQueue.removeIf(entry -> entry.username().equals(username));
+        return this.randomQueue.removeIf(entry -> entry.username().equalsIgnoreCase(username));
     }
 
     private boolean isQueued(String username) {
         for (QueueEntry entry : this.randomQueue) {
-            if (entry.username().equals(username)) {
+            if (entry.username().equalsIgnoreCase(username))
                 return true;
-            }
         }
 
         return false;
     }
 
     private boolean isBusy(String username) {
-        return this.matchesByUser.containsKey(username);
+        return this.matchesByUser.containsKey(userKey(username));
     }
 
     private boolean isValidStage(int stageNumber) {
@@ -378,6 +394,13 @@ public final class IZombieMultiplayerService implements IZombieMatchLifecycle {
 
     private String clean(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String userKey(String username) {
+        String cleaned = clean(username);
+        if (cleaned == null)
+            return "";
+        return cleaned.toLowerCase(Locale.ROOT);
     }
 
     private void sendError(String username, String requestId, String message) {

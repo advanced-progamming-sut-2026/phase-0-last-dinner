@@ -11,7 +11,7 @@ import java.util.Locale;
 import java.util.Map;
 
 /** Selects embedded PAM armor parts while keeping one shared zombie transform. */
-final class ZombieArmorVisibility {
+public final class ZombieArmorVisibility {
     private ZombieArmorVisibility() {
     }
 
@@ -32,6 +32,49 @@ final class ZombieArmorVisibility {
                     enableArmor(root, armor, result);
                 }
             }
+            return result;
+        } catch (RuntimeException ignored) {
+            return Map.of();
+        }
+    }
+
+    public static Map<String, Boolean> forSnapshotStates(PamPlayer player, String pamPath, List<String> states) {
+        if (player == null || pamPath == null)
+            return Map.of();
+
+        try {
+            PamPlayer.AnimationPart root = player.getParts(pamPath);
+            Map<String, Boolean> result = new HashMap<>();
+            disableArmorVariants(root, result);
+
+            if (states == null)
+                return result;
+
+            for (String state : states) {
+                if (state == null || !state.toUpperCase(Locale.ROOT).startsWith("ARMOR:"))
+                    continue;
+
+                String[] parts = state.split(":", 3);
+                if (parts.length != 3)
+                    continue;
+
+                ArmorType type;
+
+                try {
+                    type = ArmorType.valueOf(parts[1].trim().toUpperCase(Locale.ROOT));
+                } catch (IllegalArgumentException ignored) {
+                    continue;
+                }
+
+                String variant = switch (parts[2].trim().toUpperCase(Locale.ROOT)) {
+                    case "DAMAGE_01" -> "damage_01";
+                    case "DAMAGE_02" -> "damage_02";
+                    default -> "norm";
+                };
+
+                enableSnapshotArmor(root, type, variant, result);
+            }
+
             return result;
         } catch (RuntimeException ignored) {
             return Map.of();
@@ -140,6 +183,27 @@ final class ZombieArmorVisibility {
         if (best == null) {
             return;
         }
+        for (String name : best.path) {
+            result.put(name, Boolean.TRUE);
+        }
+    }
+
+    private static void enableSnapshotArmor(PamPlayer.AnimationPart root, ArmorType type, String wantedVariant,
+        Map<String, Boolean> result) {
+        List<String> selectors = selectors(type);
+
+        if (selectors.isEmpty())
+            return;
+
+        List<PartPath> candidates = new ArrayList<>();
+        collectMatches(root, selectors, new ArrayList<>(), candidates);
+        PartPath best = bestVariant(candidates, wantedVariant);
+
+        if (best == null)
+            best = bestGeneric(candidates);
+        if (best == null)
+            return;
+
         for (String name : best.path) {
             result.put(name, Boolean.TRUE);
         }
