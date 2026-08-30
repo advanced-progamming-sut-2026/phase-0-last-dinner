@@ -436,7 +436,10 @@ public final class IZombieSnapshotEntityActor extends Group {
             canvasWidth = plantAnimation.getCanvasWidth();
             canvasHeight = plantAnimation.getCanvasHeight();
             path = plantAnimation.getPath();
-            clip = activeClip;
+            clip = plantAnimation.getPreviewClip();
+
+            if (clip == null)
+                clip = activeClip;
         } else {
         canvasWidth = zombieAnimation.getCanvasWidth();
         canvasHeight = zombieAnimation.getCanvasHeight();
