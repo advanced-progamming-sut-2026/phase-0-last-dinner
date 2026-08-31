@@ -15,13 +15,13 @@ public final class ServerLauncher {
     }
 
     public static void main(String[] args) throws Exception {
-        int port = args.length == 0 ? DEFAULT_PORT : Integer.parseInt(args[0]);
-        String host = System.getProperty("pvz.server.host", DEFAULT_HOST);
-        Path storagePath = Paths.get(System.getProperty(
-                "pvz.server.data",
-                Paths.get(System.getProperty("user.home"),
-                        ".plants-vs-zombies-2", "server", "users.json").toString()
-        ));
+        int port = args.length == 0
+            ? portSetting("pvz.server.port", "PVZ_SERVER_PORT", DEFAULT_PORT)
+            : parsePort(args[0]);
+        String host = setting("pvz.server.host", "PVZ_SERVER_BIND_HOST", DEFAULT_HOST);
+        String defaultStorage = Paths.get(System.getProperty("user.home"),
+            ".plants-vs-zombies-2", "server", "users.json").toString();
+        Path storagePath = Paths.get(setting("pvz.server.data", "PVZ_SERVER_DATA", defaultStorage));
         RequestRouter router = RequestRouter.withDefaults();
         ServerUserRepository repository = new ServerUserRepository(storagePath);
         ServerAccountService accountService = new ServerAccountService(repository);
@@ -49,5 +49,29 @@ public final class ServerLauncher {
         server.start();
         System.out.println("Game server listening on port " + server.getPort());
         server.awaitTermination();
+    }
+
+    private static String setting(String property, String environment, String fallback) {
+        String value = System.getProperty(property);
+        if (value == null || value.isBlank()) {
+            value = System.getenv(environment);
+        }
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private static int portSetting(String property, String environment, int fallback) {
+        return parsePort(setting(property, environment, String.valueOf(fallback)));
+    }
+
+    private static int parsePort(String value) {
+        try {
+            int port = Integer.parseInt(value);
+            if (port < 1 || port > 65535) {
+                throw new IllegalArgumentException("Server port must be between 1 and 65535");
+            }
+            return port;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Server port must be a number", exception);
+        }
     }
 }

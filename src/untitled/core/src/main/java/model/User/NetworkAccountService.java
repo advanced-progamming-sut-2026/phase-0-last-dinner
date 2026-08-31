@@ -177,10 +177,13 @@ public final class NetworkAccountService extends AccountService {
                 : sortField).name());
         payload.addProperty("ascending", ascending);
         NetworkResponse response = send(RequestType.GET_LEADERBOARD, payload);
-        if (failure(response) != null
-                || !response.getPayload().has("entries")
+        AccountResult requestFailure = failure(response);
+        if (requestFailure != null) {
+            throw new LeaderboardUnavailableException(requestFailure.getMessage());
+        }
+        if (!response.getPayload().has("entries")
                 || !response.getPayload().get("entries").isJsonArray()) {
-            return Collections.emptyList();
+            throw new LeaderboardUnavailableException("Server returned invalid leaderboard data");
         }
         List<LeaderboardEntry> entries = new java.util.ArrayList<>();
         for (com.google.gson.JsonElement value : response.getPayload().getAsJsonArray("entries")) {

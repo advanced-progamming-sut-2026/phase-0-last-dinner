@@ -1,6 +1,7 @@
 package view;
 
 import model.User.LeaderboardEntry;
+import model.User.LeaderboardUnavailableException;
 import model.User.LeaderboardSortField;
 
 import java.util.List;
@@ -32,7 +33,7 @@ public class LeaderBoardView implements CommandHandler {
             this.printLeaderboard(
                     this.observer.onShowLeaderboardRequested(sortField, ascending)
             );
-        } catch (IllegalArgumentException exception) {
+        } catch (IllegalArgumentException | LeaderboardUnavailableException exception) {
             System.out.println(exception.getMessage());
         }
     }

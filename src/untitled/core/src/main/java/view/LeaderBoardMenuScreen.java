@@ -23,6 +23,7 @@ import com.badlogic.gdx.utils.viewport.ExtendViewport;
 import controller.ApplicationController;
 import controller.LeaderBoardController;
 import model.User.LeaderboardEntry;
+import model.User.LeaderboardUnavailableException;
 import model.User.LeaderboardSortField;
 import model.User.User;
 import pvz.skin.PvzSkin;
@@ -245,10 +246,23 @@ public final class LeaderBoardMenuScreen implements Screen {
     private void refreshRows() {
         this.rowsTable.clearChildren();
 
-        List<LeaderboardEntry> entries = this.leaderBoardController.showLeaderboard(
-            this.sortField,
-            this.ascending
-        );
+        List<LeaderboardEntry> entries;
+        try {
+            entries = this.leaderBoardController.showLeaderboard(
+                this.sortField,
+                this.ascending
+            );
+        } catch (LeaderboardUnavailableException exception) {
+            String message = exception.getMessage();
+            Label errorLabel = new Label(
+                message == null || message.isBlank() ? "Could not load leaderboard." : message,
+                PvzSkin.get(),
+                "secondary"
+            );
+            errorLabel.setColor(Color.valueOf("ffb06a"));
+            this.rowsTable.add(errorLabel).width(TABLE_WIDTH).padTop(80f);
+            return;
+        }
 
         if (entries == null || entries.isEmpty()) {
             Label emptyLabel = new Label("No players were found.", PvzSkin.get(), "secondary");
