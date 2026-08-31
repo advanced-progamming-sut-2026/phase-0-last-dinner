@@ -35,6 +35,10 @@ public final class IZombieReactionCatalog {
         addEmoji(reactions, "emoji_angry", "emoji_angry");
         addEmoji(reactions, "emoji_surprised", "emoji_surprised");
 
+        addGif(reactions, "gif_reaction1", "gif_reaction1");
+        addGif(reactions, "gif_reaction2", "gif_reaction2");
+        addGif(reactions, "gif_reaction3", "gif_reaction3");
+
         return reactions;
     }
 
@@ -44,5 +48,9 @@ public final class IZombieReactionCatalog {
 
     private static void addEmoji(Map<String, IZombieReaction> reactions, String id, String value) {
         reactions.put(id, new IZombieReaction(id, IZombieReactionKind.EMOJI, value));
+    }
+
+    private static void addGif(Map<String, IZombieReaction> reactions, String id, String value) {
+        reactions.put(id, new IZombieReaction(id, IZombieReactionKind.GIF, value));
     }
 }

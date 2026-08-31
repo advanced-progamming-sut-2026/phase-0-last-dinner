@@ -4,7 +4,9 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.Texture.TextureFilter;
+import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.GlyphLayout;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -43,6 +45,9 @@ public final class IZombieMultiplayerLayer extends Group {
     private static final float CARD_GAP = 8f;
 
     private final IZombieReactionIcons reactionIcons;
+    private final IZombieReactionGifs reactionGifs;
+    private Animation<TextureRegion> activeGifAnimation;
+    private float gifStateTime;
 
     private static final Color PLACEMENT_COLOUR = new Color(0.16f, 0.72f, 0.20f, 0.20f);
 
@@ -91,6 +96,7 @@ public final class IZombieMultiplayerLayer extends Group {
         this.assets = assets;
         this.skin = PvzSkin.get();
         this.reactionIcons = new IZombieReactionIcons();
+        this.reactionGifs = new IZombieReactionGifs();
         reactionIcon = new Image();
 
         redLine = new Image(skin.newDrawable("white_pixel", RED_LINE_COLOUR));
@@ -126,6 +132,15 @@ public final class IZombieMultiplayerLayer extends Group {
     public void act(float delta) {
         super.act(delta);
         assets.update();
+
+        if (activeGifAnimation != null) {
+            gifStateTime += delta;
+            reactionIcon.setDrawable(new TextureRegionDrawable(activeGifAnimation.getKeyFrame(gifStateTime, true)));
+
+            if (activeGifAnimation.isAnimationFinished(gifStateTime) && activeGifAnimation.getPlayMode() != Animation.PlayMode.LOOP) {
+                activeGifAnimation = null;
+            }
+        }
 
         if (!data.hasSnapshot()) {
             refreshWaitingState();
@@ -250,11 +265,15 @@ public final class IZombieMultiplayerLayer extends Group {
 
             TextButton button = new TextButton("", skin, "brown");
 
-            TextureRegionDrawable icon = reactionIcons.get(reaction.displayValue());
+            TextureRegionDrawable emojiIcon = reactionIcons.get(reaction.displayValue());
+            Animation<TextureRegion> gifAnimation = reactionGifs.get(reaction.displayValue());
 
-            if (icon != null) {
+            if (emojiIcon != null) {
                 button.clearChildren();
-                button.add(new Image(icon)).size(32f, 32f);
+                button.add(new Image(emojiIcon)).size(32f, 32f);
+            } else if (gifAnimation != null) {
+                button.clearChildren();
+                button.add(new Image(new TextureRegionDrawable(gifAnimation.getKeyFrame(0f)))).size(32f, 32f);
             } else {
                 button.setText(reaction.displayValue());
             }
@@ -495,17 +514,20 @@ public final class IZombieMultiplayerLayer extends Group {
         String sender = received.senderUsername();
         String senderName = sender == null ? "Opponent" : sender;
 
-        TextureRegionDrawable icon = reactionIcons.get(reaction.displayValue());
+        TextureRegionDrawable emojiIcon = reactionIcons.get(reaction.displayValue());
+        Animation<TextureRegion> gifAnimation = reactionGifs.get(reaction.displayValue());
 
-        reactionLabel.setText(senderName + ": " + (icon != null ? "" : reaction.displayValue()));
+        boolean hasVisual = emojiIcon != null || gifAnimation != null;
+
+        reactionLabel.setText(senderName + ": " + (hasVisual ? "" : reaction.displayValue()));
 
         GlyphLayout layout = new GlyphLayout(reactionLabel.getStyle().font, reactionLabel.getText());
 
+        float iconSize = gifAnimation != null ? 260f : 54f;
+
         float textStartX = reactionLabel.getX() + (reactionLabel.getWidth() - layout.width) / 2f;
         float iconX = textStartX + layout.width + 8f;
-        float iconY = reactionLabel.getY() + (reactionLabel.getHeight() - 54f) / 2f;
-
-        reactionIcon.setBounds(iconX, iconY, 54f, 54f);
+        float iconY = reactionLabel.getY() + (reactionLabel.getHeight() - iconSize) / 2f;
 
         reactionLabel.clearActions();
         reactionLabel.setScale(0.75f);
@@ -517,10 +539,19 @@ public final class IZombieMultiplayerLayer extends Group {
             Actions.fadeOut(0.25f)
         ));
 
-        reactionIcon.setDrawable(icon);
-        reactionIcon.setVisible(icon != null);
+        activeGifAnimation = gifAnimation;
+        gifStateTime = 0f;
 
-        if (icon != null) {
+        if (emojiIcon != null) {
+            reactionIcon.setDrawable(emojiIcon);
+        } else if (gifAnimation != null) {
+            reactionIcon.setDrawable(new TextureRegionDrawable(gifAnimation.getKeyFrame(0f)));
+        }
+
+        reactionIcon.setVisible(hasVisual);
+        reactionIcon.setBounds(iconX, iconY, iconSize, iconSize);
+
+        if (hasVisual) {
             reactionIcon.clearActions();
             reactionIcon.setScale(0.75f);
             reactionIcon.getColor().a = 0f;
@@ -576,5 +607,6 @@ public final class IZombieMultiplayerLayer extends Group {
     public void dispose() {
         brainTexture.dispose();
         reactionIcons.dispose();
+        reactionGifs.dispose();
     }
 }
