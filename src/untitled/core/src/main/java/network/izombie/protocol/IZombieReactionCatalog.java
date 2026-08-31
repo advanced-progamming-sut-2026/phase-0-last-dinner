@@ -31,9 +31,9 @@ public final class IZombieReactionCatalog {
 
         addText(reactions, "text_well_played", "WELL PLAYED!");
 
-        addEmoji(reactions, "emoji_laugh", "XD");
-        addEmoji(reactions, "emoji_angry", ":/");
-        addEmoji(reactions, "emoji_surprised", ":D");
+        addEmoji(reactions, "emoji_laugh", "emoji_laugh");
+        addEmoji(reactions, "emoji_angry", "emoji_angry");
+        addEmoji(reactions, "emoji_surprised", "emoji_surprised");
 
         return reactions;
     }
