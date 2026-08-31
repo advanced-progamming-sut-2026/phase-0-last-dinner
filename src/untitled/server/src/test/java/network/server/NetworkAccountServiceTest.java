@@ -6,6 +6,7 @@ import model.User.AccountResult;
 import model.User.AccountStatus;
 import model.User.LeaderboardEntry;
 import model.User.LeaderboardSortField;
+import model.User.LeaderboardUnavailableException;
 import model.User.NetworkAccountService;
 import model.User.User;
 import model.User.UserGender;
@@ -17,6 +18,7 @@ import view.LeaderBoardView;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.net.ServerSocket;
 import java.util.List;
 
 import static org.junit.Assert.assertEquals;
@@ -205,6 +207,28 @@ public class NetworkAccountServiceTest {
                 }
             }
         }
+    }
+
+    @Test
+    public void unavailableServerIsNotReportedAsAnEmptyLeaderboard() throws Exception {
+        int unusedPort;
+        try (ServerSocket socket = new ServerSocket(0)) {
+            unusedPort = socket.getLocalPort();
+        }
+
+        Path session = Files.createTempFile("pvz-offline-leaderboard", ".json");
+        Files.deleteIfExists(session);
+        try (NetworkAccountService account = new NetworkAccountService(
+                new GameClient("127.0.0.1", unusedPort), session)) {
+            try {
+                account.getLeaderboard(LeaderboardSortField.MEOW_POINTS, false);
+            } catch (LeaderboardUnavailableException exception) {
+                assertTrue(exception.getMessage().contains("reach"));
+                return;
+            }
+        }
+
+        throw new AssertionError("Unavailable leaderboard must report a server error");
     }
 
     private User registerAndLogin(

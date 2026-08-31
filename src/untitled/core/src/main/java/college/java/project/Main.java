@@ -55,6 +55,8 @@ public final class Main extends Game {
     private static final String PLANTS_RESOURCE = "data/plants.csv";
     private static final String ZOMBIES_RESOURCE = "data/zombies.json";
     private static final String ARMOR_RESOURCE = "data/ArmorTypeData.json";
+    private static final String DEFAULT_SERVER_HOST = "127.0.0.1";
+    private static final int DEFAULT_SERVER_PORT = 8082;
 
     private final PlantDefinitionRepository plantDefinitions;
     private final ZombieDefinitionRepository zombieDefinitions;
@@ -83,8 +85,8 @@ public final class Main extends Game {
             this.plantUpgradeService = new PlantUpgradeService();
             this.collectionController = new CollectionController(this.plantDefinitions, this.plantUpgradeService);
 
-            String serverHost = System.getProperty("pvz.server.host", "127.0.0.1");
-            int serverPort = Integer.getInteger("pvz.server.port", 8082);
+            String serverHost = setting("pvz.server.host", "PVZ_SERVER_HOST", DEFAULT_SERVER_HOST);
+            int serverPort = portSetting("pvz.server.port", "PVZ_SERVER_PORT", DEFAULT_SERVER_PORT);
 
             GameClient gameClient = new GameClient(serverHost, serverPort);
             NetworkAccountService accountService = new NetworkAccountService(gameClient);
@@ -105,6 +107,27 @@ public final class Main extends Game {
 
     public static Main loadApplication() {
         return new Main();
+    }
+
+    private static String setting(String property, String environment, String fallback) {
+        String value = System.getProperty(property);
+        if (value == null || value.isBlank()) {
+            value = System.getenv(environment);
+        }
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private static int portSetting(String property, String environment, int fallback) {
+        String value = setting(property, environment, String.valueOf(fallback));
+        try {
+            int port = Integer.parseInt(value);
+            if (port < 1 || port > 65535) {
+                throw new IllegalArgumentException("Server port must be between 1 and 65535");
+            }
+            return port;
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Server port must be a number", exception);
+        }
     }
 
     public void connectIZombieMultiplayer(IZombieClientController controller) {
