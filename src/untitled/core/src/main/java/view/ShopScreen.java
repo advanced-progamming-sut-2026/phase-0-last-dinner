@@ -23,6 +23,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import controller.ApplicationController;
+import college.java.project.graphics.GameplaySoundPlayer;
 import model.Plant;
 import model.User.User;
 import model.shop.CurrencyType;
@@ -79,7 +80,7 @@ public class ShopScreen implements Screen {
 
     @Override
     public void show() {
-        this.stage = new Stage(new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
         Gdx.input.setInputProcessor(this.stage);
         this.skin = PvzSkin.get();
 
@@ -394,6 +395,9 @@ public class ShopScreen implements Screen {
             return;
         }
         ShopActionResult result = this.observer.onBuyRequested(itemId, 1, plantType);
+        if (result != null && result.isSuccessful()) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.COIN);
+        }
         this.controller.save();
         showResultPopup(result);
         refresh();

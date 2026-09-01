@@ -3,19 +3,35 @@ package college.java.project.lwjgl3;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3Application;
 import com.badlogic.gdx.backends.lwjgl3.Lwjgl3ApplicationConfiguration;
 import college.java.project.Main;
+import college.java.project.graphics.GraphicsDevHarnessGame;
+import college.java.project.graphics.SfxDiagnosticGame;
+
+import java.util.Arrays;
 
 /** Launches the desktop (LWJGL3) application. */
 public class Lwjgl3Launcher {
     public static void main(String[] args) {
         if (StartupHelper.startNewJvmIfRequired()) return; // This handles macOS support and helps on Windows.
-        createApplication();
+        createApplication(args);
     }
 
-    private static Lwjgl3Application createApplication() {
-        return new Lwjgl3Application(new Main(), getDefaultConfiguration());
+    private static Lwjgl3Application createApplication(String[] args) {
+        boolean sfxAudit = args != null && Arrays.asList(args).contains("--sfx-audit");
+        int graphicsIndex = args == null ? -1 : Arrays.asList(args).indexOf("--graphics");
+        String graphicsMode = graphicsIndex >= 0 && graphicsIndex + 1 < args.length
+                ? args[graphicsIndex + 1]
+                : "collection";
+        return new Lwjgl3Application(
+                sfxAudit
+                        ? new SfxDiagnosticGame()
+                        : graphicsIndex >= 0
+                                ? new GraphicsDevHarnessGame(graphicsMode)
+                                : new Main(),
+                getDefaultConfiguration(graphicsIndex >= 0)
+        );
     }
 
-    private static Lwjgl3ApplicationConfiguration getDefaultConfiguration() {
+    private static Lwjgl3ApplicationConfiguration getDefaultConfiguration(boolean graphicsHarness) {
         Lwjgl3ApplicationConfiguration configuration = new Lwjgl3ApplicationConfiguration();
         configuration.setTitle("Plants vs Zombies 2");
         //// Vsync limits the frames per second to what your hardware can display, and helps eliminate
@@ -28,7 +44,7 @@ public class Lwjgl3Launcher {
         //// useful for testing performance, but can also be very stressful to some hardware.
         //// You may also need to configure GPU drivers to fully disable Vsync; this can cause screen tearing.
 
-        configuration.setWindowedMode(640, 480);
+        configuration.setWindowedMode(graphicsHarness ? 1280 : 640, graphicsHarness ? 720 : 480);
         //// You can change these files; they are in lwjgl3/src/main/resources/ .
         //// They can also be loaded from the root of assets/ .
         configuration.setWindowIcon("libgdx128.png", "libgdx64.png", "libgdx32.png", "libgdx16.png");

@@ -347,7 +347,7 @@ public class Board {
                 continue;
             }
             int deltaX = Math.abs(tile.getPosition().getX() - position.getX());
-            if (deltaX > 0 && deltaX <= range) {
+            if (deltaX <= range) {
                 zombies.addAll(tile.getZombies());
             }
         }

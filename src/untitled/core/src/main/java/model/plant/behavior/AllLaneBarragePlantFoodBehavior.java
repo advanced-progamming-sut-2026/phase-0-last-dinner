@@ -12,6 +12,7 @@ import java.util.List;
 
 // az sotoon giah dar hame lane ha barrage projectile mifreste
 public class AllLaneBarragePlantFoodBehavior implements PlantFoodBehavior {
+    private static final int VOLLEY_GAP_TICKS = 1;
     private Projectile projectileTemplate;
     private int volleyCount;
 
@@ -40,6 +41,7 @@ public class AllLaneBarragePlantFoodBehavior implements PlantFoodBehavior {
             for (int volley = 0; volley < this.volleyCount; volley++) {
                 Projectile projectile = this.projectileTemplate.copyAt(spawn, 1, 0);
                 projectile.setSourcePlant(plant);
+                projectile.setSpawnDelayTicks((long) volley * VOLLEY_GAP_TICKS);
                 board.addProjectile(projectile);
             }
         }

@@ -61,7 +61,7 @@ public class ProjectileReflectorBehavior implements ZombieBehavior {
 
     private boolean isReflectable(Projectile projectile) {
         if (projectile == null || projectile.getType() == null
-                || projectile.isHostileToPlants()) {
+                || projectile.isHostileToPlants() || projectile.isWaitingForRelease()) {
             return false;
         }
 

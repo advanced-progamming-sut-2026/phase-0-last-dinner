@@ -41,9 +41,12 @@ public class LobberBehavior implements PlantBehavior {
     public void onTick(Plant plant, Board board) {
         this.ticksSinceLastLob++;
 
-        if (this.ticksSinceLastLob >= this.lobIntervalTicks) {
+        if (this.ticksSinceLastLob >= Math.max(1, this.lobIntervalTicks)) {
+            int projectileCount = board == null ? 0 : board.getProjectiles().size();
             this.activate(plant, board);
-            this.ticksSinceLastLob = 0;
+            if (board != null && board.getProjectiles().size() > projectileCount) {
+                this.ticksSinceLastLob = 0;
+            }
         }
     }
 

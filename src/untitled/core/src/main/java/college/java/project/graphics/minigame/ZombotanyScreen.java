@@ -64,7 +64,7 @@ public final class ZombotanyScreen implements Screen {
 
         this.worldScene = new GameplayWorldScene(this.dataSource, this.dataSource);
 
-        this.stage = new Stage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
 
         this.stage.addActor(this.worldScene);
 

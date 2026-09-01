@@ -263,7 +263,7 @@ public class RuntimeEdgeCasesTest {
         PlantZombieGame game = Main.loadApplication().createGame();
         assertTrue(game.plant("Wall-nut", new Position(7, 0)));
         Plant wallNut = game.getBoard().getPlantsAt(new Position(7, 0)).get(0);
-        Zombie zombie = game.spawnZombie("ZombieDefault", 0);
+        Zombie zombie = game.spawnZombie("ZombieDefault", new Position(7, 0));
         int health = wallNut.getHealth();
         zombie.addCondition(ZombieCondition.FROZEN, 10);
 
@@ -282,7 +282,7 @@ public class RuntimeEdgeCasesTest {
         PlantZombieGame game = Main.loadApplication().createGame();
         assertTrue(game.plant("Wall-nut", new Position(7, 1)));
         Plant wallNut = game.getBoard().getPlantsAt(new Position(7, 1)).get(0);
-        Zombie zombie = game.spawnZombie("ZombieDefault", 1);
+        Zombie zombie = game.spawnZombie("ZombieDefault", new Position(7, 1));
         int health = wallNut.getHealth();
         zombie.addCondition(ZombieCondition.CHILLED, 20);
 

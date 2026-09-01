@@ -80,7 +80,7 @@ public final class GameplayScreen implements Screen {
                 false
         );
         this.worldScene = new GameplayWorldScene(this.dataSource, this.dataSource);
-        this.stage = new Stage(new FitViewport(
+        this.stage = new SfxStage(new FitViewport(
                 GameplayWorldLayout.STAGE_WIDTH,
                 GameplayWorldLayout.STAGE_HEIGHT
         ));

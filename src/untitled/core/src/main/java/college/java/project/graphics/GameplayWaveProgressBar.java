@@ -12,6 +12,7 @@ import pvz.skin.PvzSkin;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 /** Compact in-game wave progress bar with visible wave boundaries. */
 public final class GameplayWaveProgressBar extends Group {
@@ -43,6 +44,8 @@ public final class GameplayWaveProgressBar extends Group {
     private final List<Actor> markers = new ArrayList<>();
     private boolean ownsAssets;
     private int markerCount = -1;
+    private Wave observedWave;
+    private Consumer<Wave> waveStartedListener;
 
     public GameplayWaveProgressBar(GameplayWorldDataSource dataSource) {
         this(dataSource, new GameAssetManager());
@@ -98,6 +101,10 @@ public final class GameplayWaveProgressBar extends Group {
         return Math.max(0f, Math.min(1f, (index + currentProgress) / total));
     }
 
+    public void setWaveStartedListener(Consumer<Wave> waveStartedListener) {
+        this.waveStartedListener = waveStartedListener;
+    }
+
     public void dispose() {
         if (this.ownsAssets) {
             this.assets.dispose();
@@ -105,6 +112,13 @@ public final class GameplayWaveProgressBar extends Group {
     }
 
     private void updateProgress() {
+        Wave currentWave = this.dataSource.getCurrentWave();
+        if (currentWave != null && currentWave.isStarted() && currentWave != this.observedWave) {
+            this.observedWave = currentWave;
+            if (this.waveStartedListener != null) {
+                this.waveStartedListener.accept(currentWave);
+            }
+        }
         int total = Math.max(0, this.dataSource.getWaveCount());
         if (total != this.markerCount) {
             rebuildMarkers(total);

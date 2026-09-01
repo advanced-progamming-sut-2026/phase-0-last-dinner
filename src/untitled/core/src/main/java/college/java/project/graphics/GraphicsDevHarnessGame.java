@@ -250,7 +250,7 @@ public final class GraphicsDevHarnessGame extends Game {
         private final GameAssetManager assets;
 
         private HarnessPlantDetailsScreen(HarnessData data, String plantName) {
-            this.stage = new Stage(new FitViewport(
+            this.stage = new SfxStage(new FitViewport(
                     PlantCollectionScreen.WORLD_WIDTH,
                     PlantCollectionScreen.WORLD_HEIGHT
             ));
@@ -376,7 +376,7 @@ public final class GraphicsDevHarnessGame extends Game {
                 boolean advancedDemo,
                 boolean magnetDemo
         ) {
-            this.stage = new Stage(new FitViewport(
+            this.stage = new SfxStage(new FitViewport(
                     GameplayWorldLayout.STAGE_WIDTH,
                     GameplayWorldLayout.STAGE_HEIGHT
             ));

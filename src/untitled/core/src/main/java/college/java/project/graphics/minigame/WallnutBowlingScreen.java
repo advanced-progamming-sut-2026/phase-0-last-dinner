@@ -73,7 +73,7 @@ public final class WallnutBowlingScreen implements Screen {
             this.dataSource
         );
 
-        this.stage = new Stage(new FitViewport(
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(
             GameplayWorldLayout.STAGE_WIDTH,
             GameplayWorldLayout.STAGE_HEIGHT
         ));

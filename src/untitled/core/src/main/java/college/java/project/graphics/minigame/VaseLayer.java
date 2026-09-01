@@ -10,6 +10,7 @@ import com.badlogic.gdx.scenes.scene2d.Touchable;
 import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.scenes.scene2d.InputEvent;
 import controller.VasebreakerController;
+import college.java.project.graphics.GameplaySoundPlayer;
 import model.minigame.vasebreakerminigame.Vase;
 import model.minigame.vasebreakerminigame.VaseType;
 import model.minigame.vasebreakerminigame.VasebreakerActionResult;
@@ -175,6 +176,8 @@ public final class VaseLayer extends Group {
             result.getStatus() != VasebreakerActionStatus.VASE_BROKEN) {
             return;
         }
+
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.VASE_BREAK);
 
         String clip = (vase.getPosition().getX() + vase.getPosition().getY()) % 2 == 0
             ? "break"

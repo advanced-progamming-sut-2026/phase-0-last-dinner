@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Random;
 // effect haye moshtarak plant food ro ba yek config ejra mikone
 public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
+    private static final int VOLLEY_GAP_TICKS = 1;
     private PlantFoodEffectType effectType;
     private String damageExpression;
     private int activationCount;
@@ -218,8 +219,18 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
     }
     private void repeatAbility(Plant plant) {
         int count = Math.max(1, this.activationCount);
+        Board board = plant == null ? null : plant.getBoard();
+        long nextDelay = 0L;
         for (int i = 0; i < count; i++) {
+            int firstNewProjectile = board == null ? 0 : board.getProjectiles().size();
             plant.useAbility();
+            if (board == null) {
+                continue;
+            }
+            for (int index = firstNewProjectile; index < board.getProjectiles().size(); index++) {
+                board.getProjectiles().get(index).setSpawnDelayTicks(nextDelay);
+                nextDelay += VOLLEY_GAP_TICKS;
+            }
         }
     }
     private void addSun(Board board) {
@@ -246,6 +257,7 @@ public class ConfiguredPlantFoodBehavior implements PlantFoodBehavior {
                 );
             }
             projectile.setSourcePlant(plant);
+            projectile.setSpawnDelayTicks((long) i * VOLLEY_GAP_TICKS);
             board.addProjectile(projectile);
         }
     }

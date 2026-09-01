@@ -13,6 +13,7 @@ import java.util.List;
 
 // halat haye khas defender mesl reflect va avaz kardan lane ro ejra mikone
 public class DefenderBehavior implements PlantBehavior {
+    private static final double CONTACT_DISTANCE = 1.0d;
     private DefenderMode defenderMode;
     private String damageExpression;
     private boolean deathEffectUsed;
@@ -218,7 +219,7 @@ public class DefenderBehavior implements PlantBehavior {
                     && zombie.getPosition() != null
                     && zombie.findBehavior(FlyingBehavior.class) == null
                     && !zombie.hasCondition(ZombieCondition.SUBMERGED)
-                    && Math.abs(zombie.getPosition().getX() - plant.getPosition().getX()) <= 1) {
+                    && Math.abs(zombie.getExactX() - plant.getPosition().getX()) <= CONTACT_DISTANCE) {
                 contactZombies.add(zombie);
             }
         }

@@ -105,6 +105,9 @@ public final class GameplayZombieLayer extends Group {
     private final Map<String, Rectangle> zombotanyHeadBoundsCache = new HashMap<>();
     private Runnable gargantuarImpactListener;
     private Consumer<Plant> magnetCatchListener;
+    private Consumer<Zombie> spawnListener;
+    private Consumer<Zombie> deathListener;
+    private Consumer<Zombie> attackListener;
     private final Set<Integer> knownGraveCells = new HashSet<>();
     private boolean graveSnapshotReady;
     private float explosionDeathWindow;
@@ -249,6 +252,18 @@ public final class GameplayZombieLayer extends Group {
         this.magnetCatchListener = listener;
     }
 
+    void setSpawnListener(Consumer<Zombie> listener) {
+        this.spawnListener = listener;
+    }
+
+    void setDeathListener(Consumer<Zombie> listener) {
+        this.deathListener = listener;
+    }
+
+    void setAttackListener(Consumer<Zombie> listener) {
+        this.attackListener = listener;
+    }
+
     void markExplosionDeathWindow() {
         this.explosionDeathWindow = EXPLOSION_DEATH_WINDOW_SECONDS;
     }
@@ -324,6 +339,9 @@ public final class GameplayZombieLayer extends Group {
                 rendered.firstSeenTick = this.dataSource.getCurrentTick();
                 this.actors.put(zombie, rendered);
                 this.renderHost.addActor(rendered.root);
+                if (this.spawnListener != null) {
+                    this.spawnListener.accept(zombie);
+                }
             }
             updateRenderedZombie(rendered, zombie, delta);
             GameplayBoardDepthOrder.mark(
@@ -391,6 +409,7 @@ public final class GameplayZombieLayer extends Group {
         if (hunter == null) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.HUNTER);
         playAbilityClip(hunter, "throw");
         spawnAbilityProjectile(hunter, target, HUNTER_SNOWBALL, null, 0.30f, 0f, 0.62f);
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
@@ -408,6 +427,7 @@ public final class GameplayZombieLayer extends Group {
         if (octopus == null) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.OCTOPUS);
         playAbilityClip(octopus, "toss");
         spawnPamAbilityProjectile(octopus, target, "ZOMBIE_OCTOPUS_PROJECTILE", "animation", 0.62f, 0.58f);
     }
@@ -417,6 +437,7 @@ public final class GameplayZombieLayer extends Group {
         if (wizard == null) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.MAGIC);
         playAbilityClip(wizard, "sheep", "special");
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
         float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
@@ -433,6 +454,7 @@ public final class GameplayZombieLayer extends Group {
         if (fisherman == null) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.FISHERMAN);
         playAbilitySequence(fisherman, "cast", "cast_loop", "reel", "toss");
         RenderedZombie rendered = this.actors.get(fisherman);
         if (rendered != null) {
@@ -714,6 +736,7 @@ public final class GameplayZombieLayer extends Group {
             if (previous != null && current > previous) {
                 Zombie king = findNearbyKing(zombie);
                 if (king != null) {
+                    GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.MAGIC);
                     playAbilityClip(king, "special");
                 }
             }
@@ -780,6 +803,7 @@ public final class GameplayZombieLayer extends Group {
             Zombie juggler = findNearestZombieInRow(projectile.getPosition().getY(), projectile.getPosition().getX(),
                     "juggler", "jester");
             if (juggler != null) {
+                GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.REFLECT);
                 playAbilitySequence(juggler, "spinup", "spin");
             }
         }
@@ -843,6 +867,9 @@ public final class GameplayZombieLayer extends Group {
             RenderedZombie rendered = this.actors.remove(zombie);
 
             if (rendered != null) {
+                if (zombie != null && zombie.isDead() && this.deathListener != null) {
+                    this.deathListener.accept(zombie);
+                }
                 playDeathAndRemove(rendered, zombie);
             }
         }
@@ -1603,6 +1630,7 @@ public final class GameplayZombieLayer extends Group {
 
     private void updateRenderedZombie(RenderedZombie rendered, Zombie zombie, float delta) {
         rendered.motionTime += delta;
+        updateAttackSound(rendered, zombie, delta);
         rendered.specialClipRemaining = Math.max(0f, rendered.specialClipRemaining - delta);
         rendered.shockDeathWindow = Math.max(0f, rendered.shockDeathWindow - delta);
         advanceAbilitySequence(rendered);
@@ -1621,6 +1649,21 @@ public final class GameplayZombieLayer extends Group {
         updateFrozenBlock(rendered, zombie);
         updateDamageFlash(rendered, zombie, delta);
         updateStatusTint(rendered.body, zombie, rendered.damageFlashRemaining > 0f);
+    }
+
+    private void updateAttackSound(RenderedZombie rendered, Zombie zombie, float delta) {
+        boolean attacking = zombie != null && zombie.isAttacking();
+        rendered.attackSoundCooldown = Math.max(0f, rendered.attackSoundCooldown - delta);
+        if (attacking && (!rendered.lastAttacking || rendered.attackSoundCooldown <= 0f)) {
+            if (this.attackListener != null) {
+                this.attackListener.accept(zombie);
+            }
+            rendered.attackSoundCooldown = 0.78f;
+        }
+        if (!attacking) {
+            rendered.attackSoundCooldown = 0f;
+        }
+        rendered.lastAttacking = attacking;
     }
 
     private void updateEntityAbilityState(RenderedZombie rendered, Zombie zombie, float delta) {
@@ -1662,6 +1705,7 @@ public final class GameplayZombieLayer extends Group {
             if (!aliasContains(rendered, "piano")) {
                 Zombie piano = findLivingZombie("piano");
                 if (piano != null) {
+                    GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.PIANO);
                     playAbilityClip(piano, "play");
                     playPianoVisual(piano, "play");
                 }
@@ -1682,6 +1726,7 @@ public final class GameplayZombieLayer extends Group {
             rendered.prospectorFlightRemaining = PROSPECTOR_FLIGHT_SECONDS;
             rendered.prospectorLandingPlayed = false;
             rendered.prospectorSpent = true;
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.PROSPECTOR);
             playAbilityClip(zombie, "blastoff");
             spawnProspectorSmoke(rendered, zombie);
         }
@@ -1702,8 +1747,10 @@ public final class GameplayZombieLayer extends Group {
         }
         boolean flying = zombie.hasCondition(ZombieCondition.FLYING);
         if (flying && !rendered.lastFlying) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.DODO);
             playAbilityClip(zombie, "fly_start");
         } else if (!flying && rendered.lastFlying) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.DODO);
             playAbilityClip(zombie, "fly_end");
             spawnPamAtZombie(rendered, "ZOMBIE_DODO_SHOCK", "animation", 1.12f, false);
         }
@@ -1736,6 +1783,7 @@ public final class GameplayZombieLayer extends Group {
 
         boolean throwing = gargantuar.isThrowingImp();
         if (throwing && !rendered.lastGargThrowing) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.GARGANTUAR);
             playThrowClip(rendered);
             rendered.specialClipRemaining = Math.max(rendered.specialClipRemaining, 1.0f);
         }
@@ -1789,13 +1837,16 @@ public final class GameplayZombieLayer extends Group {
             rendered.crystalStateInitialized = true;
             rendered.lastCrystalBlocked = blocked;
             if (blocked) {
+                GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.CRYSTAL);
                 playAbilityClip(zombie, "power_up", "power");
             }
             return;
         }
         if (blocked && !rendered.lastCrystalBlocked) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.CRYSTAL);
             playAbilityClip(zombie, "power_up", "power");
         } else if (!blocked && rendered.lastCrystalBlocked) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.CRYSTAL);
             playAbilityClip(zombie, "attack", "power_down", "power");
             spawnCrystalSkullBeam(rendered, zombie);
         }
@@ -1821,6 +1872,7 @@ public final class GameplayZombieLayer extends Group {
         }
         boolean hypnotized = zombie.isHypnotized();
         if (hypnotized && !rendered.lastHypnotized) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.MAGIC);
             spawnPamAtZombie(rendered, "HYPNO_ZOMBIE_EFFECT", "animation", 1.28f, false);
         }
         rendered.lastHypnotized = hypnotized;
@@ -1847,6 +1899,7 @@ public final class GameplayZombieLayer extends Group {
         if (garlic == null) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.GARLIC);
         float cellWidth = getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT;
         float cellHeight = getHeight() / GameplayBoardInteractionLayer.ROW_COUNT;
         float gx = cellCenterX(garlic.getPosition().getX());
@@ -1900,6 +1953,7 @@ public final class GameplayZombieLayer extends Group {
                 continue;
             }
             if (stolenSun > rendered.lastRaStolenSun) {
+                GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.SUN_COLLECT);
                 playRaPowerSequence(zombie);
             }
             rendered.lastRaStolenSun = stolenSun;
@@ -1975,6 +2029,7 @@ public final class GameplayZombieLayer extends Group {
         if (added.isEmpty()) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.GRAVE);
         Zombie raiser = findLivingZombie("tomb");
         if (raiser != null) {
             playAbilityClip(raiser, "power", "special");
@@ -2104,7 +2159,11 @@ public final class GameplayZombieLayer extends Group {
             return;
         }
         boolean charging = isAllStarCharging(rendered, zombie);
-        if (!charging && rendered.lastCharging) {
+        if (charging && !rendered.lastCharging) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.ALL_STAR);
+            playAbilityClip(zombie, "charge", "run");
+        } else if (!charging && rendered.lastCharging) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.ALL_STAR);
             playAbilityClip(zombie, "tackle");
         }
         rendered.lastCharging = charging;
@@ -2305,8 +2364,9 @@ public final class GameplayZombieLayer extends Group {
         PamAnimationActor actor = (PamAnimationActor) rendered.body;
         float actorWidth = GameplayPamScale.actorWidth(rendered.animation.getCanvasWidth());
         float actorHeight = GameplayPamScale.actorHeight(rendered.animation.getCanvasHeight());
-        float gaitOffset = zombie.isAttacking() || rendered.groundMotion == null
-                ? 0f : rendered.groundMotion.offsetX(actor.getStateTime());
+        GroundSwatchMotion groundMotion = groundMotionForClip(rendered, actor.getClipName());
+        float gaitOffset = zombie.isAttacking() || groundMotion == null
+                ? 0f : groundMotion.offsetX(actor.getStateTime());
         float groundCorrection = normalizeAlias(rendered.alias).contains("gargantuar")
                 ? rendered.root.getHeight() * GARGANTUAR_GROUND_CORRECTION_FACTOR
                 : 0f;
@@ -2316,6 +2376,20 @@ public final class GameplayZombieLayer extends Group {
                 actorWidth,
                 actorHeight
         );
+    }
+
+    private GroundSwatchMotion groundMotionForClip(RenderedZombie rendered, String clip) {
+        if (rendered == null || rendered.animation == null || clip == null) {
+            return null;
+        }
+        if (rendered.groundMotions.containsKey(clip)) {
+            return rendered.groundMotions.get(clip);
+        }
+        GroundSwatchMotion created = GroundSwatchMotion.create(
+                this.assets.getPamPlayer(), rendered.animation.getPath(), clip
+        );
+        rendered.groundMotions.put(clip, created);
+        return created;
     }
 
     private boolean layoutObstacleBody(RenderedZombie rendered, Zombie zombie) {
@@ -2500,6 +2574,10 @@ public final class GameplayZombieLayer extends Group {
                 knightAnimation.getPath(),
                 knightAnimation.getWalkClip()
         );
+        rendered.groundMotions.clear();
+        if (knightAnimation.getWalkClip() != null) {
+            rendered.groundMotions.put(knightAnimation.getWalkClip(), rendered.groundMotion);
+        }
         rendered.groundOffset = stableGroundOffset(knightAnimation);
         rendered.centerOffset = stableCenterOffset(knightAnimation);
         rendered.currentClip = knightAnimation.getWalkClip();
@@ -2640,7 +2718,6 @@ public final class GameplayZombieLayer extends Group {
             rendered.animation.getPath(),
             zombie.getArmors()
         ));
-
         applyTorchPartVisibility(visibility, rendered, zombie);
         applyProspectorDynamiteVisibility(visibility, rendered);
         applyBarrelPartVisibility(visibility, rendered, zombie);
@@ -3336,6 +3413,7 @@ public final class GameplayZombieLayer extends Group {
         private Actor piano;
         private ZombieAnimationCatalog.AnimationInfo animation;
         private GroundSwatchMotion groundMotion;
+        private final Map<String, GroundSwatchMotion> groundMotions = new HashMap<>();
         private float groundOffset;
         private float centerOffset;
         private final String alias;
@@ -3368,6 +3446,7 @@ public final class GameplayZombieLayer extends Group {
         private boolean lastStunned;
         private int lastHealth = -1;
         private boolean lastAttacking;
+        private float attackSoundCooldown;
         private long firstSeenTick = -1L;
         private boolean crystalStateInitialized;
         private boolean lastCrystalBlocked;
@@ -3396,6 +3475,9 @@ public final class GameplayZombieLayer extends Group {
             this.iceBlock = iceBlock;
             this.animation = animation;
             this.groundMotion = groundMotion;
+            if (animation != null && animation.getWalkClip() != null && groundMotion != null) {
+                this.groundMotions.put(animation.getWalkClip(), groundMotion);
+            }
             this.groundOffset = groundOffset;
             this.centerOffset = centerOffset;
             this.alias = alias;

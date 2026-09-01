@@ -102,6 +102,7 @@ public final class GameplayPlantLayer extends Group {
     private final Set<Integer> pendingIntroCells = new HashSet<>();
     private final Set<Integer> pendingPlantFoodCells = new HashSet<>();
     private Runnable explosionListener;
+    private java.util.function.Consumer<Plant> attackListener;
 
     private boolean animateNextBoardTransition;
 
@@ -904,6 +905,10 @@ public final class GameplayPlantLayer extends Group {
         this.explosionListener = listener;
     }
 
+    void setAttackListener(java.util.function.Consumer<Plant> listener) {
+        this.attackListener = listener;
+    }
+
     void suppressRemovalEffectAt(int column, int row) {
         this.suppressedRemovalCells.add(cellKey(column, row));
     }
@@ -1177,6 +1182,12 @@ public final class GameplayPlantLayer extends Group {
         if (name.equals("phat beet") || name.equals("kiwibeast")) {
             syncPulseMeleeVisual(rendered, plant, delta, name.equals("kiwibeast"));
         }
+        if (plant.getBehavior() instanceof MeleeBehavior
+                && !name.equals("chomper")
+                && !name.equals("phat beet")
+                && !name.equals("kiwibeast")) {
+            syncMeleeAttackSound(rendered, plant);
+        }
         if (name.equals("phat beet")) {
             rendered.idlePulseElapsed += delta;
             if (rendered.idlePulseElapsed >= 1.30f) {
@@ -1347,6 +1358,7 @@ public final class GameplayPlantLayer extends Group {
             rendered.chomperDigesting = true;
             rendered.chomperBiteEndPending = true;
             playChomperClip(rendered, "bite", 0.50f);
+            fireAttackEvent(plant);
         } else if (!digesting && rendered.lastChomperDigestTicks > 0L) {
             rendered.chomperDigesting = false;
             playChomperClip(rendered, "special_end", 0.45f);
@@ -1542,6 +1554,7 @@ public final class GameplayPlantLayer extends Group {
         }
         if (rendered.tookDamageThisFrame && hasHostileZombieInRadius(plant, 1)
                 && rendered.endurianLoopHoldRemaining <= 0f && rendered.plantFoodRemaining <= 0f) {
+            fireAttackEvent(plant);
             String start = endurianReactionClip(rendered, "attack_start");
             if (start != null && rendered.body instanceof PamAnimationActor) {
                 PamAnimationActor actor = (PamAnimationActor) rendered.body;
@@ -1607,6 +1620,7 @@ public final class GameplayPlantLayer extends Group {
         if (!hasHostileZombieInRadius(plant, radius)) {
             return;
         }
+        fireAttackEvent(plant);
         if (rendered.body instanceof PamAnimationActor && rendered.animation != null
                 && rendered.plantFoodRemaining <= 0f) {
             String attack = kiwibeast
@@ -1625,6 +1639,43 @@ public final class GameplayPlantLayer extends Group {
         String tileHit = kiwibeast ? "KIWIBEAST_TILE_HIT" : "PHATBEETS_TILE_HIT";
         spawnPamAtPlant(rendered, pulse, "animation", 1.45f + radius * 0.18f, 0f, false);
         spawnMeleeTileHits(plant, radius, tileHit);
+    }
+
+    private void syncMeleeAttackSound(RenderedPlant rendered, Plant plant) {
+        long attackTicks = readLongField(plant.getBehavior(), "ticksSinceLastAttack", -1L);
+        int attackRange = (int) Math.max(1L, readLongField(plant.getBehavior(), "range", 1L));
+        if (attackTicks < 0L) {
+            return;
+        }
+        if (rendered.lastMeleeAttackTicks >= 0L
+                && attackTicks < rendered.lastMeleeAttackTicks
+                && hasHostileZombieInFrontAndBack(plant, attackRange)) {
+            playAttack(plant);
+            fireAttackEvent(plant);
+        }
+        rendered.lastMeleeAttackTicks = attackTicks;
+    }
+
+    private boolean hasHostileZombieInFrontAndBack(Plant plant, int range) {
+        if (plant == null || plant.getBoard() == null || plant.getPosition() == null) {
+            return false;
+        }
+        for (model.zombie.Zombie zombie : plant.getBoard().getZombiesInFrontAndBack(
+                plant.getPosition(), range
+        )) {
+            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                    && !zombie.isAirborne()
+                    && !zombie.hasCondition(model.zombie.ZombieCondition.SUBMERGED)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void fireAttackEvent(Plant plant) {
+        if (this.attackListener != null) {
+            this.attackListener.accept(plant);
+        }
     }
 
     private boolean hasHostileZombieInRadius(Plant plant, int radius) {
@@ -3190,6 +3241,7 @@ public final class GameplayPlantLayer extends Group {
         private int puffShroomStage;
         private int peaPodStage;
         private int comboMeleeAttackIndex;
+        private long lastMeleeAttackTicks = -1L;
         private long lastChomperDigestTicks;
         private boolean chomperDigesting;
         private boolean chomperBiteEndPending;

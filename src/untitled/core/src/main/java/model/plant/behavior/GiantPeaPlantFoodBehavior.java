@@ -7,6 +7,7 @@ import model.plant.Projectile;
 import model.plant.ProjectileType;
 
 public class GiantPeaPlantFoodBehavior implements PlantFoodBehavior {
+    private static final int VOLLEY_GAP_TICKS = 1;
     private int giantPeaDamage;
     private int regularBurstCount;
     private boolean oneGiantPeaPerHead;
@@ -32,8 +33,14 @@ public class GiantPeaPlantFoodBehavior implements PlantFoodBehavior {
             return;
         }
 
+        long nextDelay = 0L;
         for (int i = 0; i < this.regularBurstCount; i++) {
+            int firstNewProjectile = board.getProjectiles().size();
             plant.useAbility();
+            for (int index = firstNewProjectile; index < board.getProjectiles().size(); index++) {
+                board.getProjectiles().get(index).setSpawnDelayTicks(nextDelay);
+                nextDelay += VOLLEY_GAP_TICKS;
+            }
         }
 
         int giantPeaCount = this.oneGiantPeaPerHead
@@ -50,6 +57,8 @@ public class GiantPeaPlantFoodBehavior implements PlantFoodBehavior {
             );
             giantPea.setPeaBased(true);
             giantPea.setSourcePlant(plant);
+            giantPea.setSpawnDelayTicks(nextDelay);
+            nextDelay += VOLLEY_GAP_TICKS;
             board.addProjectile(giantPea);
         }
     }

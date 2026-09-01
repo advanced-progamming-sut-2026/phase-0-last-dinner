@@ -61,7 +61,7 @@ public final class IZombieMultiplayerScreen implements Screen {
 
         hudLayer.setBounds(0f, 0f, GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT);
 
-        stage = new Stage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
+        stage = new college.java.project.graphics.SfxStage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
 
         stage.addActor(worldScene);
 

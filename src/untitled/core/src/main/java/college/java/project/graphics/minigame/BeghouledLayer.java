@@ -20,6 +20,7 @@ import com.badlogic.gdx.utils.Align;
 import college.java.project.graphics.GameplayWorldLayout;
 import com.badlogic.gdx.utils.Scaling;
 import controller.BeghouledController;
+import college.java.project.graphics.GameplaySoundPlayer;
 import model.mechanism.Position;
 import model.minigame.beghouledminigame.BeghouledActionResult;
 import model.minigame.beghouledminigame.BeghouledStateResult;
@@ -256,6 +257,7 @@ public final class BeghouledLayer extends Group {
         BeghouledActionResult result = this.controller.onSwapRequested(first, position);
 
         if (result.isSuccessful()) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.MATCH);
             BeghouledStateResult afterState = this.controller.onShowBeghouledRequested();
             rememberChangedCells(beforeState, afterState);
             this.currentState = afterState;
@@ -540,6 +542,7 @@ public final class BeghouledLayer extends Group {
         this.lastMessage = result.getMessage();
 
         if (result.isSuccessful()) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.UPGRADE);
             this.usedUpgradeSources.add(normalize(sourceName));
 
             card.root.addAction(Actions.sequence(

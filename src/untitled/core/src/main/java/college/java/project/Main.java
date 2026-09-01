@@ -8,6 +8,7 @@ import com.badlogic.gdx.Screen;
 import college.java.project.graphics.CollectionMenuCoordinator;
 import college.java.project.graphics.ControllerPlantCollectionDataSource;
 import college.java.project.graphics.ControllerZombieCollectionDataSource;
+import college.java.project.graphics.GameplaySoundPlayer;
 import controller.ApplicationController;
 import controller.CollectionController;
 import lombok.Getter;
@@ -575,6 +576,8 @@ public final class Main extends Game {
 
         if (this.authBackground != null)
             this.authBackground.dispose();
+
+        GameplaySoundPlayer.shared().dispose();
     }
 
     private void closeCollection() {

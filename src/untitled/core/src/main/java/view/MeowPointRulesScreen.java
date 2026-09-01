@@ -31,7 +31,7 @@ public final class MeowPointRulesScreen implements Screen {
 
     @Override
     public void show() {
-        this.stage = new Stage(new ExtendViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new ExtendViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
         Gdx.input.setInputProcessor(this.stage);
         Skin skin = PvzSkin.get();
 

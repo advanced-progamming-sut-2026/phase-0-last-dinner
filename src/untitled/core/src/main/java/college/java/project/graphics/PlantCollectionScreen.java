@@ -105,7 +105,7 @@ public final class PlantCollectionScreen implements Screen {
     public PlantCollectionScreen(PlantCollectionDataSource dataSource) {
         if (dataSource == null) throw new IllegalArgumentException("Plant Collection data source is required");
         this.dataSource = dataSource;
-        this.stage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
+        this.stage = new SfxStage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
         this.skin = PvzSkin.get();
         this.assets = new GameAssetManager();
         this.animationCatalog = new PamAnimationCatalog();
@@ -488,21 +488,22 @@ public final class PlantCollectionScreen implements Screen {
         card.setActionListener(new PlantCard.PlantCardActionListener() {
             @Override public void onPlantCardClicked(PlantCard ignored) { showDetails(state); }
             @Override public void onUpgradeRequested(PlantCard ignored) {
-                handle(dataSource.upgradePlant(state.getName()));
+                handle(dataSource.upgradePlant(state.getName()), GameplaySoundPlayer.Effect.UPGRADE);
             }
             @Override public void onPurchaseRequested(PlantCard ignored) {
-                handle(dataSource.purchasePlant(state.getName()));
+                handle(dataSource.purchasePlant(state.getName()), GameplaySoundPlayer.Effect.UNLOCK);
             }
         });
         card.setSelected(isSelected(state.getName()));
         return card;
     }
 
-    private void handle(CollectionActionResult result) {
+    private void handle(CollectionActionResult result, GameplaySoundPlayer.Effect effect) {
         boolean success = result != null && result.isSuccessful();
         String message = result == null ? "Collection action failed." : safe(result.getMessage());
         showStatus(message, success);
         if (success) {
+            GameplaySoundPlayer.shared().play(effect);
             refresh();
         }
     }
@@ -556,13 +557,13 @@ public final class PlantCollectionScreen implements Screen {
 
     private void purchaseCurrentDetail() {
         if (this.selectedPlantName != null) {
-            handle(this.dataSource.purchasePlant(this.selectedPlantName));
+            handle(this.dataSource.purchasePlant(this.selectedPlantName), GameplaySoundPlayer.Effect.UNLOCK);
         }
     }
 
     private void upgradeCurrentDetail() {
         if (this.selectedPlantName != null) {
-            handle(this.dataSource.upgradePlant(this.selectedPlantName));
+            handle(this.dataSource.upgradePlant(this.selectedPlantName), GameplaySoundPlayer.Effect.UPGRADE);
         }
     }
 

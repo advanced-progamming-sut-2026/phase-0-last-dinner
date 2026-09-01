@@ -16,6 +16,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import college.java.project.graphics.GameAssetManager;
+import college.java.project.graphics.GameplaySoundPlayer;
 import college.java.project.graphics.GameplayWorldLayout;
 import college.java.project.graphics.ZombiePacketCatalog;
 import controller.IZombieController;
@@ -349,6 +350,8 @@ public final class IZombieLayer extends Group {
         if (result == null || !result.isSuccessful() || !result.hasPlacementInformation())
             return;
 
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.ZOMBIE_PLACE);
+
         this.selectedZombie = null;
         refreshCards();
         refreshPlacementCells();
@@ -374,6 +377,7 @@ public final class IZombieLayer extends Group {
             brain.clearActions();
 
             if (eaten) {
+                GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.BRAIN_EAT);
                 brain.addAction(Actions.sequence(
                     Actions.parallel(
                         Actions.fadeOut(0.25f),

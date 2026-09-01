@@ -56,7 +56,7 @@ public final class LoginScreen implements Screen {
 
         this.game = game;
         this.skin = game.getSkin();
-        this.stage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
 
         AuthUi.addBackground(this.stage, this.game.getAuthBackground());
 

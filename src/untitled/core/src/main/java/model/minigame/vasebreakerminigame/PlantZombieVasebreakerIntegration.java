@@ -187,7 +187,6 @@ public class PlantZombieVasebreakerIntegration implements VasebreakerIntegration
         this.releasedZombies.clear();
 
         this.board = new Board();
-        this.board.getLawnMowers().clear();
 
         this.engine = new GameEngine(this.board);
         this.sunSystem = new SunSystem(this.board, this.engine.getClock());

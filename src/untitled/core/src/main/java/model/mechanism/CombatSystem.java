@@ -174,7 +174,11 @@ public class CombatSystem implements Tickable {
     private boolean resolveProjectile(Projectile projectile) {
         double movementStartX = projectile.getExactX();
         double movementStartY = projectile.getExactY();
+        boolean waitingForRelease = projectile.isWaitingForRelease();
         projectile.move();
+        if (waitingForRelease) {
+            return false;
+        }
         if (projectile.isExpired()) {
             return true;
         }
@@ -251,7 +255,11 @@ public class CombatSystem implements Tickable {
             if (!this.canProjectileHit(projectile, target)) {
                 continue;
             }
-            projectile.markHit(target);
+            if (target == directTarget) {
+                projectile.markDirectHit(target);
+            } else {
+                projectile.markHit(target);
+            }
             this.applyProjectileConditions(projectile, target);
             if (projectile.getType() == ProjectileType.FIRE) {
                 target.removeCondition(ZombieCondition.CHILLED);

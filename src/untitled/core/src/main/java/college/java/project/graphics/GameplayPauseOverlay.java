@@ -19,6 +19,7 @@ import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import pvz.libpvz.textures.TextureBank;
 import pvz.skin.PvzSkin;
+import view.GameSettings;
 
 import java.util.function.Consumer;
 
@@ -41,8 +42,8 @@ public final class GameplayPauseOverlay extends Group {
     private Runnable resumeAction;
     private Runnable restartAction;
     private Runnable saveAndExitAction;
-    private float musicVolume = 0.78f;
-    private float soundFxVolume = 0.88f;
+    private float musicVolume = GameSettings.getMusicVolume();
+    private float soundFxVolume = GameSettings.getSoundFxVolume();
     private VolumeSlider musicSlider;
     private VolumeSlider soundFxSlider;
     private VolumeListener volumeListener;

@@ -37,7 +37,7 @@ public final class PlantCardPreviewScreen implements Screen {
             );
         }
 
-        this.stage = new Stage(new FitViewport(
+        this.stage = new SfxStage(new FitViewport(
                 WORLD_WIDTH,
                 WORLD_HEIGHT
         ));

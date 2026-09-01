@@ -83,7 +83,7 @@ public final class IZombieMatchmakingScreen implements Screen {
         this.onBack = onBack;
         this.skin = PvzSkin.get();
 
-        stage = new Stage(new ExtendViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
+        stage = new college.java.project.graphics.SfxStage(new ExtendViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
 
         usernameField = new TextField("", skin, "default");
 

@@ -117,7 +117,7 @@ public final class PlantPickScreen implements Screen {
         }
         this.dataSource = dataSource;
         this.chapterType = chapterType == null ? ChapterType.ANCIENT_EGYPT : chapterType;
-        this.stage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
+        this.stage = new SfxStage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
         this.skin = PvzSkin.get();
         this.assets = new GameAssetManager();
         this.animationCatalog = new PamAnimationCatalog();
@@ -788,7 +788,11 @@ public final class PlantPickScreen implements Screen {
 
     private void togglePlant(String plantName) {
         String message = this.dataSource.togglePlant(plantName);
-        showStatus(message, actionSucceeded(message));
+        boolean success = actionSucceeded(message);
+        showStatus(message, success);
+        if (success) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.SEED_SELECT);
+        }
         refreshSelectionVisuals();
     }
 
@@ -797,7 +801,11 @@ public final class PlantPickScreen implements Screen {
             return;
         }
         String message = this.dataSource.boostPlant(this.activeState.getName());
-        showStatus(message, actionSucceeded(message));
+        boolean success = actionSucceeded(message);
+        showStatus(message, success);
+        if (success) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.UPGRADE);
+        }
         refreshSelectionVisuals();
     }
 
@@ -810,6 +818,7 @@ public final class PlantPickScreen implements Screen {
         String message = result == null ? "Upgrade failed." : safe(result.getMessage());
         showStatus(message, success);
         if (success) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.UPGRADE);
             refreshAll();
         }
     }

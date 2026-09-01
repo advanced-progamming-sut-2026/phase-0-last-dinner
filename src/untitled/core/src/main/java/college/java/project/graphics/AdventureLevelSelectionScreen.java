@@ -37,7 +37,7 @@ public final class AdventureLevelSelectionScreen implements Screen {
         }
         this.game = game;
         this.applicationController = game.getApplicationController();
-        this.stage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
+        this.stage = new SfxStage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
         this.statusLabel = new Label("", PvzSkin.get());
         build();
     }

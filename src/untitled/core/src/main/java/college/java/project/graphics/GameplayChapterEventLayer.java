@@ -130,6 +130,7 @@ public final class GameplayChapterEventLayer extends Group {
         if (!validRow(row) || this.iceRowCooldown[row] > 0f) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.FREEZE);
         float rowHeight = rowHeight();
         float localY = rowBaseY(row);
         ChapterEventStrip strip = createIceWindStrip(localY, rowHeight);
@@ -146,6 +147,7 @@ public final class GameplayChapterEventLayer extends Group {
         if (!validRow(row) || this.sandRowCooldown[row] > 0f) {
             return;
         }
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.SANDSTORM);
         float rowHeight = rowHeight();
         float localY = rowBaseY(row);
         ChapterEventStrip strip = createSandstormStrip(localY, rowHeight);

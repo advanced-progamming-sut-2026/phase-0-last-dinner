@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 /** Shows required temporary notifications for auto-collected plant food and loot. */
 public final class GameplayRewardNotificationLayer extends Group {
@@ -39,6 +40,8 @@ public final class GameplayRewardNotificationLayer extends Group {
     private final Set<Loot> observedLoot = Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean initialized;
     private int previousPlantFood;
+    private Runnable plantFoodListener;
+    private Consumer<LootType> lootListener;
 
     public GameplayRewardNotificationLayer(GameplayWorldDataSource dataSource) {
         this(dataSource, new GameAssetManager());
@@ -75,6 +78,14 @@ public final class GameplayRewardNotificationLayer extends Group {
         }
     }
 
+    public void setPlantFoodListener(Runnable plantFoodListener) {
+        this.plantFoodListener = plantFoodListener;
+    }
+
+    public void setLootListener(Consumer<LootType> lootListener) {
+        this.lootListener = lootListener;
+    }
+
     private void initializeBaseline() {
         this.previousPlantFood = Math.max(0, this.dataSource.getPlantFoodAmount());
         List<Loot> history = this.dataSource.getLootHistory();
@@ -89,6 +100,9 @@ public final class GameplayRewardNotificationLayer extends Group {
         if (current > this.previousPlantFood) {
             int gained = current - this.previousPlantFood;
             showNotice("PLANT FOOD  +" + gained, PLANT_FOOD_ICON, NoticeKind.PLANT_FOOD);
+            if (this.plantFoodListener != null) {
+                this.plantFoodListener.run();
+            }
         }
         this.previousPlantFood = current;
     }
@@ -109,6 +123,9 @@ public final class GameplayRewardNotificationLayer extends Group {
     private void showLootNotice(Loot loot) {
         LootType type = loot.getType();
         int amount = Math.max(0, loot.getAmount());
+        if (this.lootListener != null && type != null) {
+            this.lootListener.accept(type);
+        }
         if (type == LootType.COIN) {
             showNotice("COINS  +" + amount, COIN_ICON, NoticeKind.COIN);
         } else if (type == LootType.DIAMOND) {

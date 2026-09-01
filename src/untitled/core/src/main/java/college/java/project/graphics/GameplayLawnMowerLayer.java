@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Collections;
+import java.util.function.Consumer;
 
 /** Draws one mower at the left edge of each unused lane. */
 public final class GameplayLawnMowerLayer extends Group {
@@ -36,6 +37,8 @@ public final class GameplayLawnMowerLayer extends Group {
     private boolean ownsAssets;
     private final Map<LawnMower, Actor> actors = new IdentityHashMap<>();
     private final Set<LawnMower> activating = Collections.newSetFromMap(new IdentityHashMap<>());
+    private final Set<LawnMower> notifiedActivations = Collections.newSetFromMap(new IdentityHashMap<>());
+    private Consumer<LawnMower> activationListener;
 
     public GameplayLawnMowerLayer(GameplayWorldDataSource dataSource) {
         this(dataSource, new GameAssetManager());
@@ -65,6 +68,10 @@ public final class GameplayLawnMowerLayer extends Group {
         return this.actors.size();
     }
 
+    public void setActivationListener(Consumer<LawnMower> activationListener) {
+        this.activationListener = activationListener;
+    }
+
     public void dispose() {
         if (this.ownsAssets) {
             this.assets.dispose();
@@ -78,6 +85,7 @@ public final class GameplayLawnMowerLayer extends Group {
         for (LawnMower mower : mowers) {
             Actor actor = this.actors.get(mower);
             if (mower.isUsed()) {
+                notifyActivation(mower);
                 if (actor != null && !this.activating.contains(mower)) {
                     animateActivation(mower, actor);
                 }
@@ -148,6 +156,12 @@ public final class GameplayLawnMowerLayer extends Group {
                 Actions.moveBy(activationTravelDistance(), 0f, 0.42f),
                 Actions.run(() -> finishActivation(mower, actor))
         ));
+    }
+
+    private void notifyActivation(LawnMower mower) {
+        if (mower != null && this.notifiedActivations.add(mower) && this.activationListener != null) {
+            this.activationListener.accept(mower);
+        }
     }
 
 

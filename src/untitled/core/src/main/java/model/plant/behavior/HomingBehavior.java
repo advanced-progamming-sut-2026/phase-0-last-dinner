@@ -156,7 +156,7 @@ public class HomingBehavior implements PlantBehavior {
         }
 
         if (this.targetMode != HomingTargetMode.PRIORITY) {
-            return board.getNearestZombie(plant.getPosition());
+            return this.getNearestEligibleTarget(plant, board);
         }
 
         if (!this.priorityUp) {
@@ -168,7 +168,7 @@ public class HomingBehavior implements PlantBehavior {
         int bestScore = Integer.MIN_VALUE;
 
         for (Zombie zombie : board.getAllZombies()) {
-            if (zombie == null || zombie.isDead() || zombie.isHypnotized()) {
+            if (!this.isEligibleTarget(zombie)) {
                 continue;
             }
 
@@ -181,19 +181,50 @@ public class HomingBehavior implements PlantBehavior {
             }
         }
 
-        return bestTarget == null ? board.getNearestZombie(plant.getPosition()) : bestTarget;
+        return bestTarget == null ? this.getNearestEligibleTarget(plant, board) : bestTarget;
     }
 
     private List<Zombie> getEligibleTargets(Board board) {
         List<Zombie> candidates = new ArrayList<>();
 
         for (Zombie zombie : board.getAllZombies()) {
-            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()) {
+            if (this.isEligibleTarget(zombie)) {
                 candidates.add(zombie);
             }
         }
 
         return candidates;
+    }
+
+    private Zombie getNearestEligibleTarget(Plant plant, Board board) {
+        Zombie nearest = null;
+        long nearestDistance = Long.MAX_VALUE;
+        for (Zombie zombie : board.getAllZombies()) {
+            if (!this.isEligibleTarget(zombie) || zombie.getPosition() == null) {
+                continue;
+            }
+            long deltaX = plant.getPosition() == null
+                    ? 0L
+                    : zombie.getPosition().getX() - plant.getPosition().getX();
+            long deltaY = plant.getPosition() == null
+                    ? 0L
+                    : zombie.getPosition().getY() - plant.getPosition().getY();
+            long distance = deltaX * deltaX + deltaY * deltaY;
+            if (distance < nearestDistance) {
+                nearest = zombie;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
+    private boolean isEligibleTarget(Zombie zombie) {
+        if (zombie == null || zombie.isDead() || zombie.isHypnotized()
+                || zombie.getPosition() == null) {
+            return false;
+        }
+        return this.projectileTemplate == null || zombie.getBehavior() == null
+                || zombie.getBehavior().canBeHitBy(zombie, this.projectileTemplate);
     }
 
     private Zombie selectArmoredTarget(Plant plant, Board board) {

@@ -28,6 +28,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.Scaling;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import controller.ApplicationController;
+import college.java.project.graphics.GameplaySoundPlayer;
 import model.Greenhouse.GreenhouseActionResult;
 import model.Greenhouse.GreenhouseActionStatus;
 import model.Greenhouse.GreenhouseBoard;
@@ -99,7 +100,7 @@ public class GreenhouseScreen implements Screen {
 
     @Override
     public void show() {
-        this.stage = new Stage(new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
         Gdx.input.setInputProcessor(this.stage);
         this.skin = PvzSkin.get();
 
@@ -339,8 +340,17 @@ public class GreenhouseScreen implements Screen {
         this.controller.save();
         if (result != null) {
             this.statusLabel.setText(result.getMessage());
-            if (result.isSuccessful() && result.getStatus() == GreenhouseActionStatus.HARVESTED) {
-                showHarvestAnnouncement(result);
+            if (result.isSuccessful()) {
+                if (result.getStatus() == GreenhouseActionStatus.PLANTED) {
+                    GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.PLANT);
+                } else if (result.getStatus() == GreenhouseActionStatus.HARVESTED) {
+                    GameplaySoundPlayer.shared().play(result.getCoinsEarned() > 0
+                            ? GameplaySoundPlayer.Effect.COIN
+                            : GameplaySoundPlayer.Effect.PLANT_FOOD_COLLECT);
+                    showHarvestAnnouncement(result);
+                } else {
+                    GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.UPGRADE);
+                }
             }
         }
         refresh();

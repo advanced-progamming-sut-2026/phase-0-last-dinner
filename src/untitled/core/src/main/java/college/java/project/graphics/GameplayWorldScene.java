@@ -8,9 +8,11 @@ import lombok.Getter;
 import lombok.Setter;
 import model.Plant;
 import model.level.LevelType;
+import model.mechanism.LootType;
 import model.plant.PlantCategory;
 import model.plant.PlantTag;
 import model.plant.PlantUpgradeSpecialEffect;
+import view.GameSettings;
 
 import java.util.Locale;
 @Getter
@@ -20,6 +22,7 @@ public final class GameplayWorldScene extends Group {
     private final GameplaySeedBankDataSource seedDataSource;
     private final GameplayWorldDataSource worldDataSource;
     private final GameAssetManager assets;
+    private final GameplaySoundPlayer soundPlayer;
     private final GameplayBackgroundLayer backgroundLayer;
     private final GameplayTerrainLayer terrainLayer;
     private final GameplayLevelRulesLayer levelRulesLayer;
@@ -62,6 +65,8 @@ public final class GameplayWorldScene extends Group {
         this.seedDataSource = seedDataSource;
         this.worldDataSource = worldDataSource;
         this.assets = new GameAssetManager();
+        this.soundPlayer = GameplaySoundPlayer.shared();
+        this.soundPlayer.setVolume(GameSettings.getSoundFxVolume());
         setSize(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT);
         setTouchable(Touchable.childrenOnly);
 
@@ -78,6 +83,9 @@ public final class GameplayWorldScene extends Group {
         addActor(this.levelRulesLayer);
 
         this.mowerLayer = new GameplayLawnMowerLayer(worldDataSource, this.assets);
+        this.mowerLayer.setActivationListener(
+                mower -> this.soundPlayer.play(GameplaySoundPlayer.Effect.MOWER)
+        );
         setLawnBounds(this.mowerLayer);
         addActor(this.mowerLayer);
 
@@ -93,12 +101,32 @@ public final class GameplayWorldScene extends Group {
 
         this.zombieLayer = new GameplayZombieLayer(worldDataSource, this.assets);
         this.zombieLayer.setRenderHost(this.boardEntityLayer);
-        this.zombieLayer.setGargantuarImpactListener(() -> triggerScreenShake(GARGANTUAR_SHAKE));
-        this.zombieLayer.setMagnetCatchListener(this.plantLayer::playMagnetCatch);
+        this.zombieLayer.setGargantuarImpactListener(() -> {
+            triggerScreenShake(GARGANTUAR_SHAKE);
+            this.soundPlayer.play(GameplaySoundPlayer.Effect.LOB_HIT);
+        });
+        this.zombieLayer.setMagnetCatchListener(plant -> {
+            if (this.plantLayer.playMagnetCatch(plant)) {
+                this.soundPlayer.play(GameplaySoundPlayer.Effect.MAGNET);
+            }
+        });
+        this.zombieLayer.setSpawnListener(
+                zombie -> this.soundPlayer.playZombieSpawn(
+                        zombie, this.worldDataSource.getChapterType()
+                )
+        );
+        this.zombieLayer.setDeathListener(
+                this.soundPlayer::playZombieDeath
+        );
+        this.zombieLayer.setAttackListener(
+                zombie -> this.soundPlayer.play(GameplaySoundPlayer.Effect.ZOMBIE_BITE)
+        );
         this.plantLayer.setExplosionListener(() -> {
             triggerScreenShake(EXPLOSION_SHAKE);
             this.zombieLayer.markExplosionDeathWindow();
+            this.soundPlayer.play(GameplaySoundPlayer.Effect.EXPLOSION);
         });
+        this.plantLayer.setAttackListener(this.soundPlayer::playPlantAttack);
         setLawnBounds(this.zombieLayer);
         addActor(this.zombieLayer);
 
@@ -107,9 +135,13 @@ public final class GameplayWorldScene extends Group {
         this.projectileLayer.setSpawnListener(projectile -> {
             if (projectile != null) {
                 this.plantLayer.playAttack(projectile);
+                this.soundPlayer.playProjectileLaunch(projectile);
             }
         });
-        this.projectileLayer.setImpactListener(this.zombieLayer::noteProjectileImpact);
+        this.projectileLayer.setImpactListener(projectile -> {
+            this.zombieLayer.noteProjectileImpact(projectile);
+            this.soundPlayer.playProjectileImpact(projectile);
+        });
         this.projectileLayer.setLaunchPointProvider(this.plantLayer::getProjectileLaunchPoint
         );
         this.projectileLayer.setReleaseDelayProvider(this.plantLayer::getAttackReleaseDelay
@@ -137,8 +169,12 @@ public final class GameplayWorldScene extends Group {
         this.sunLayer.setSpawnListener(sun -> {
             if (sun != null && sun.getProducer() != null) {
                 this.plantLayer.playSunProduction(sun.getProducer());
+                this.soundPlayer.play(GameplaySoundPlayer.Effect.SUN_PRODUCED);
             }
         });
+        this.sunLayer.setCollectionListener(
+                sun -> this.soundPlayer.play(GameplaySoundPlayer.Effect.SUN_COLLECT)
+        );
         setLawnBounds(this.sunLayer);
         addActor(this.sunLayer);
 
@@ -156,6 +192,11 @@ public final class GameplayWorldScene extends Group {
         addActor(this.interactionHud);
 
         this.waveProgressBar = new GameplayWaveProgressBar(worldDataSource, this.assets);
+        this.waveProgressBar.setWaveStartedListener(wave -> this.soundPlayer.play(
+                wave != null && wave.isFinalWave()
+                        ? GameplaySoundPlayer.Effect.FINAL_WAVE
+                        : GameplaySoundPlayer.Effect.WAVE
+        ));
         this.waveProgressBar.setBounds(596f, 1014f, 384f, 46.4f);
         addActor(this.waveProgressBar);
 
@@ -168,6 +209,16 @@ public final class GameplayWorldScene extends Group {
         addActor(this.pauseButton);
 
         this.rewardNotificationLayer = new GameplayRewardNotificationLayer(worldDataSource, this.assets);
+        this.rewardNotificationLayer.setPlantFoodListener(
+                () -> this.soundPlayer.play(GameplaySoundPlayer.Effect.PLANT_FOOD_COLLECT)
+        );
+        this.rewardNotificationLayer.setLootListener(type -> {
+            if (type == LootType.COIN) {
+                this.soundPlayer.play(GameplaySoundPlayer.Effect.COIN);
+            } else if (type == LootType.DIAMOND) {
+                this.soundPlayer.play(GameplaySoundPlayer.Effect.GEM);
+            }
+        });
         this.rewardNotificationLayer.setBounds(0f, 0f, getWidth(), getHeight());
         addActor(this.rewardNotificationLayer);
 
@@ -184,6 +235,11 @@ public final class GameplayWorldScene extends Group {
 
         this.pauseOverlay = new GameplayPauseOverlay(this.assets);
         this.pauseOverlay.setActions(this::resumeGame, this::runRestart, this::runSaveAndExit);
+        this.pauseOverlay.setVolumeListener((musicVolume, soundFxVolume) -> {
+            GameSettings.setMusicVolume(musicVolume);
+            GameSettings.setSoundFxVolume(soundFxVolume);
+            this.soundPlayer.setVolume(soundFxVolume);
+        });
         addActor(this.pauseOverlay);
 
         this.outcomeOverlay = new GameplayOutcomeOverlay(
@@ -220,6 +276,7 @@ public final class GameplayWorldScene extends Group {
         if (this.outcomeShown || this.missionOverlay.isVisible()) {
             return;
         }
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         this.paused = true;
         this.interactionLayer.clearMode();
         this.seedBank.clearSelectionSilently();
@@ -231,6 +288,7 @@ public final class GameplayWorldScene extends Group {
     }
 
     public void resumeGame() {
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         this.paused = false;
         this.pauseOverlay.setVisible(false);
     }
@@ -288,6 +346,9 @@ public final class GameplayWorldScene extends Group {
             return;
         }
         this.outcomeShown = true;
+        this.soundPlayer.play(
+                lost ? GameplaySoundPlayer.Effect.LOSS : GameplaySoundPlayer.Effect.WIN
+        );
         this.outcomeOverlay.showResult(lost);
         if (this.outcomeAction != null) {
             this.outcomeAction.run();
@@ -295,24 +356,28 @@ public final class GameplayWorldScene extends Group {
     }
 
     private void runRestart() {
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         if (this.restartAction != null) {
             this.restartAction.run();
         }
     }
 
     private void runSaveAndExit() {
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         if (this.saveAndExitAction != null) {
             this.saveAndExitAction.run();
         }
     }
 
     private void runExit() {
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         if (this.exitAction != null) {
             this.exitAction.run();
         }
     }
 
     private void runRetry() {
+        this.soundPlayer.play(GameplaySoundPlayer.Effect.BUTTON);
         if (this.retryAction != null) {
             this.retryAction.run();
         }
@@ -324,12 +389,15 @@ public final class GameplayWorldScene extends Group {
             @Override
             public void onActionApplied(GameplayInteractionMode mode, int column, int row) {
                 if (mode == GameplayInteractionMode.PLANT) {
+                    soundPlayer.play(GameplaySoundPlayer.Effect.PLANT);
                     plantLayer.playIntroAt(column, row);
                     playAutomaticPlantFoodFeedback(column, row);
                 } else if (mode == GameplayInteractionMode.SHOVEL) {
+                    soundPlayer.play(GameplaySoundPlayer.Effect.SHOVEL);
                     plantLayer.suppressRemovalEffectAt(column, row);
                     seedBank.showInteractionStatus("Plant removed.");
                 } else if (mode == GameplayInteractionMode.PLANT_FOOD) {
+                    soundPlayer.play(GameplaySoundPlayer.Effect.PLANT_FOOD);
                     plantLayer.playPlantFoodAt(column, row);
                     seedBank.showInteractionStatus("Plant Food used.");
                 }
@@ -354,12 +422,14 @@ public final class GameplayWorldScene extends Group {
         this.seedBank.setPlantSelectionListener(new GameplaySeedBank.PlantSelectionListener() {
             @Override
             public void onPlantSelected(String plantName) {
+                soundPlayer.play(GameplaySoundPlayer.Effect.SEED_SELECT);
                 interactionLayer.selectPlant(plantName);
                 interactionHud.refresh();
             }
 
             @Override
             public void onImitaterCopyTargetSelected(String plantName) {
+                soundPlayer.play(GameplaySoundPlayer.Effect.SEED_SELECT);
                 interactionLayer.updatePlantPreview(plantName);
             }
 
@@ -382,6 +452,7 @@ public final class GameplayWorldScene extends Group {
                 PlantUpgradeSpecialEffect.PLANT_FOOD_ON_PLANTING
         );
         if (placed.canReceivePlantFood() && (boosted || upgradeTriggered)) {
+            this.soundPlayer.play(GameplaySoundPlayer.Effect.PLANT_FOOD);
             this.plantLayer.playPlantFoodAt(column, row);
         }
         playMintFamilyFeedback(placed);

@@ -10,6 +10,8 @@ public final class GameSettings {
     private static int gameSpeed = DEFAULT_SPEED;
     private static boolean showGrid = false;
     private static boolean debugMode = false;
+    private static float musicVolume = 0.78f;
+    private static float soundFxVolume = 0.88f;
 
     private GameSettings() {
     }
@@ -39,5 +41,21 @@ public final class GameSettings {
 
     public static void setDebugMode(boolean value) {
         debugMode = value;
+    }
+
+    public static float getMusicVolume() {
+        return musicVolume;
+    }
+
+    public static void setMusicVolume(float volume) {
+        musicVolume = Math.max(0f, Math.min(1f, volume));
+    }
+
+    public static float getSoundFxVolume() {
+        return soundFxVolume;
+    }
+
+    public static void setSoundFxVolume(float volume) {
+        soundFxVolume = Math.max(0f, Math.min(1f, volume));
     }
 }

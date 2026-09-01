@@ -29,6 +29,7 @@ public final class GameplaySunLayer extends Group {
     private final GameAssetManager assets;
     private boolean ownsAssets;
     private Consumer<Sun> spawnListener;
+    private Consumer<Sun> collectionListener;
     private final Map<Sun, Image> actors = new IdentityHashMap<>();
     private final Set<Sun> collecting = Collections.newSetFromMap(new IdentityHashMap<>());
     private boolean hasCollectionTarget;
@@ -65,6 +66,10 @@ public final class GameplaySunLayer extends Group {
 
     public void setSpawnListener(Consumer<Sun> spawnListener) {
         this.spawnListener = spawnListener;
+    }
+
+    public void setCollectionListener(Consumer<Sun> collectionListener) {
+        this.collectionListener = collectionListener;
     }
 
     public boolean collectSun(Sun sun) {
@@ -160,6 +165,9 @@ public final class GameplaySunLayer extends Group {
         }
         if (!collectSun(sun)) {
             return false;
+        }
+        if (this.collectionListener != null) {
+            this.collectionListener.accept(sun);
         }
         this.collecting.add(sun);
         image.setTouchable(Touchable.disabled);

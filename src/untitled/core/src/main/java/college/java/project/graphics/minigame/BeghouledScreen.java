@@ -58,7 +58,7 @@ public final class BeghouledScreen implements Screen {
         this.dataSource = new MiniGameGameplayDataSource(game, user, () -> this.currentTick);
         this.worldScene = new GameplayWorldScene(this.dataSource, this.dataSource);
 
-        this.stage = new Stage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
+        this.stage = new college.java.project.graphics.SfxStage(new FitViewport(GameplayWorldLayout.STAGE_WIDTH, GameplayWorldLayout.STAGE_HEIGHT));
         this.stage.addActor(this.worldScene);
 
         this.beghouledLayer = new BeghouledLayer(this.controller, this.worldScene.getPlantLayer(), this.worldScene.getAssets());

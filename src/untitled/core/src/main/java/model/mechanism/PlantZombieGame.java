@@ -296,7 +296,7 @@ public class PlantZombieGame {
         this.levelFinalized = false;
         if (this.activeChapter instanceof ChapterIceCaves) {
             ((ChapterIceCaves) this.activeChapter).setFrozenZombieStartEnabled(
-                    level instanceof NormalLevel
+                    level instanceof DeadlineLevel
             );
         }
         level.setBoard(this.board);

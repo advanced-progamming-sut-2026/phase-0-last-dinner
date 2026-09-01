@@ -111,7 +111,7 @@ public final class ZombieCollectionScreen implements Screen {
             throw new IllegalArgumentException("Zombie Collection data source is required");
         }
         this.dataSource = dataSource;
-        this.stage = new Stage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
+        this.stage = new SfxStage(new FitViewport(WORLD_WIDTH, WORLD_HEIGHT));
         this.skin = PvzSkin.get();
         this.assets = new GameAssetManager();
         this.cardGrid = new Table();

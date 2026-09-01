@@ -17,6 +17,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.ClickListener;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import college.java.project.graphics.GameAssetManager;
+import college.java.project.graphics.GameplaySoundPlayer;
 import college.java.project.graphics.GameplayWorldLayout;
 import network.izombie.client.IZombieClientCommandResult;
 import network.izombie.client.IZombieClientController;
@@ -360,6 +361,7 @@ public final class IZombieMultiplayerLayer extends Group {
         }
 
         showStatus("Placement request sent.");
+        GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.ZOMBIE_PLACE);
 
         selectedUnitKey = null;
         refreshCards();
@@ -386,6 +388,7 @@ public final class IZombieMultiplayerLayer extends Group {
             brain.clearActions();
 
             if (eaten) {
+                GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.BRAIN_EAT);
                 brain.addAction(Actions.sequence(Actions.parallel(Actions.fadeOut(0.25f), Actions.scaleTo(0.65f, 0.65f, 0.25f)), Actions.visible(false)));
             } else {
                 brain.setVisible(true);

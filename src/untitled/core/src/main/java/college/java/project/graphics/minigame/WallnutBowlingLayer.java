@@ -23,6 +23,7 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Align;
 import com.badlogic.gdx.utils.Scaling;
 import controller.WallnutBowlingController;
+import college.java.project.graphics.GameplaySoundPlayer;
 import model.mechanism.Position;
 import model.minigame.wallnutbowlingminigame.BowlingWallnutType;
 import model.minigame.wallnutbowlingminigame.RollingWallnut;
@@ -410,6 +411,7 @@ public final class WallnutBowlingLayer extends Group {
         );
 
         if (result != null && result.getStatus() == WallnutBowlingActionStatus.WALLNUT_PLACED) {
+            GameplaySoundPlayer.shared().play(GameplaySoundPlayer.Effect.BOWLING);
             this.selectedConveyorIndex = -1;
             showStatus("Wallnut launched.");
             return;

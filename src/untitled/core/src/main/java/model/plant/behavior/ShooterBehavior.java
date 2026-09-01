@@ -10,6 +10,7 @@ import model.plant.PlantUpgradeEffect;
 import model.zombie.Zombie;
 
 public class ShooterBehavior implements PlantBehavior {
+    private static final int VOLLEY_GAP_TICKS = 1;
     private Projectile projectileTemplate;
     private ShootingDirection direction;
     private int forwardShotCount;
@@ -54,8 +55,11 @@ public class ShooterBehavior implements PlantBehavior {
         this.ticksSinceLastShot++;
 
         if (this.ticksSinceLastShot >= Math.max(1, this.shootIntervalTicks)) {
+            int projectileCount = board == null ? 0 : board.getProjectiles().size();
             this.activate(plant, board);
-            this.ticksSinceLastShot = 0;
+            if (board != null && board.getProjectiles().size() > projectileCount) {
+                this.ticksSinceLastShot = 0;
+            }
         }
     }
 
@@ -107,6 +111,7 @@ public class ShooterBehavior implements PlantBehavior {
                     horizontalDirection,
                     0
             );
+            projectile.setSpawnDelayTicks((long) i * VOLLEY_GAP_TICKS);
             board.addProjectile(projectile);
         }
     }

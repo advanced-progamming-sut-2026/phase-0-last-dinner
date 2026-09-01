@@ -17,6 +17,7 @@ import java.util.List;
 
 // arm shodan va effect giah haye enfajari ya terrain remover ro modiriat mikone
 public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
+    private static final double CONTACT_DISTANCE = 0.55d;
     private String damageExpression;
     private int effectRadius;
     private boolean triggeredByContact;
@@ -387,8 +388,8 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
         }
 
         int[][] directions = {
-                {1, 0}, {-1, 0}, {1, 1}, {1, -1},
-                {-1, 1}, {-1, -1}, {1, 0}, {-1, 0}
+                {1, 0}, {1, 1}, {0, 1}, {-1, 1},
+                {-1, 0}, {-1, -1}, {0, -1}, {1, -1}
         };
 
         for (int i = 0; i < this.secondaryProjectileCount; i++) {
@@ -417,7 +418,7 @@ public class ExplosiveBehavior implements PlantBehavior, OnPlantingBehavior {
                     && !zombie.hasCondition(ZombieCondition.FLYING)
                     && ((this.waterTargetsOnly && this.isSubmergedWaterZombie(zombie, board))
                     || (!this.waterTargetsOnly && !zombie.hasCondition(ZombieCondition.SUBMERGED)))
-                    && Math.abs(zombie.getExactX() - plant.getPosition().getX()) <= 1.0) {
+                    && Math.abs(zombie.getExactX() - plant.getPosition().getX()) <= CONTACT_DISTANCE) {
                 zombies.add(zombie);
             }
         }

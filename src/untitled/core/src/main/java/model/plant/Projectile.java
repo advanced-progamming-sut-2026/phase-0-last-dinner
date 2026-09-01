@@ -30,6 +30,7 @@ public class Projectile implements Tickable {
     private ZombieCondition forcedCondition;
     // target haye sabt shode jeloye hit dobare dar yek masir ro migiran
     private List<Zombie> hitZombies;
+    private int directHitCount;
     private int horizontalDirection;
     private int verticalDirection;
     // mokhtasat double harekat narm ro negah midaran va position tile gerde shode ast
@@ -39,6 +40,7 @@ public class Projectile implements Tickable {
     private double originY;
     private double travelledDistance;
     private long remainingTicks;
+    private long spawnDelayTicks;
     private boolean expired;
     private boolean lobbed;
     private boolean peaBased;
@@ -112,7 +114,7 @@ public class Projectile implements Tickable {
                 new ArrayList<>()
         );
 
-        copy.horizontalDirection = normalizeDirection(horizontalDirection, 1);
+        copy.horizontalDirection = normalizeDirection(horizontalDirection, verticalDirection == 0 ? 1 : 0);
         copy.verticalDirection = normalizeDirection(verticalDirection, 0);
         copy.lobbed = this.lobbed;
         copy.peaBased = this.peaBased;
@@ -120,6 +122,7 @@ public class Projectile implements Tickable {
         copy.forcedCondition = this.forcedCondition;
         copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
+        copy.spawnDelayTicks = this.spawnDelayTicks;
         return copy;
     }
 
@@ -149,6 +152,7 @@ public class Projectile implements Tickable {
         copy.forcedCondition = this.forcedCondition;
         copy.sourcePlant = this.sourcePlant;
         copy.remainingTicks = this.remainingTicks;
+        copy.spawnDelayTicks = this.spawnDelayTicks;
         return copy;
     }
 
@@ -200,9 +204,16 @@ public class Projectile implements Tickable {
         }
     }
 
+    public void markDirectHit(Zombie zombie) {
+        if (zombie != null && !this.hitZombies.contains(zombie)) {
+            this.hitZombies.add(zombie);
+            this.directHitCount++;
+        }
+    }
+
     public boolean shouldContinueAfterHit() {
         int extraHits = this.pierceCount + this.bounceCount;
-        return this.hitZombies.size() <= extraHits;
+        return this.directHitCount <= extraHits;
     }
 
     public ZombieCondition getConditionFromType() {
@@ -228,6 +239,11 @@ public class Projectile implements Tickable {
 
     public void move() {
         if (this.expired || this.position == null) {
+            return;
+        }
+
+        if (this.spawnDelayTicks > 0) {
+            this.spawnDelayTicks--;
             return;
         }
 
@@ -327,6 +343,18 @@ public class Projectile implements Tickable {
         this.remainingTicks = Math.max(1, remainingTicks);
     }
 
+    public void setSpawnDelayTicks(long spawnDelayTicks) {
+        this.spawnDelayTicks = Math.max(0, spawnDelayTicks);
+    }
+
+    public void addSpawnDelayTicks(long spawnDelayTicks) {
+        this.spawnDelayTicks += Math.max(0, spawnDelayTicks);
+    }
+
+    public boolean isWaitingForRelease() {
+        return this.spawnDelayTicks > 0;
+    }
+
     // projectile ro az noghte barkhord be samte giah ha hostile mikone
     public void reflectTowardPlants(Position reflectionPosition) {
         this.setPosition(reflectionPosition);
@@ -335,6 +363,7 @@ public class Projectile implements Tickable {
         this.verticalDirection = 0;
         this.travelledDistance = 0;
         this.hitZombies.clear();
+        this.directHitCount = 0;
         this.hostileToPlants = true;
     }
 
