@@ -2,5 +2,6 @@ package network.izombie.protocol;
 
 public enum IZombieReactionKind {
     TEXT,
-    EMOJI
+    EMOJI,
+    GIF
 }
