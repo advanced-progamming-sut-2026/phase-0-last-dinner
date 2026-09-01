@@ -9,16 +9,20 @@ import model.mechanism.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
+import static model.plant.PlantCategory.SUN_PRODUCER;
+
 @Getter
 @Setter
 public class ConveyorBeltLevel extends Level implements Tickable {
     private List<Plant> conveyorPlants;
     private List<Plant> availablePlants;
     private long plantGenerationIntervalTicks;
-    private static final int GENERATION_INTERVAL_SECONDS = 12;
+    private static final int GENERATION_INTERVAL_SECONDS = 4;
     private GameClock gameClock;
     private Random random;
     private long nextGenerationTick;
+    private final boolean skySunEnabled = false;
     public ConveyorBeltLevel(Chapter chapter, List<Plant> availablePlants,
             double baseDifficulty, GameClock gameClock) {
         super(LevelType.CONVEYOR_BELT, chapter, availablePlants, baseDifficulty);
@@ -49,6 +53,8 @@ public class ConveyorBeltLevel extends Level implements Tickable {
         }
 
         Plant template = this.availablePlants.get(this.random.nextInt(this.availablePlants.size()));
+        while (template.getCategories().contains(SUN_PRODUCER))
+            template = this.availablePlants.get(this.random.nextInt(this.availablePlants.size()));
         Plant fresh = template.copyForPlantFood(null);
         fresh.healToFull();
 
@@ -63,6 +69,10 @@ public class ConveyorBeltLevel extends Level implements Tickable {
         this.nextGenerationTick = this.gameClock.getCurrentTick();
         this.generateRandomPlant();
         this.nextGenerationTick += this.plantGenerationIntervalTicks;
+        Board board = getBoard();
+        if (board != null && board.getSunSystem() != null) {
+            board.getSunSystem().setSkySunEnabled(this.skySunEnabled);
+        }
         List<Wave> waves = getWaves();
         if (waves != null && !waves.isEmpty()) {
             waves.get(0).start();
