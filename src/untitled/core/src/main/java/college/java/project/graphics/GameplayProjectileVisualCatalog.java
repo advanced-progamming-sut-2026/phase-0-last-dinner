@@ -91,56 +91,125 @@ final class GameplayProjectileVisualCatalog {
     }
 
     static Visual forProjectile(Projectile projectile) {
+        return forProjectile(projectile, false);
+    }
+
+    static Visual forProjectile(Projectile projectile, boolean plantFoodActive) {
         String sourceName = sourceName(projectile);
+        int tier = sourceTier(projectile);
         if (sourceName.contains("winter melon")) {
-            return Visual.staticVisual(WINTER_MELON, WINTER_MELON_IMPACT, 0.42f, 0.82f);
+            Visual visual = Visual.staticVisual(WINTER_MELON, WINTER_MELON_IMPACT, 0.42f, 0.82f)
+                    .withPam("T_WINTERMELON_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true);
+            return plantFoodActive
+                    ? visual.withImpactPam("WINTERMELON_EXPLODE", "plantfood_WintermelonExplode", null)
+                    : visual.withImpactPam("T_SPLAT_WINTERMELON", numberedClip("animation", tier), null);
         }
         if (sourceName.contains("melon-pult")) {
-            return Visual.staticVisual(MELON, MELON_IMPACT, 0.42f, 0.76f);
+            Visual visual = Visual.staticVisual(MELON, MELON_IMPACT, 0.42f, 0.76f)
+                    .withPam("T_MELON_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true);
+            return plantFoodActive
+                    ? visual.withImpactPam("MELON_EXPLODE", "plantfood_MelonExplode", null)
+                    : visual.withImpactPam("T_SPLAT_MELONPULT", numberedClip("animation", tier), null);
         }
         if (sourceName.contains("pepper-pult")) {
-            return Visual.staticVisual(PEPPER, PEPPER_IMPACT, 0.38f, 0.76f);
+            Visual visual = Visual.staticVisual(PEPPER, PEPPER_IMPACT, 0.38f, 0.76f)
+                    .withPam("T_PEPPERPULT_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true);
+            return plantFoodActive
+                    ? visual.withImpactPam("PEPPERPULT_PROJECTILE_PF_SPLAT",
+                            numberedClip("animation", Math.min(2, tier)), null)
+                    : visual.withImpactPam("T_PEPPERPULT_PROJECTILE_SPLAT",
+                            numberedClip("animation", tier), null);
         }
         if (sourceName.contains("cabbage-pult")) {
-            return Visual.staticVisual(CABBAGE, CABBAGE_IMPACT, 0.37f, 0.50f);
+            if (plantFoodActive) {
+                return Visual.staticVisual(CABBAGE, CABBAGE_IMPACT, 0.44f, 0.66f)
+                        .withPam("CABBAGEPULT_PLANTFOOD_PROJECTILE", "plantfood_cabbage",
+                                "plantfood_cabbage", true)
+                        .withImpactPam("CABBAGEPULT_PLANTFOOD_PROJECTILE",
+                                "plantfood_cabbageExplode", null);
+            }
+            return Visual.staticVisual(CABBAGE, CABBAGE_IMPACT, 0.37f, 0.50f)
+                    .withPam("T_CABBAGEPULT_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true)
+                    .withImpactPam("SPLAT_CABBAGEPULT",
+                            numberedClip("animation", Math.min(2, tier)), null);
         }
         if (sourceName.contains("kernel")) {
             if (projectile != null && projectile.getStunChancePercent() >= 100) {
-                return Visual.staticVisual(BUTTER, BUTTER_IMPACT, 0.32f, 0.58f);
+                return Visual.staticVisual(BUTTER, BUTTER_IMPACT, 0.32f, 0.58f)
+                        .withPam("T_KERNALPULT_PROJECTILE", numberedClip("animation", tier),
+                                numberedClip("animation", tier), true)
+                        .withImpactPam("SPLAT_KERNALPULT_BUTTER",
+                                numberedClip("animation", Math.min(2, tier)), null);
             }
-            return Visual.staticVisual(KERNEL, KERNEL_IMPACT, 0.29f, 0.42f);
+            return Visual.staticVisual(KERNEL, KERNEL_IMPACT, 0.29f, 0.42f)
+                    .withPam("T_KERNALPULT_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true)
+                    .withImpactPam("SPLAT_KERNALPULT_KERNAL",
+                            numberedClip("animation", Math.min(2, tier)), null);
         }
         if (sourceName.contains("citron")) {
-            return Visual.staticVisual(CITRON, CITRON_IMPACT, 0.36f, 0.66f);
+            if (plantFoodActive) {
+                return Visual.staticVisual(CITRON, CITRON_IMPACT, 0.48f, 0.86f)
+                        .withPam("CITRON_PLANTFOOD_ORB", "Plantfood_Citron_Plasma_Orb",
+                                "Plantfood_Citron_Plasma_Orb", true)
+                        .withImpactPam("CITRON_PLANTFOOD_SHOCK",
+                                numberedClip("animation", tier), null);
+            }
+            return Visual.staticVisual(CITRON, CITRON_IMPACT, 0.36f, 0.66f)
+                    .withPam("T_CITRON_CITRUS_ORB", citronOrbClip(tier), citronOrbClip(tier), true)
+                    .withImpactPam("T_CITRON_CITRUS_ORB_HIT",
+                            numberedClip("animation", tier), null);
         }
         if (sourceName.contains("bowling bulb")) {
-            return bowlingBulbVisual(projectile);
+            return bowlingBulbVisual(projectile, plantFoodActive);
         }
         if (sourceName.contains("starfruit")) {
-            return Visual.staticVisual(STARFRUIT, STARFRUIT_IMPACT, 0.29f, 0.56f);
+            return Visual.staticVisual(STARFRUIT, STARFRUIT_IMPACT,
+                            plantFoodActive ? 0.36f : 0.29f, 0.56f)
+                    .withPam(plantFoodActive ? "STARFRUIT_PROJECTILE_PLANTFOOD" : "T_STARFRUIT_PROJECTILE",
+                            plantFoodActive ? "animation" : numberedClip("animation", tier),
+                            plantFoodActive ? "animation" : numberedClip("animation", tier), true)
+                    .withImpactPam("T_STARFRUIT_PROJECTILE_HIT",
+                            numberedClip("idle", tier), null);
         }
         if (sourceName.contains("rotobaga")) {
             return Visual.staticVisual(ROTO, ROTO_IMPACT, 0.27f, 0.50f)
-                    .withPam("ROTORUTABAGA_PROJECTILE1", "animation", "animation", true)
+                    .withPam("T_ROTORUTABAGA_PROJECTILE1", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true)
                     .withOverlayPam("ROTORUTABAGA_PROJECTILE2", "animation", 0.62f)
-                    .withImpactPam("ROTORUTABAGA_PROJECTILE_HIT", "animation", null)
+                    .withImpactPam("T_ROTORUTABAGA_PROJECTILE_HIT",
+                            numberedClip("animation", tier), null)
                     .rotateToDirection();
         }
         if (sourceName.contains("puff-shroom")) {
             return Visual.staticVisual(PUFF, FUME_IMPACT, 0.21f, 0.40f);
         }
         if (sourceName.contains("sea-shroom")) {
-            return Visual.staticVisual(SEA_SHROOM, FUME_IMPACT, 0.23f, 0.42f);
+            return Visual.staticVisual(SEA_SHROOM, FUME_IMPACT, 0.23f, 0.42f)
+                    .withPam("SEASHROOM_PROJECTILE",
+                            numberedClip("animation", Math.min(2, tier)),
+                            numberedClip("animation", Math.min(2, tier)), true)
+                    .withImpactPam("FUMESHROOM_BUBBLES_HIT", "animation", null);
         }
         if (sourceName.contains("goo peashooter")) {
-            int tier = sourceTier(projectile);
             return Visual.staticVisual(GOO, PEA_IMPACT, 0.27f, 0.50f)
                     .withPam("GOOPEASHOOTER_PROJECTILES", "projectile_t" + tier,
                             "projectile_t" + tier, true)
-                    .withImpactPam("GOOPEASHOOTER_PROJECTILES", "hit_t" + tier, null);
+                    .withImpactPam(plantFoodActive ? "GOOPEASHOOTER_PLANTFOOD_TILE"
+                                    : "GOOPEASHOOTER_PROJECTILES",
+                            plantFoodActive ? numberedClip("animation", Math.min(2, tier))
+                                    : "hit_t" + tier, null);
         }
         if (sourceName.contains("grapeshot")) {
-            return Visual.staticVisual(GRAPE, GRAPE_IMPACT, 0.24f, 0.54f);
+            String clip = grapeshotDirectionClip(projectile);
+            return Visual.staticVisual(GRAPE, GRAPE_IMPACT, 0.24f, 0.54f)
+                    .withPam("GRAPESHOT_PROJECTILE", clip, clip, true)
+                    .withImpactPam("GRAPESHOT_HIT", numberedClip("animation", tier), null)
+                    .rotateToDirection();
         }
         if (sourceName.contains("mega gatling")) {
             boolean giant = isGiantPea(projectile, sourceName);
@@ -154,10 +223,16 @@ final class GameplayProjectileVisualCatalog {
                     .withPam("PEAPOD_PLANTFOOD_GIANTPEA", "animation", "animation", true);
         }
         if (isGiantPea(projectile, sourceName)) {
-            return Visual.staticVisual(GIANT_PEA, GIANT_PEA_IMPACT, 0.43f, 0.76f);
+            Visual giantPea = Visual.staticVisual(GIANT_PEA, GIANT_PEA_IMPACT, 0.43f, 0.76f);
+            if (sourceName.contains("repeater")) {
+                giantPea.withPam("REPEATER_PLANTFOOD_GIANTPEA", "animation", "animation", true);
+            }
+            return giantPea;
         }
         if (sourceName.contains("caulipower")) {
-            return Visual.staticVisual(CAULIPOWER, CAULIPOWER_IMPACT, 0.31f, 0.46f);
+            return Visual.staticVisual(CAULIPOWER, CAULIPOWER_IMPACT, 0.31f, 0.46f)
+                    .withPam("CAULIPOWER_PROJECTILE", numberedClip("animation", tier),
+                            numberedClip("animation", tier), true);
         }
         if (sourceName.contains("electric blueberry")) {
             return Visual.staticVisual(ELECTRIC_BLUEBERRY, ELECTRIC_BLUEBERRY_IMPACT, 0.34f, 0.72f)
@@ -165,10 +240,27 @@ final class GameplayProjectileVisualCatalog {
                     .withImpactPam("ELECTRICBLUEBERRY_CLOUD_PROJECTILE", "attack", "death");
         }
         if (sourceName.contains("fume-shroom")) {
-            return Visual.staticVisual(FUME, FUME_IMPACT, 0.38f, 0.52f);
+            String clip = plantFoodActive ? "plantfood" : "special";
+            return Visual.staticVisual(FUME, FUME_IMPACT, 0.38f, 0.52f)
+                    .withPam("FUMESHROOM_BUBBLES", clip, clip, true)
+                    .withImpactPam("FUMESHROOM_BUBBLES_HIT", "animation", null);
         }
         if (sourceName.contains("cactus")) {
-            return Visual.staticVisual(CACTUS, CACTUS_IMPACT, 0.31f, 0.52f);
+            boolean airAttack = projectile != null && (projectile.getVerticalDirection() != 0
+                    || projectile.getTarget() != null && projectile.getTarget().isAirborne());
+            String animation = plantFoodActive ? "CACTUS_PROJECTILE_PLANTFOOD"
+                    : airAttack ? "CACTUS_AIRATTACK" : "T_CACTUS_PROJECTILE";
+            String clip = plantFoodActive ? "idle" : numberedClip("idle", tier);
+            return Visual.staticVisual(CACTUS, CACTUS_IMPACT, 0.31f, 0.52f)
+                    .withPam(animation, clip, clip, true)
+                    .withImpactPam("CACTUS_PROJECTILE_HIT",
+                            numberedClip("animation", tier), null)
+                    .rotateToDirection();
+        }
+        if (sourceName.contains("ice-shroom")) {
+            return Visual.staticVisual(SNOW_PEA, WINTER_MELON_IMPACT, 0.34f, 0.74f)
+                    .withPam("ICESHROOM_PROJECTILE", "animation", "animation", true)
+                    .withImpactPam("ICESHROOM_FX", "animation", null);
         }
         ProjectileType type = projectile == null ? ProjectileType.NORMAL : projectile.getType();
         if (type == ProjectileType.FIRE || sourceName.contains("fire peashooter")) {
@@ -176,7 +268,11 @@ final class GameplayProjectileVisualCatalog {
         }
         if (type == ProjectileType.ICE || sourceName.contains("snow pea")) {
             return Visual.staticVisual(SNOW_PEA, PEA_IMPACT, 0.27f, 0.50f)
-                    .withImpactPam("SPLAT_SNOW_PEA", "animation", null);
+                    .withImpactPamSequence(
+                            plantFoodActive ? "SNOWPEA_PLANTFOOD_SLOW" : "SPLAT_SNOW_PEA",
+                            plantFoodActive ? "plantfood_on" : "animation",
+                            plantFoodActive ? "plantfood_idle" : null,
+                            plantFoodActive ? "plantfood_off" : null);
         }
         if (type == ProjectileType.POISON) {
             return Visual.staticVisual(PEA, PEA_IMPACT, 0.24f, 0.50f)
@@ -211,17 +307,48 @@ final class GameplayProjectileVisualCatalog {
         return DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression()) >= 300;
     }
 
-    private static Visual bowlingBulbVisual(Projectile projectile) {
+    private static Visual bowlingBulbVisual(Projectile projectile, boolean plantFoodActive) {
+        if (plantFoodActive) {
+            return Visual.staticVisual(BULB_THREE, PEA_IMPACT, 0.44f, 0.82f)
+                    .withPam("BOWLINGBULB_PLANTFOOD_PROJECTILE", "animation", "animation", true)
+                    .withImpactPam("BOWLINGBULB_PLANTFOOD_PROJECTILE", "explosion", null);
+        }
         int damage = projectile == null
                 ? 0
                 : DamageExpressionParser.parseTotalDamage(projectile.getDamageExpression());
         if (damage >= 160) {
-            return Visual.staticVisual(BULB_THREE, PEA_IMPACT, 0.39f, 0.58f);
+            return Visual.staticVisual(BULB_THREE, PEA_IMPACT, 0.39f, 0.58f)
+                    .withPam("BOWLINGBULB_PROJECTILE3", "animation", "animation", true);
         }
         if (damage >= 100) {
-            return Visual.staticVisual(BULB_TWO, PEA_IMPACT, 0.35f, 0.54f);
+            return Visual.staticVisual(BULB_TWO, PEA_IMPACT, 0.35f, 0.54f)
+                    .withPam("BOWLINGBULB_PROJECTILE2", "animation", "animation", true);
         }
-        return Visual.staticVisual(BULB_ONE, PEA_IMPACT, 0.31f, 0.50f);
+        return Visual.staticVisual(BULB_ONE, PEA_IMPACT, 0.31f, 0.50f)
+                .withPam("BOWLINGBULB_PROJECTILE1", "animation", "animation", true);
+    }
+
+    private static String numberedClip(String base, int tier) {
+        return tier <= 1 ? base : base + tier;
+    }
+
+    private static String citronOrbClip(int tier) {
+        return tier <= 1 ? "Citron_Citrus_Orb" : "Citron_Citrus_Orb" + tier;
+    }
+
+    private static String grapeshotDirectionClip(Projectile projectile) {
+        if (projectile == null) {
+            return "animation_forward";
+        }
+        if (projectile.getVerticalDirection() < 0) {
+            return "animation_verticle_up";
+        }
+        if (projectile.getVerticalDirection() > 0) {
+            return "animation_verticle_down";
+        }
+        return projectile.getHorizontalDirection() < 0
+                ? "animation_backward"
+                : "animation_forward";
     }
 
     private static String sourceName(Projectile projectile) {
@@ -251,6 +378,7 @@ final class GameplayProjectileVisualCatalog {
         private String impactPamAnimationName;
         private String impactPamClip;
         private String impactPamFollowupClip;
+        private String impactPamEndClip;
         private boolean rotateToDirection;
 
         private Visual(
@@ -292,9 +420,19 @@ final class GameplayProjectileVisualCatalog {
         }
 
         Visual withImpactPam(String animation, String clip, String followupClip) {
+            return withImpactPamSequence(animation, clip, followupClip, null);
+        }
+
+        Visual withImpactPamSequence(
+                String animation,
+                String clip,
+                String followupClip,
+                String endClip
+        ) {
             this.impactPamAnimationName = animation;
             this.impactPamClip = clip;
             this.impactPamFollowupClip = followupClip;
+            this.impactPamEndClip = endClip;
             return this;
         }
 
@@ -318,6 +456,7 @@ final class GameplayProjectileVisualCatalog {
         String getImpactPamAnimationName() { return this.impactPamAnimationName; }
         String getImpactPamClip() { return this.impactPamClip; }
         String getImpactPamFollowupClip() { return this.impactPamFollowupClip; }
+        String getImpactPamEndClip() { return this.impactPamEndClip; }
         boolean shouldRotateToDirection() { return this.rotateToDirection; }
         boolean usesPam() { return this.pamAnimationName != null; }
         boolean usesImpactPam() { return this.impactPamAnimationName != null; }

@@ -8,6 +8,7 @@ import model.plant.Projectile;
 import model.plant.ProjectileType;
 import model.plant.behavior.ExplosiveBehavior;
 import model.plant.behavior.ExplosivePattern;
+import model.plant.behavior.MeleeBehavior;
 import model.zombie.Zombie;
 import org.junit.Test;
 
@@ -99,6 +100,8 @@ public class PlantZombieCombatTimingTest {
         Zombie front = this.addZombie(application, board, "ZombieDefault", 5, 2);
         Zombie back = this.addZombie(application, board, "ZombieDefault", 3, 2);
         Zombie otherLane = this.addZombie(application, board, "ZombieDefault", 5, 1);
+        MeleeBehavior behavior = (MeleeBehavior) bonkChoy.getBehavior();
+        long attackSequence = behavior.getAttackSequence();
         int frontHealth = front.getHealth();
         int backHealth = back.getHealth();
         int otherLaneHealth = otherLane.getHealth();
@@ -110,6 +113,7 @@ public class PlantZombieCombatTimingTest {
         assertEquals(frontHealth - 15, front.getHealth());
         assertEquals(backHealth - 15, back.getHealth());
         assertEquals(otherLaneHealth, otherLane.getHealth());
+        assertEquals(attackSequence + 1, behavior.getAttackSequence());
     }
 
     @Test

@@ -20,6 +20,7 @@ public class MeleeBehavior implements PlantBehavior {
     private long remainingDigestTicks;
     // age marhale roshd giah haye ramping ro moshakhas mikone
     private long ageTicks;
+    private long attackSequence;
 
     public MeleeBehavior(
             String damageExpression,
@@ -80,11 +81,15 @@ public class MeleeBehavior implements PlantBehavior {
                 this.rampStage()
         );
 
+        boolean attacked = false;
+
         for (Zombie zombie : zombies) {
-            if (zombie == null || zombie.isHypnotized()
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized()
                     || zombie.hasCondition(model.zombie.ZombieCondition.SUBMERGED)) {
                 continue;
             }
+
+            attacked = true;
 
             if (DamageExpressionParser.isInstantKill(activeDamage)) {
                 board.getCombatSystem().killZombie(zombie, plant);
@@ -94,6 +99,14 @@ public class MeleeBehavior implements PlantBehavior {
                 board.getCombatSystem().applyDamageToZombie(zombie, damage, plant);
             }
         }
+
+        if (attacked) {
+            this.attackSequence++;
+        }
+    }
+
+    public long getAttackSequence() {
+        return this.attackSequence;
     }
 
     @Override

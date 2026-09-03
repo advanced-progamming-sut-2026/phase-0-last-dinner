@@ -23,6 +23,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 /** Renders direct and lobbed projectiles using live Phase 1 projectile coordinates. */
 public final class GameplayProjectileLayer extends Group {
@@ -44,6 +45,7 @@ public final class GameplayProjectileLayer extends Group {
     private Consumer<Projectile> impactListener;
     private ProjectileReleaseDelayProvider releaseDelayProvider;
     private Function<Projectile, Vector2> launchPointProvider;
+    private Predicate<Plant> plantFoodVisualProvider;
     private final Map<Projectile, RenderedProjectile> actors = new IdentityHashMap<>();
 
     public GameplayProjectileLayer(GameplayWorldDataSource dataSource) {
@@ -91,6 +93,11 @@ public final class GameplayProjectileLayer extends Group {
     /** Supplies an exact visual launch point in lawn-local coordinates. */
     public void setLaunchPointProvider(Function<Projectile, Vector2> launchPointProvider) {
         this.launchPointProvider = launchPointProvider;
+    }
+
+    /** Graphics-only bridge used to select authored Plant Food projectile PAMs. */
+    public void setPlantFoodVisualProvider(Predicate<Plant> plantFoodVisualProvider) {
+        this.plantFoodVisualProvider = plantFoodVisualProvider;
     }
 
     void setRenderHost(Group renderHost) {
@@ -304,7 +311,11 @@ public final class GameplayProjectileLayer extends Group {
     }
 
     private RenderedProjectile createProjectileActor(Projectile projectile) {
-        GameplayProjectileVisualCatalog.Visual visual = GameplayProjectileVisualCatalog.forProjectile(projectile);
+        Plant source = projectile == null ? null : projectile.getSourcePlant();
+        boolean plantFoodActive = source != null && this.plantFoodVisualProvider != null
+                && this.plantFoodVisualProvider.test(source);
+        GameplayProjectileVisualCatalog.Visual visual =
+                GameplayProjectileVisualCatalog.forProjectile(projectile, plantFoodActive);
         Group root = new Group();
         root.setTouchable(Touchable.disabled);
         root.setBounds(0f, 0f, getWidth(), getHeight());
@@ -465,16 +476,28 @@ public final class GameplayProjectileLayer extends Group {
 
         String nextClip = impact.animation.findClip(followup);
         float secondDuration = impact.animation.getClipDuration(nextClip, 0.28f);
+        String end = rendered.visual.getImpactPamEndClip();
+        String endClip = end == null || end.isBlank() ? null : impact.animation.findClip(end);
+        float endDuration = impact.animation.getClipDuration(endClip, 0.28f);
+        List<com.badlogic.gdx.scenes.scene2d.Action> actions = new ArrayList<>();
+        actions.add(Actions.delay(Math.max(0.06f, firstDuration)));
+        actions.add(Actions.run(() -> {
+            if (nextClip != null) {
+                impact.actor.setAnimation(impact.animation.getPath(), nextClip);
+                impact.actor.setLooping(false);
+            }
+        }));
+        actions.add(Actions.delay(Math.max(0.06f, secondDuration)));
+        if (endClip != null) {
+            actions.add(Actions.run(() -> {
+                impact.actor.setAnimation(impact.animation.getPath(), endClip);
+                impact.actor.setLooping(false);
+            }));
+            actions.add(Actions.delay(Math.max(0.06f, endDuration)));
+        }
+        actions.add(Actions.removeActor());
         impact.actor.addAction(Actions.sequence(
-                Actions.delay(Math.max(0.06f, firstDuration)),
-                Actions.run(() -> {
-                    if (nextClip != null) {
-                        impact.actor.setAnimation(impact.animation.getPath(), nextClip);
-                        impact.actor.setLooping(false);
-                    }
-                }),
-                Actions.delay(Math.max(0.06f, secondDuration)),
-                Actions.removeActor()
+                actions.toArray(new com.badlogic.gdx.scenes.scene2d.Action[0])
         ));
         return true;
     }

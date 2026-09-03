@@ -3,6 +3,7 @@ package model.minigame.izombieminigame.multiplayer;
 import model.Plant;
 import model.mechanism.Board;
 import model.plant.Projectile;
+import model.plant.behavior.MeleeBehavior;
 import model.zombie.Zombie;
 import model.zombie.ZombieArmor;
 import model.zombie.ZombieCondition;
@@ -159,6 +160,10 @@ public final class IZombieSnapshotBuilder {
 
         if (plant.isTerrainDisabled()) {
             states.add("TERRAIN_DISABLED");
+        }
+
+        if (plant.getBehavior() instanceof MeleeBehavior meleeBehavior) {
+            states.add("MELEE_ATTACK:" + meleeBehavior.getAttackSequence());
         }
 
         return states;

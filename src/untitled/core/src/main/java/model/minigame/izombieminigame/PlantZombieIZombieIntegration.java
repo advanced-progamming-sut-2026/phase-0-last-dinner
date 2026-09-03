@@ -55,11 +55,11 @@ public class PlantZombieIZombieIntegration implements IZombieIntegration {
   };
   private static final String[][] ZOMBIES_BY_STAGE = {
     {
-      "ZombieTutorialDefault",
-      "ZombieTutorialArmor1Default",
-      "ZombieTutorialArmor2Default",
-      "ZombieTutorialImpDefault",
-      "ZombieMummyDefault"
+      "ZombieDefault",
+      "ZombieArmor1",
+      "ZombieArmor2",
+      "ZombieImp",
+      "ZombieArmor4"
     },
     {
       "ZombieMummyArmor1Default",

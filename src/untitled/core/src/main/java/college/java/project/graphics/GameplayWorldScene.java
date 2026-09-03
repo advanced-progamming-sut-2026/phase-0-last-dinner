@@ -146,6 +146,7 @@ public final class GameplayWorldScene extends Group {
         );
         this.projectileLayer.setReleaseDelayProvider(this.plantLayer::getAttackReleaseDelay
         );
+        this.projectileLayer.setPlantFoodVisualProvider(this.plantLayer::isPlantFoodAnimationActive);
         setLawnBounds(this.projectileLayer);
         addActor(this.projectileLayer);
 

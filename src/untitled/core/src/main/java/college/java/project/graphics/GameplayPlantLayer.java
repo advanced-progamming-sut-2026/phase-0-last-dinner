@@ -5,6 +5,7 @@ import com.badlogic.gdx.files.FileHandle;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.scenes.scene2d.Action;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
 import com.badlogic.gdx.scenes.scene2d.Touchable;
@@ -15,6 +16,8 @@ import com.badlogic.gdx.scenes.scene2d.utils.TextureRegionDrawable;
 import com.badlogic.gdx.utils.Scaling;
 import model.Plant;
 import model.mechanism.Position;
+import model.mechanism.TerrainType;
+import model.mechanism.Tile;
 import model.plant.PlantTag;
 import model.plant.Projectile;
 import model.plant.behavior.ExplosiveBehavior;
@@ -164,10 +167,23 @@ public final class GameplayPlantLayer extends Group {
         return this.actors.size();
     }
 
+    /** Exposes only visual state; projectile gameplay remains entirely model-owned. */
+    public boolean isPlantFoodAnimationActive(Plant plant) {
+        RenderedPlant rendered = plant == null ? null : this.actors.get(plant);
+        return rendered != null && (rendered.plantFoodRemaining > 0f
+                || rendered.plantFoodSequenceIndex >= 0);
+    }
+
     public boolean playAttack(Plant plant) {
         RenderedPlant rendered = plant == null ? null : this.actors.get(plant);
+        if (rendered != null && "ice-shroom".equals(normalize(plant.getName()))) {
+            spawnPamAtPlant(rendered, "ICESHROOM_MELEE_ATTACK", "animation", 1.34f, 0f, false);
+        }
         if (rendered != null && isBowlingBulb(plant.getName())) {
             return playBowlingAttack(rendered);
+        }
+        if (rendered != null && "citron".equals(normalize(plant.getName()))) {
+            return playTemporarySequence(rendered, "charge", "attack", "recovery");
         }
         return playTemporaryAnimation(plant, AnimationKind.ATTACK);
     }
@@ -179,8 +195,14 @@ public final class GameplayPlantLayer extends Group {
         if (rendered == null || rendered.plantFoodRemaining > 0f) {
             return false;
         }
+        if ("ice-shroom".equals(normalize(plant.getName()))) {
+            spawnPamAtPlant(rendered, "ICESHROOM_MELEE_ATTACK", "animation", 1.34f, 0f, false);
+        }
         if (isBowlingBulb(plant.getName())) {
             return playBowlingAttack(rendered);
+        }
+        if ("citron".equals(normalize(plant.getName()))) {
+            return playTemporarySequence(rendered, "charge", "attack", "recovery");
         }
         if (!(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
             playFallbackMotion(rendered, AnimationKind.ATTACK);
@@ -210,9 +232,10 @@ public final class GameplayPlantLayer extends Group {
         if (normalize(plant.getName()).equals("rotobaga")) {
             Vector2 launch = getProjectileLaunchPoint(projectile);
             if (launch != null) {
+                int tier = Math.max(1, Math.min(3, plant.getLevel()));
                 spawnPamEffect(
-                        "ROTORUTABAGA_MUZZLE_BURST",
-                        "animation",
+                        "T_ROTORUTABAGA_MUZZLE_BURST",
+                        tier <= 1 ? "animation" : "animation" + tier,
                         launch.x,
                         launch.y,
                         Math.min(getWidth() / GameplayBoardInteractionLayer.COLUMN_COUNT,
@@ -561,6 +584,12 @@ public final class GameplayPlantLayer extends Group {
                 }
             }
         }
+        if (name.equals("cactus")) {
+            String cactus = rendered.cactusExtended
+                    ? rendered.animation.findClip("attack_stretch", "attack")
+                    : rendered.animation.findClip("down_attack", "attack");
+            if (cactus != null) return cactus;
+        }
         return rendered.animation.getAttackClip();
     }
 
@@ -881,15 +910,7 @@ public final class GameplayPlantLayer extends Group {
                 || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
             return false;
         }
-        String clip = rendered.animation.findClip("catch", "special", "busy");
-        if (clip == null) {
-            return false;
-        }
-        PamAnimationActor actor = (PamAnimationActor) rendered.body;
-        actor.setAnimation(rendered.animation.getPath(), clip);
-        actor.setLooping(false);
-        rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(clip, 0.82f);
-        return true;
+        return playTemporarySequence(rendered, "catch", "busy", "special");
     }
 
     public boolean playIntro(Plant plant) {
@@ -926,6 +947,7 @@ public final class GameplayPlantLayer extends Group {
         }
         showPlantFoodGlow(rendered);
         playAuthenticPlantFoodEffect(rendered, plant);
+        rendered.plantFoodTriggered = true;
         if (!(rendered.body instanceof PamAnimationActor) || rendered.animation == null) {
             rendered.body.clearActions();
             rendered.body.setOrigin(
@@ -975,7 +997,18 @@ public final class GameplayPlantLayer extends Group {
             return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
         }
         if (name.equals("cactus")) {
-            return orderedExistingClips(rendered.animation, "plantfood", "attack_plantfood");
+            return rendered.cactusExtended
+                    ? orderedExistingClips(rendered.animation, "up_plantfood", "plantfood", "attack_plantfood")
+                    : orderedExistingClips(rendered.animation, "down_plantfood", "down_attack_plantfood", "down_idle_plantfood");
+        }
+        if (name.equals("caulipower")) {
+            return orderedExistingClips(rendered.animation, "plantfood_start", "plantfood_loop", "plantfood_loop2", "plantfood_end");
+        }
+        if (name.equals("bowling bulb")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood1", "plantfood2", "plantfood3", "plantfood_idle");
+        }
+        if (name.equals("potato mine") || name.equals("primal potato mine")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood2", "plantfood3", "plantfood_off");
         }
         if (name.equals("torchwood")) {
             return rendered.torchwoodBoosted
@@ -983,7 +1016,15 @@ public final class GameplayPlantLayer extends Group {
                     : orderedExistingClips(rendered.animation, "plantfood_on", "plantfood");
         }
         if (name.equals("explode-o-nut")) {
-            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood2", "plantfood3", "plantfood_off");
+        }
+        if (name.equals("magnet-shroom")) {
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood_collection", "plantfood", "plantfood_off");
+        }
+        if (name.equals("squash")) {
+            return squashFacesLeft(plant)
+                    ? orderedExistingClips(rendered.animation, "size_up", "plantfood_jump_down_left")
+                    : orderedExistingClips(rendered.animation, "size_up", "plantfood_jump_down_right");
         }
         if (name.equals("repeater")) {
             return orderedExistingClips(rendered.animation, "plantfood", "plantfood2");
@@ -1001,7 +1042,7 @@ public final class GameplayPlantLayer extends Group {
             return orderedExistingClips(rendered.animation, "plantfood", "plantfood2", "plantfood3");
         }
         if (isDefenderNut(name)) {
-            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood_off");
+            return orderedExistingClips(rendered.animation, "plantfood_on", "plantfood", "plantfood2", "plantfood3", "plantfood_off");
         }
         return rendered.animation.getPlantFoodSequence();
     }
@@ -1097,6 +1138,7 @@ public final class GameplayPlantLayer extends Group {
             advanceTemporaryAnimation(rendered, delta);
             advanceBowlingRecharge(rendered, delta);
             advanceMineArming(rendered, plant, delta);
+            syncWaterState(rendered, plant);
             updateDamageFlash(rendered, plant, delta);
             updateDamageStage(rendered, plant);
             syncSpecialPlantVisuals(rendered, plant, delta);
@@ -1145,12 +1187,35 @@ public final class GameplayPlantLayer extends Group {
         }
     }
 
+    private void syncWaterState(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null || rendered.animation == null) return;
+        boolean onWater = isWaterTile(plant.getPosition()) && rendered.animation.hasClip("water");
+        if (rendered.waterStateInitialized && onWater == rendered.onWater) return;
+        rendered.waterStateInitialized = true;
+        rendered.onWater = onWater;
+        if (rendered.temporaryAnimationRemaining <= 0f && rendered.plantFoodRemaining <= 0f && rendered.damageStage <= 0) {
+            restoreStableClip(rendered);
+        }
+    }
+
+    private boolean isWaterTile(Position position) {
+        if (position == null) return false;
+        for (Tile tile : this.worldDataSource.getTiles()) {
+            if (tile != null && tile.getPosition() != null && tile.getPosition().equals(position)
+                    && tile.getTerrainType() == TerrainType.WATER) return true;
+        }
+        return false;
+    }
+
 
     private void syncSpecialPlantVisuals(RenderedPlant rendered, Plant plant, float delta) {
         if (rendered == null || plant == null || plant.getPosition() == null) {
             return;
         }
         String name = normalize(plant.getName());
+        if (name.equals("doom-shroom")) {
+            syncDoomShroomStage(rendered);
+        }
         syncExplosiveDetonationVisual(rendered, plant, name, delta);
         if (name.equals("kiwibeast")) {
             syncKiwibeastStage(rendered, plant);
@@ -1176,6 +1241,12 @@ public final class GameplayPlantLayer extends Group {
         if (name.equals("pumpkin")) {
             syncPumpkinPlantFoodArmor(rendered, plant);
         }
+        if (name.equals("cactus")) {
+            syncCactusState(rendered, plant);
+        }
+        if (name.contains("squash")) {
+            rendered.squashFacesLeft = squashFacesLeft(plant);
+        }
         if (plant.isDisabled() || plant.isDead()) {
             return;
         }
@@ -1197,6 +1268,39 @@ public final class GameplayPlantLayer extends Group {
         }
     }
 
+    private void syncDoomShroomStage(RenderedPlant rendered) {
+        if (rendered == null || rendered.animation == null || rendered.detonationVisualStarted) return;
+        long ageTicks = rendered.firstSeenTick < 0L ? 0L : Math.max(0L, this.worldDataSource.getCurrentTick() - rendered.firstSeenTick);
+        int stage = ageTicks >= 720L ? 3 : ageTicks >= 240L ? 2 : 1;
+        if (stage == rendered.doomStage) return;
+        int previous = rendered.doomStage;
+        rendered.doomStage = stage;
+        if (previous == 0) playTemporarySequence(rendered, "stage1_spawn");
+        else if (previous == 1 && stage == 2) playTemporarySequence(rendered, "stage1_transform");
+        else if (previous == 2 && stage == 3) playTemporarySequence(rendered, "stage2_transform");
+        else restoreStableClip(rendered);
+    }
+
+    private void syncCactusState(RenderedPlant rendered, Plant plant) {
+        if (rendered == null || plant == null || rendered.animation == null) return;
+        boolean extended = hasAirborneHostileInLane(plant);
+        if (rendered.cactusStateInitialized && extended == rendered.cactusExtended) return;
+        rendered.cactusStateInitialized = true;
+        rendered.cactusExtended = extended;
+        if (extended) playTemporarySequence(rendered, "up_stretch", "up");
+        else playTemporarySequence(rendered, "down_stretch", "down");
+    }
+
+    private boolean hasAirborneHostileInLane(Plant plant) {
+        if (plant == null || plant.getPosition() == null) return false;
+        int row = plant.getPosition().getY();
+        for (model.zombie.Zombie zombie : this.worldDataSource.getZombiesOnBoard()) {
+            if (zombie != null && !zombie.isDead() && !zombie.isHypnotized()
+                    && zombie.isAirborne() && zombie.getPosition() != null && zombie.getPosition().getY() == row) return true;
+        }
+        return false;
+    }
+
     private void syncExplosiveDetonationVisual(
             RenderedPlant rendered,
             Plant plant,
@@ -1215,9 +1319,7 @@ public final class GameplayPlantLayer extends Group {
 
             if (rendered.body instanceof PamAnimationActor && rendered.animation != null) {
                 String clip = normalizedName.equals("doom-shroom")
-                        ? rendered.animation.findClip(
-                                "stage3_explode_short", "stage3_explode", "stage2_explode", "stage1_explode"
-                        )
+                        ? doomExplosionClip(rendered)
                         : rendered.animation.getAttackClip();
                 if (clip != null) {
                     PamAnimationActor actor = (PamAnimationActor) rendered.body;
@@ -1255,15 +1357,10 @@ public final class GameplayPlantLayer extends Group {
             return;
         }
         PamAnimationActor actor = (PamAnimationActor) rendered.body;
-        String growth = previous == 1 && stage == 2
-                ? rendered.animation.findClip("growth_stage1")
-                : previous == 2 && stage == 3
-                ? rendered.animation.findClip("growth_stage2")
-                : null;
-        if (growth != null) {
-            actor.setAnimation(rendered.animation.getPath(), growth);
-            actor.setLooping(false);
-            rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(growth, 0.75f);
+        if (previous == 1 && stage == 2 && playTemporarySequence(rendered, "growth_stage1", "growth_stage1_2")) {
+            return;
+        }
+        if (previous == 2 && stage == 3 && playTemporarySequence(rendered, "growth_stage2")) {
             return;
         }
         String idle = kiwibeastIdleClip(rendered.animation, stage);
@@ -1356,8 +1453,7 @@ public final class GameplayPlantLayer extends Group {
         boolean digesting = digestTicks > 0L;
         if (digesting && rendered.lastChomperDigestTicks <= 0L) {
             rendered.chomperDigesting = true;
-            rendered.chomperBiteEndPending = true;
-            playChomperClip(rendered, "bite", 0.50f);
+            playTemporarySequence(rendered, "bite", "bite_end", "special");
             fireAttackEvent(plant);
         } else if (!digesting && rendered.lastChomperDigestTicks > 0L) {
             rendered.chomperDigesting = false;
@@ -1731,22 +1827,40 @@ public final class GameplayPlantLayer extends Group {
         } else if (name.equals("sun bean")) {
             spawnPamAtPlant(rendered, "SUNBEAN_PLANTFOOD_EFFECT_OVERLAY1", "animation", 1.28f, 0f, false);
             spawnPamAtPlant(rendered, "SUNBEAN_PLANTFOOD_EFFECT_OVERLAY2", "animation", 1.38f, 0f, false);
+        } else if (name.equals("citron")) {
+            spawnPamAtPlant(rendered, "CITRON_PLANTFOOD_LIGHTNING_CHARGE",
+                    "Citron_Plantfood_Lightning_Charge", 1.72f, 0f, false);
+        } else if (name.equals("snow pea")) {
+            spawnPamSequenceAtPlant(rendered, "SNOWPEA_PLANTFOOD", 1.42f,
+                    "plantfood_on", "plantfood_off");
+        } else if (name.equals("goo peashooter")) {
+            spawnPamAtPlant(rendered, "GOOPEASHOOTER_PLANTFOOD", "animation", 1.46f, 0f, false);
+        } else if (name.equals("ice-shroom")) {
+            spawnPamAtPlant(rendered, "ICESHROOM_FX", "animation", 1.84f, 0f, false);
+            spawnPamSequenceAtPlant(rendered, "ICESHROOM_TILE_FX", 1.66f,
+                    "spawn", "animation_loop", "end");
         }
     }
 
     private boolean finishLiveExplosiveBody(Plant plant, RenderedPlant rendered) {
-        if (plant == null || rendered == null || !rendered.detonationVisualStarted
-                || !normalize(plant.getName()).equals("doom-shroom")) {
-            return false;
+        if (plant == null || rendered == null) return false;
+        String name = normalize(plant.getName());
+        if (name.equals("doom-shroom") && rendered.detonationVisualStarted) {
+            fireExplosionVisualEvent();
+            float remaining = Math.max(0.08f, rendered.detonationVisualDuration - rendered.detonationVisualElapsed);
+            rendered.root.addAction(Actions.sequence(Actions.delay(remaining), Actions.removeActor()));
+            return true;
         }
-        // damage va crater vasate clip release mishan va nime dovom clip edame peyda mikone
-        fireExplosionVisualEvent();
-        float remaining = Math.max(0.08f, rendered.detonationVisualDuration - rendered.detonationVisualElapsed);
-        rendered.root.addAction(Actions.sequence(
-                Actions.delay(remaining),
-                Actions.removeActor()
-        ));
-        return true;
+        if (name.equals("grapeshot")) {
+            spawnPamAtPlant(rendered, "ESCAPEROOT_EXPLOSION_GRAPESHOT", "animation", 1.95f, 0f, false);
+            fireExplosionVisualEvent();
+            List<String> clips = rendered.animation == null ? List.of()
+                    : rendered.detonationVisualStarted
+                    ? orderedExistingClips(rendered.animation, "attack_t2", "attack_t3")
+                    : orderedExistingClips(rendered.animation, "attack", "attack_t2", "attack_t3");
+            if (playDetachedSequence(rendered, clips)) return true;
+        }
+        return false;
     }
 
     private boolean playAuthenticRemovalVisual(Plant plant, RenderedPlant rendered) {
@@ -1776,17 +1890,11 @@ public final class GameplayPlantLayer extends Group {
             return true;
         }
         if (name.equals("doom-shroom")) {
-            String clip = rendered.animation == null ? "stage1_explode"
-                    : rendered.animation.findClip("stage3_explode_short", "stage3_explode", "stage2_explode", "stage1_explode");
+            String clip = rendered.animation == null ? "stage1_explode" : doomExplosionClip(rendered);
             if (spawnPamAtPlant(rendered, "DOOMSHROOM", clip, 2.25f, 0f, false)) {
                 fireExplosionVisualEvent();
                 return true;
             }
-        }
-        if (name.equals("grapeshot")) {
-            spawnPamAtPlant(rendered, "ESCAPEROOT_EXPLOSION_GRAPESHOT", "animation", 1.95f, 0f, false);
-            fireExplosionVisualEvent();
-            return true;
         }
         if (name.equals("hot potato")) {
             spawnPamAtPlant(rendered, "HOTPOTATO_STEAMFX", "animation", 1.15f, 0f, false);
@@ -1835,6 +1943,51 @@ public final class GameplayPlantLayer extends Group {
         float centerY = rendered.root.getY() + rendered.root.getHeight() * 0.48f;
         float size = Math.min(rendered.root.getWidth(), rendered.root.getHeight()) * sizeFactor;
         return spawnPamEffect(animationName, clip, centerX, centerY, size, rendered.lastRow, delay, looping);
+    }
+
+    private boolean spawnPamSequenceAtPlant(
+            RenderedPlant rendered,
+            String animationName,
+            float sizeFactor,
+            String... clips
+    ) {
+        if (rendered == null || clips == null || clips.length == 0) {
+            return false;
+        }
+        GameplayPamEffectSupport.Effect effect = GameplayPamEffectSupport.create(
+                this.assets, this.animationCatalog, animationName, false, clips[0]
+        );
+        if (effect == null) {
+            return false;
+        }
+        float centerX = rendered.root.getX() + rendered.root.getWidth() * 0.5f;
+        float centerY = rendered.root.getY() + rendered.root.getHeight() * 0.48f;
+        float size = Math.min(rendered.root.getWidth(), rendered.root.getHeight()) * sizeFactor;
+        GameplayPamEffectSupport.centerVisibleBounds(effect, centerX, centerY, size);
+        GameplayBoardDepthOrder.mark(
+                effect.actor, Math.max(0, rendered.lastRow), GameplayBoardDepthOrder.PROJECTILE + 3
+        );
+        this.renderHost.addActor(effect.actor);
+
+        List<Action> actions = new ArrayList<>();
+        String firstClip = effect.animation.findClip(clips[0]);
+        actions.add(Actions.delay(Math.max(0.08f,
+                effect.animation.getClipDuration(firstClip, 0.32f))));
+        for (int index = 1; index < clips.length; index++) {
+            String nextClip = effect.animation.findClip(clips[index]);
+            if (nextClip == null) {
+                continue;
+            }
+            actions.add(Actions.run(() -> {
+                effect.actor.setAnimation(effect.animation.getPath(), nextClip);
+                effect.actor.setLooping(false);
+            }));
+            actions.add(Actions.delay(Math.max(0.08f,
+                    effect.animation.getClipDuration(nextClip, 0.32f))));
+        }
+        actions.add(Actions.removeActor());
+        effect.actor.addAction(Actions.sequence(actions.toArray(new Action[0])));
+        return true;
     }
 
     private boolean spawnPamEffect(
@@ -1888,30 +2041,77 @@ public final class GameplayPlantLayer extends Group {
     }
 
     private boolean playTriggeredRemovalAnimation(Plant plant, RenderedPlant rendered) {
-        if (plant == null || rendered == null || plant.getHealth() <= 0
-                || !normalize(plant.getName()).contains("squash")
-                || !(rendered.body instanceof PamAnimationActor)
-                || rendered.animation == null) {
-            return false;
-        }
-        String clip = rendered.animation.getTriggeredRemovalClip();
-        if (clip == null) {
-            return false;
-        }
-        PamAnimationActor actor = (PamAnimationActor) rendered.body;
-        actor.setAnimation(rendered.animation.getPath(), clip);
-        actor.setLooping(false);
+        if (plant == null || rendered == null || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) return false;
+        String name = normalize(plant.getName());
+        if (name.equals("sea-shroom") && plant.getHealth() <= 0)
+            return playDetachedSequence(rendered, orderedExistingClips(rendered.animation, "death"));
+        if (name.equals("torchwood") && plant.getHealth() <= 0)
+            return playDetachedSequence(rendered, orderedExistingClips(rendered.animation, "explosion"));
+        if (isPowerMint(name))
+            return playDetachedSequence(rendered, orderedExistingClips(rendered.animation, "outro"));
+        if ((name.equals("tangle kelp") || name.equals("tangle-kelp")) && plant.getHealth() > 0)
+            return playDetachedSequence(rendered, orderedExistingClips(rendered.animation, "attack_submerge", "attack", "attack_emerge"));
+        if (!name.contains("squash") || plant.getHealth() <= 0) return false;
+        boolean left = rendered.squashFacesLeft || squashFacesLeft(plant);
+        List<String> clips = rendered.plantFoodTriggered
+                ? (left ? orderedExistingClips(rendered.animation, "size_up", "plantfood_jump_down_left")
+                        : orderedExistingClips(rendered.animation, "size_up", "plantfood_jump_down_right"))
+                : (left ? orderedExistingClips(rendered.animation, "turn", "size_up", "jump_up_left", "jump_down_left")
+                        : orderedExistingClips(rendered.animation, "size_up", "jump_up_right", "jump_down_right"));
+        if (!playDetachedSequence(rendered, clips)) return false;
+        float direction = left ? -1f : 1f;
         rendered.root.setOrigin(rendered.root.getWidth() * 0.5f, rendered.root.getHeight() * 0.15f);
         rendered.root.addAction(Actions.sequence(
+                Actions.delay(0.12f),
                 Actions.parallel(
-                        Actions.moveBy(rendered.root.getWidth() * 0.22f, 0f, 0.34f),
+                        Actions.moveBy(direction * rendered.root.getWidth() * 0.22f, 0f, 0.34f),
                         Actions.scaleTo(1.08f, 0.96f, 0.34f)
-                ),
-                Actions.delay(0.18f),
-                Actions.fadeOut(0.12f),
-                Actions.removeActor()
+                )
         ));
         return true;
+    }
+
+    private boolean playDetachedSequence(RenderedPlant rendered, List<String> clips) {
+        if (rendered == null || clips == null || clips.isEmpty()
+                || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) return false;
+        PamAnimationActor actor = (PamAnimationActor) rendered.body;
+        List<Action> actions = new ArrayList<>();
+        for (String clip : clips) {
+            if (clip == null) continue;
+            actions.add(Actions.run(() -> { actor.setAnimation(rendered.animation.getPath(), clip); actor.setLooping(false); }));
+            actions.add(Actions.delay(Math.max(0.08f, rendered.animation.getClipDuration(clip, 0.42f))));
+        }
+        if (actions.isEmpty()) return false;
+        actions.add(Actions.fadeOut(0.10f));
+        actions.add(Actions.removeActor());
+        rendered.root.addAction(Actions.sequence(actions.toArray(new Action[0])));
+        return true;
+    }
+
+    private String doomExplosionClip(RenderedPlant rendered) {
+        if (rendered == null || rendered.animation == null) return null;
+        return switch (Math.max(1, rendered.doomStage)) {
+            case 1 -> rendered.animation.findClip("stage1_explode");
+            case 2 -> rendered.animation.findClip("stage2_explode", "stage1_explode");
+            default -> rendered.animation.findClip("stage3_explode", "stage3_explode_short", "stage2_explode", "stage1_explode");
+        };
+    }
+
+    private boolean isPowerMint(String name) {
+        return name != null && (name.endsWith("mint") || name.contains("-mint"));
+    }
+
+    private boolean squashFacesLeft(Plant plant) {
+        if (plant == null || plant.getPosition() == null) return false;
+        model.zombie.Zombie nearest = null;
+        double nearestDistance = Double.MAX_VALUE;
+        for (model.zombie.Zombie zombie : this.worldDataSource.getZombiesOnBoard()) {
+            if (zombie == null || zombie.isDead() || zombie.isHypnotized() || zombie.getPosition() == null
+                    || zombie.getPosition().getY() != plant.getPosition().getY()) continue;
+            double distance = Math.abs(zombie.getExactX() - plant.getPosition().getX());
+            if (distance < nearestDistance) { nearest = zombie; nearestDistance = distance; }
+        }
+        return nearest != null && nearest.getExactX() < plant.getPosition().getX();
     }
 
     private boolean hasBlastVisual(String plantName) {
@@ -2506,6 +2706,24 @@ public final class GameplayPlantLayer extends Group {
         return plant != null && normalize(plant.getName()).equals("sun-shroom");
     }
 
+    private boolean playTemporarySequence(RenderedPlant rendered, String... candidates) {
+        if (rendered == null || rendered.plantFoodRemaining > 0f
+                || !(rendered.body instanceof PamAnimationActor) || rendered.animation == null) return false;
+        List<String> sequence = orderedExistingClips(rendered.animation, candidates);
+        if (sequence.isEmpty()) return false;
+        rendered.temporarySequence = sequence;
+        rendered.temporarySequenceIndex = 0;
+        startTemporaryClip(rendered, sequence.get(0));
+        return true;
+    }
+
+    private void startTemporaryClip(RenderedPlant rendered, String clip) {
+        PamAnimationActor actor = (PamAnimationActor) rendered.body;
+        actor.setAnimation(rendered.animation.getPath(), clip);
+        actor.setLooping(false);
+        rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(clip, 0.55f);
+    }
+
     private void advanceTemporaryAnimation(RenderedPlant rendered, float delta) {
         if (rendered.temporaryAnimationRemaining <= 0f || rendered.plantFoodRemaining > 0f) {
             return;
@@ -2516,11 +2734,24 @@ public final class GameplayPlantLayer extends Group {
                 || rendered.animation == null) {
             return;
         }
+        PamAnimationActor actor = (PamAnimationActor) rendered.body;
+        if (rendered.temporarySequenceIndex >= 0 && rendered.temporarySequenceIndex < rendered.temporarySequence.size()) {
+            String expected = rendered.temporarySequence.get(rendered.temporarySequenceIndex);
+            if (expected.equalsIgnoreCase(actor.getClipName())) {
+                int next = rendered.temporarySequenceIndex + 1;
+                if (next < rendered.temporarySequence.size()) {
+                    rendered.temporarySequenceIndex = next;
+                    startTemporaryClip(rendered, rendered.temporarySequence.get(next));
+                    return;
+                }
+            }
+            rendered.temporarySequence = List.of();
+            rendered.temporarySequenceIndex = -1;
+        }
         if (rendered.chomperBiteEndPending) {
             rendered.chomperBiteEndPending = false;
             String biteEnd = rendered.animation.findClip("bite_end");
             if (biteEnd != null) {
-                PamAnimationActor actor = (PamAnimationActor) rendered.body;
                 actor.setAnimation(rendered.animation.getPath(), biteEnd);
                 actor.setLooping(false);
                 rendered.temporaryAnimationRemaining = rendered.animation.getClipDuration(biteEnd, 0.55f);
@@ -2676,7 +2907,11 @@ public final class GameplayPlantLayer extends Group {
             return;
         }
         String clip;
-        if (rendered.mineArmRemaining > 0f) {
+        if (rendered.onWater) {
+            clip = rendered.animation.findClip("water");
+        } else if (rendered.doomStage > 0) {
+            clip = doomIdleClip(rendered.animation, rendered.doomStage);
+        } else if (rendered.mineArmRemaining > 0f) {
             clip = rendered.animation.getUnarmedClip();
         } else if (rendered.kiwiStage > 0) {
             clip = kiwibeastIdleClip(rendered.animation, rendered.kiwiStage);
@@ -2697,6 +2932,18 @@ public final class GameplayPlantLayer extends Group {
             if (clip != null) {
                 return clip;
             }
+        }
+        if (rendered.onWater) {
+            String clip = rendered.animation.findClip("water");
+            if (clip != null) return clip;
+        }
+        if (rendered.doomStage > 0) {
+            String clip = doomIdleClip(rendered.animation, rendered.doomStage);
+            if (clip != null) return clip;
+        }
+        if (rendered.cactusStateInitialized && !rendered.cactusExtended) {
+            String clip = rendered.animation.findClip("down_idle", "idle");
+            if (clip != null) return clip;
         }
         if (rendered.sunShroomStage > 0) {
             String clip = sunShroomIdleClip(rendered.animation, rendered.sunShroomStage);
@@ -2737,6 +2984,12 @@ public final class GameplayPlantLayer extends Group {
             }
         }
         return rendered.animation.getPreviewClip();
+    }
+
+    private String doomIdleClip(PamAnimationCatalog.AnimationInfo animation, int stage) {
+        if (animation == null) return null;
+        int safe = Math.max(1, Math.min(3, stage));
+        return animation.findClip("stage" + safe + "_idle", "stage" + safe + "_idle2", "stage1_idle");
     }
 
     private boolean isLobberPlant(String name) {
@@ -3217,6 +3470,8 @@ public final class GameplayPlantLayer extends Group {
         private final float pamGroundOffset;
         private List<String> plantFoodSequence = List.of();
         private int plantFoodSequenceIndex = -1;
+        private List<String> temporarySequence = List.of();
+        private int temporarySequenceIndex = -1;
         private boolean megaGatlingStageTwo;
         private boolean megaGatlingPlantFoodBurstPlayed;
         private float plantFoodRemaining;
@@ -3224,6 +3479,8 @@ public final class GameplayPlantLayer extends Group {
         private float damageFlashRemaining;
         private float mineArmRemaining;
         private boolean mineRecoverPlayed;
+        private boolean waterStateInitialized;
+        private boolean onWater;
         private final float[] bowlingRecharge = new float[3];
         private int pendingBowlingReloadMask;
         private int damageStage = -1;
@@ -3237,6 +3494,10 @@ public final class GameplayPlantLayer extends Group {
         private float meleeVisualElapsed;
         private float idlePulseElapsed;
         private int kiwiStage;
+        private int doomStage;
+        private boolean cactusStateInitialized;
+        private boolean cactusExtended;
+        private boolean squashFacesLeft;
         private int sunShroomStage;
         private int puffShroomStage;
         private int peaPodStage;
@@ -3245,6 +3506,7 @@ public final class GameplayPlantLayer extends Group {
         private long lastChomperDigestTicks;
         private boolean chomperDigesting;
         private boolean chomperBiteEndPending;
+        private boolean plantFoodTriggered;
         private boolean torchwoodBoosted;
         private boolean pumpkinPlantFoodArmorVisual;
         private int pumpkinPlantFoodArmorAmount;

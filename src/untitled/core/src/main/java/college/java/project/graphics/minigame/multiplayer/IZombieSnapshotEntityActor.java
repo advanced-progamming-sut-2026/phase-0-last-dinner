@@ -72,6 +72,7 @@ public final class IZombieSnapshotEntityActor extends Group {
 
     private float plantAttackRemaining;
     private int plantDamageStage = -1;
+    private long meleeAttackSequence = -1L;
 
     public IZombieSnapshotEntityActor(IZombieEntitySnapshot snapshot, GameAssetManager assets,
                                       PamAnimationCatalog plantAnimations, ZombieAnimationCatalog zombieAnimations) {
@@ -149,6 +150,7 @@ public final class IZombieSnapshotEntityActor extends Group {
 
         updateAnimationClip();
         updatePlantDamageClip();
+        refreshMeleeAttack();
         refreshZombieArmor();
         refreshHealthBar();
 
@@ -374,6 +376,31 @@ public final class IZombieSnapshotEntityActor extends Group {
         plantAttackRemaining = Math.max(0.08f, duration - startTime);
         activeClip = attackClip;
         layoutChildren();
+    }
+
+    private void refreshMeleeAttack() {
+        if (kind != IZombieEntityKind.PLANT) {
+            return;
+        }
+
+        for (String state : states) {
+            if (state == null || !state.startsWith("MELEE_ATTACK:")) {
+                continue;
+            }
+
+            try {
+                long sequence = Long.parseLong(state.substring("MELEE_ATTACK:".length()));
+
+                if (meleeAttackSequence >= 0L && sequence != meleeAttackSequence) {
+                    playPlantAttack();
+                }
+
+                meleeAttackSequence = sequence;
+            } catch (NumberFormatException ignored) {
+            }
+
+            return;
+        }
     }
 
     private Image createShadow() {
