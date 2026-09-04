@@ -49,7 +49,7 @@ public class GameMenuScreen implements Screen {
     }
 
     private static final String BACKGROUND_PATH =
-        "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/mainmenu_background.png";
+        "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/gameMenu.png";
     private static final float VIRTUAL_WIDTH = 1280f;
     private static final float VIRTUAL_HEIGHT = 720f;
     private static final float TILE_SIZE = 200f;

@@ -32,22 +32,13 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.BiPredicate;
 
-/**
- * Level-select screen for a chapter (Normal + the one special level currently defined for
- * it). The visuals (nameplate boxes, damage/variable icons, lock overlay) are ours, but
- * what actually happens when an unlocked level is clicked is delegated to
- * {@code AdventureLevelSelectionScreen.openLevel(chapter, level)} - the teammate's already
- * working implementation that enters the chapter, selects the level, and routes to either
- * the plant-pick screen or straight into gameplay for CONVEYOR_BELT-type specials. We don't
- * re-derive any of that here to avoid diverging from a path that's already tested.
- */
 public class ChapterScreen implements Screen {
 
     public interface Navigator {
         void onBack();
     }
 
-    private static final String BACKGROUND_PATH =
+    private String BACKGROUND_PATH =
         "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/mainmenu_background.png";
     private static final String NAMEPLATE_DRAWABLE = "image_ui_if_bundle_reward_multiplier_bg_10";
     private static final String NORMAL_ICON_PATH = "Assets/Exports/damage_icon.png";
@@ -66,6 +57,17 @@ public class ChapterScreen implements Screen {
     private final Navigator navigator;
     private final BiPredicate<ChapterType, LevelType> levelSelector;
     private final List<Texture> loadedTextures = new ArrayList<>();
+
+    public void chooseBackground() {
+        if (this.chapter == ChapterType.ANCIENT_EGYPT)
+            BACKGROUND_PATH = "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/anciant.png";
+        else if (this.chapter == ChapterType.ICE_CAVES)
+            BACKGROUND_PATH = "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/caves.png";
+        else if (this.chapter == ChapterType.BIG_WAVE_BEACH)
+            BACKGROUND_PATH = "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/beach.png";
+        else
+            BACKGROUND_PATH = "Assets/Exports/ATLASIMAGE_ATLAS_MAINMENU_BACKGROUND_768_00/medieval.png";
+    }
 
     private Stage stage;
     private Label statusLabel;
@@ -90,7 +92,7 @@ public class ChapterScreen implements Screen {
         this.stage = new college.java.project.graphics.SfxStage(new ExtendViewport(VIRTUAL_WIDTH, VIRTUAL_HEIGHT));
         Gdx.input.setInputProcessor(this.stage);
         Skin skin = PvzSkin.get();
-
+        chooseBackground();
         this.stage.addActor(this.createImageFill(BACKGROUND_PATH));
 
         this.statusLabel = new Label("", skin, "secondary");
@@ -118,7 +120,7 @@ public class ChapterScreen implements Screen {
                 continue;
             }
             boolean unlocked = user != null && user.isAdventureLevelUnlocked(this.chapter, level);
-            levelsColumn.add(this.createLevelRow(level, unlocked, skin)).padBottom(24).row();
+            levelsColumn.add(this.createLevelRow(level, unlocked, skin)).padBottom(40).row();
         }
 
         // Same proven 3-column layout: expand filler is always the middle column, on
@@ -129,7 +131,7 @@ public class ChapterScreen implements Screen {
         this.stage.addActor(root);
 
         root.top();
-        root.add(title).colspan(3).padTop(8).row();
+        //root.add(title).colspan(3).padTop(8).row();
         root.add().left();
         root.add().expandX();
         root.add().right();
@@ -164,6 +166,9 @@ public class ChapterScreen implements Screen {
         iconBox.add(levelIcon).size(LEVEL_ICON_SIZE, LEVEL_ICON_SIZE);
 
         Table row = new Table();
+        if (isNormal)
+            row.padTop(150);
+        row.padLeft(80);
         row.add(namePlateBox).padRight(16);
         row.add(iconBox);
 

@@ -1,6 +1,8 @@
 package college.java.project.graphics;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.scenes.scene2d.Actor;
 import com.badlogic.gdx.scenes.scene2d.Group;
@@ -26,12 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/** Draws chapter-aware board terrain, graves and current Big Wave Beach shoreline. */
 public final class GameplayTerrainLayer extends Group {
     private static final int COLUMN_COUNT = 9;
     private static final int ROW_COUNT = 5;
     private static final Color WATER = new Color(0.08f, 0.59f, 0.84f, 0.25f);
-    private static final Color LOW_BEACH = new Color(0.18f, 0.70f, 0.89f, 0.10f);
+    //private static final Color LOW_BEACH = new Color(0f, 0f, 0f, 0.18f);
     private static final Color FROZEN = new Color(0.63f, 0.91f, 1f, 0.42f);
     private static final Color SLIPPERY = new Color(0.80f, 0.95f, 1f, 0.28f);
     private static final Color NECROMANCY = new Color(0.49f, 0.15f, 0.68f, 0.30f);
@@ -40,6 +41,7 @@ public final class GameplayTerrainLayer extends Group {
     private static final float DAMAGE_FLASH_SECONDS = 0.12f;
     private static final String BEACH_WATER_SQUARE =
             "IMAGE_BACKGROUNDS_WATER_SQUARE_WATER_SQUARE_190X210";
+    private static final String LOW_BEACH_IMAGE_PATH = "Assets/Exports/timer_deco_tombtangler.png";
     private static final String BEACH_WATER_PAM = "WATER_SQUARE";
     private static final String BEACH_WATER_UNDERLAYER_PAM = "WATER_UNDERLAYER";
     private static final String BEACH_TIDE_LINE_PAM = "WATER_TIDE_LINE";
@@ -72,6 +74,7 @@ public final class GameplayTerrainLayer extends Group {
     };
 
     private final GameplayWorldDataSource dataSource;
+    private Texture lowBeachTexture;
     private final GameAssetManager assets;
     private final PamAnimationCatalog pamCatalog = new PamAnimationCatalog();
     private boolean ownsAssets;
@@ -118,6 +121,10 @@ public final class GameplayTerrainLayer extends Group {
     public void dispose() {
         if (this.ownsAssets) {
             this.assets.dispose();
+        }
+        if (this.lowBeachTexture != null) {
+            this.lowBeachTexture.dispose();
+            this.lowBeachTexture = null;
         }
     }
 
@@ -202,11 +209,11 @@ public final class GameplayTerrainLayer extends Group {
         if (type == TerrainType.GRAVE) {
             return graveImage(tile);
         }
-        if (type == TerrainType.WATER) {
-            return waterImage();
-        }
         if (type == TerrainType.LOW_BEACH) {
             return lowBeachImage();
+        }
+        if (type == TerrainType.WATER) {
+            return waterImage();
         }
         if (type == TerrainType.FROZEN) {
             return overlay(FROZEN);
@@ -242,15 +249,17 @@ public final class GameplayTerrainLayer extends Group {
     }
 
     private Actor lowBeachImage() {
-        Group group = new Group();
-        Image base = overlay(LOW_BEACH);
-        group.addActor(base);
-        Actor underlayer = createPamTerrainActor(BEACH_WATER_UNDERLAYER_PAM, 0.26f);
-        if (underlayer != null) {
-            underlayer.setBounds(0f, 0f, 1f, 1f);
-            group.addActor(underlayer);
+        Image image = new Image(lowBeachDrawable());
+        image.setScaling(Scaling.fit);
+        return image;
+    }
+
+    private Drawable lowBeachDrawable() {
+        if (this.lowBeachTexture == null) {
+            this.lowBeachTexture = new Texture(Gdx.files.internal(LOW_BEACH_IMAGE_PATH));
+            this.lowBeachTexture.setFilter(Texture.TextureFilter.Linear, Texture.TextureFilter.Linear);
         }
-        return group;
+        return new TextureRegionDrawable(new TextureRegion(this.lowBeachTexture));
     }
 
     private Actor createPamTerrainActor(String animationName, float alpha) {
